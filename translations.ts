@@ -1,0 +1,464 @@
+export type Language = 'en' | 'ko';
+
+const en = {
+  // Header
+  headerTitle: 'Scope 1 & 2 GHG Emissions Calculator',
+  headerSubtitle: 'Calculate your organization\'s direct & indirect greenhouse gas emissions.',
+
+  // Footer
+  footerCopyright: '© 2024 GHG Calculator Inc. All Rights Reserved.',
+  footerBasedOn: 'Based on the GHG Protocol Corporate Standard.',
+
+  // Categories
+  'Stationary Combustion': 'Stationary Combustion',
+  'Mobile Combustion': 'Mobile Combustion',
+  'Process Emissions': 'Process Emissions',
+  'Fugitive Emissions': 'Fugitive Emissions',
+  'Purchased Energy': 'Purchased Energy',
+  'Waste': 'Waste',
+
+  // Descriptions for categories
+  stationaryDescription: 'Emissions from burning fuels in stationary equipment, like boilers and furnaces.',
+  mobileDescription: 'Emissions from burning fuels in company-owned or controlled vehicles.',
+  processDescription: 'Emissions released during industrial processes, such as cement or ammonia production.',
+  fugitiveDescription: 'Leaks of greenhouse gases from equipment, like refrigeration and air conditioning units.',
+  energyDescription: 'Emissions from purchased energy. GHG Protocol requires dual reporting for electricity.',
+  wasteDescription: 'Emissions from on-site waste incineration or wastewater treatment facilities.',
+  
+  // UX Guidance
+  processEmissionsInfoTitle: 'What are Process Emissions?',
+  processEmissionsInfoText: 'Direct emissions from chemical/physical processes, NOT from burning fuel (e.g., CO2 from cement production). Enter the monthly production/material consumption volume (e.g., tonnes of clinker).',
+  scope2DualReportingInfoTitle: 'Scope 2 Dual Reporting',
+  scope2DualReportingInfoText: 'The GHG Protocol requires reporting Scope 2 emissions in two ways: Location-based (reflecting the grid average) and Market-based (reflecting your specific energy purchases, like green tariffs or RECs).',
+  biogenicEmissionsInfoTitle: 'Biogenic CO₂ Emissions',
+  biogenicEmissionsInfoText: 'CO₂ emissions from the combustion of biomass (e.g., wood) are tracked separately and not included in the Scope 1 total, as per GHG Protocol guidance.',
+
+
+  // Results Display
+  emissionsSummary: 'Emissions Summary',
+  reportGeneratedFor: 'Report generated for',
+  basedOn: 'Based on',
+  totalGHGEmissions: 'Total GHG Emissions (Scope 1 + 2)',
+  marketBasedTotal: 'Total (Market-Based)',
+  locationBasedTotal: 'Total (Location-Based)',
+  tonnesCO2e: 'tonnes CO₂e',
+  emissions: 'Emissions',
+  emissionsByFacility: 'Emissions by Facility',
+  facility: 'Facility',
+  appliedBasis: 'Applied Basis',
+  stationary: 'Stationary',
+  mobile: 'Mobile',
+  process: 'Process',
+  fugitive: 'Fugitive',
+  scope1: 'Scope 1',
+  scope2: 'Scope 2',
+  scope2Location: 'Scope 2 (Location)',
+  scope2Market: 'Scope 2 (Market)',
+  biogenicCO2: 'Biogenic CO₂',
+  total: 'Total',
+  generateReport: 'Generate Report',
+  
+  // Boundary Approaches
+  operationalControl: 'Operational Control',
+  financialControl: 'Financial Control',
+  equityShare: 'Equity Share',
+  
+  // Source Card & Row
+  subtotal: 'Category Subtotal',
+  addSource: 'Add New Emission Source',
+  noSources: 'No emission sources added for this category yet.',
+  removeSourceAria: 'Remove emission source',
+  totalYear: 'Annual Total',
+  editMonthly: 'Edit Monthly Data',
+  emissionsForSource: 'Emissions',
+  calculationLogic: 'Calculation Logic',
+  activityData: 'Activity Data',
+  emissionFactor: 'Emission Factor',
+  cancel: 'Cancel',
+  save: 'Save',
+  marketBasedMethod: 'Market-based Method',
+  provideMarketData: 'Provide market-based data (e.g., from supplier)',
+  marketFactor: 'Market Factor (kg CO₂e / unit)',
+  
+  // Months
+  jan: 'Jan', feb: 'Feb', mar: 'Mar', apr: 'Apr', may: 'May', jun: 'Jun',
+  jul: 'Jul', aug: 'Aug', sep: 'Sep', oct: 'Oct', nov: 'Nov', dec: 'Dec',
+  
+  // Factor Manager
+  manageFactors: 'Manage Emission Factors & GWPs',
+  gwpColumnHeader: 'Global Warming Potential (GWP)',
+  factorColumnHeader: 'Emission Factor (kg CO₂e / unit)',
+  co2Factor: 'CO₂ Factor',
+  ch4Factor: 'CH₄ Factor',
+  n2oFactor: 'N₂O Factor',
+  isBiomassFuel: 'Is this a biomass fuel?',
+  saveChanges: 'Save Changes',
+  selectRegion: 'Select Region for Electricity',
+  regionNote: 'Select a region to load standard location-based electricity factors. All factors can be edited manually.',
+  countrySouthKorea: 'South Korea',
+  countryUSA: 'USA',
+  countryJapan: 'Japan',
+  countryEU: 'EU (Average)',
+  custom: 'Custom',
+  source: 'Source',
+  viewSource: 'View Source',
+  addNewSource: 'Add New Source',
+  remove: 'Remove',
+  confirmRemoveSource: 'Are you sure you want to remove this custom emission source? This cannot be undone.',
+  sourceName: 'Source Name',
+  unitsCommaSeparated: 'Units (comma-separated)',
+  factorForUnit: 'Factor for {unit}',
+  gwp: 'GWP',
+  add: 'Add',
+  customSourceNote: 'Note: Custom sources will not be translated.',
+
+  // Boundary Setup Wizard
+  boundarySetupTitle: 'Organizational Boundary Setup Wizard',
+  boundarySetupSubtitle: 'First, define your organizational boundary to ensure accurate emissions accounting.',
+  reconfigureBoundary: 'Reconfigure Organizational Boundary',
+  
+  // Wizard Steps
+  step0: 'Welcome',
+  step1: 'Company Info',
+  step2: 'Questionnaire',
+  step3: 'Consolidation & Facilities',
+  
+  // Step 0: Welcome
+  wizardWelcomeTitle: 'Welcome to the Organizational Boundary Setup Wizard',
+  wizardWelcomeText: 'This wizard will guide you through choosing the correct GHG consolidation approach based on the GHG Protocol Corporate Standard.',
+  getStarted: 'Get Started',
+
+  // Step 1: Company Info
+  companyInfo: 'Company Information',
+  companyName: 'Company Name',
+  reportingYear: 'Reporting Year',
+
+  // Step 2: Questionnaire
+  wizardQuestionnaireTitle: 'Organizational Boundary Questionnaire',
+  q1Title: '1. Who has the authority to implement operating, health, and safety policies for the facilities?',
+  q1OptionA: 'My company, exclusively.',
+  q1OptionADesc: 'Select if you have full authority.',
+  q1OptionB: 'Another entity, but my company has financial control (e.g., a subsidiary).',
+  q1OptionBDesc: 'Select if it appears on your consolidated financial statements.',
+  q1OptionC: 'It\'s a joint operation, and my company owns an equity share.',
+  q1OptionCDesc: 'Select if you have a percentage ownership in a joint venture.',
+  
+  q2Title: '2. Are there facilities operated by other companies (e.g., contractors, tenants) located within your site boundaries?',
+  q2OptionYes: 'Yes',
+  q2OptionNo: 'No',
+  q2GuidanceTitle: 'Guidance on Other Entities',
+  q2GuidanceText: 'According to the GHG Protocol, if you have operational control over these third-party facilities, you should include their emissions. If you do not have control, you may still need to account for them under different scopes or document their exclusion.',
+  
+  q3Title: '3. Do you operate numerous small, similar facilities (e.g., retail stores, gas stations, cell towers)?',
+  q3OptionYes: 'Yes',
+  q3OptionNo: 'No',
+  q3GuidanceTitle: 'Guidance on Small Facilities',
+  q3GuidanceText: 'For simplified reporting, the GHG Protocol allows grouping numerous small, similar emission sources into a single "aggregated facility". You can manage this in the next step.',
+
+  // Step 3: Consolidation & Facilities
+  consolidationApproach: 'Consolidation Approach',
+  recommendationText: 'Based on your answers, we recommend using the',
+  recommendedBadge: 'Recommended',
+  facilities: 'Facilities',
+  addFacility: 'Add Facility',
+  facilityName: 'Facility Name',
+  facilityType: 'Facility Type',
+  equityShareOptional: 'Equity Share (%)',
+  operationalControlDescription: 'Account for 100% of emissions from facilities you have operational control over.',
+  financialControlDescription: 'Account for 100% of emissions from facilities you have financial control over.',
+  equityShareDescription: 'Account for emissions based on your percentage of equity in each facility.',
+
+  // Wizard Navigation
+  next: 'Next',
+  back: 'Back',
+  finish: 'Finish & Save Setup',
+
+  // Predefined Facility Types
+  facilityTypeOffice: 'Main Office / Headquarters',
+  facilityTypePlant: 'Manufacturing Plant / Factory',
+  facilityTypeWarehouse: 'Warehouse / Distribution Center',
+  facilityTypeDataCenter: 'Data Center',
+  facilityTypeRetail: 'Retail Store / Branch',
+  facilityTypeLab: 'Laboratory / R&D Center',
+
+  // Report Generator
+  close: 'Close',
+  printReport: 'Print Report',
+  ghgReportTitle: 'Greenhouse Gas Emissions Report',
+  executiveSummary: 'Executive Summary',
+  methodology: 'Methodology & Boundary',
+  consolidationApproachUsed: 'Consolidation Approach Used',
+  scope1Breakdown: 'Scope 1 Emissions Breakdown',
+  scope2Breakdown: 'Scope 2 Emissions Breakdown',
+  emissionsByCategory: 'Emissions by Category',
+  emissionsBySource: 'Emissions by Source',
+  category: 'Category',
+  emissionsTonnes: 'Emissions (tonnes CO₂e)',
+  dataGeneratedOn: 'Data generated on',
+
+  // Fuel translation keys from constants.ts
+  naturalGas: 'Natural Gas',
+  propane: 'Propane',
+  heatingOil: 'Heating Oil',
+  coalBituminous: 'Coal (Bituminous)',
+  woodChips: 'Wood Chips',
+  gasoline: 'Gasoline',
+  diesel: 'Diesel',
+  jetFuel: 'Jet Fuel (Kerosene)',
+  cementProduction: 'Cement Production',
+  limeProduction: 'Lime Production',
+  ammoniaProduction: 'Ammonia Production',
+  nitricAcidProduction: 'Nitric Acid Production',
+  steelProduction: 'Steel Production',
+  aluminumProduction: 'Aluminum Production',
+  semiconductorCF4: 'Semiconductor (CF4)',
+  semiconductorNF3: 'Semiconductor (NF3)',
+  hfc134a: 'HFC-134a',
+  r404a: 'R-404A',
+  r410a: 'R-410A',
+  r22: 'R-22 (HCFC-22)',
+  sf6: 'SF6',
+  gridElectricity: 'Grid Electricity',
+  purchasedSteam: 'Purchased Steam',
+  purchasedHeating: 'Purchased Heating',
+  purchasedCooling: 'Purchased Cooling',
+  mswIncineration: 'MSW Incineration',
+  industrialWasteIncineration: 'Industrial Waste Incineration',
+  sewageSludgeIncineration: 'Sewage Sludge Incineration',
+  wastewaterAnaerobic: 'Wastewater Treatment (Anaerobic)',
+  wastewaterAerobic: 'Wastewater Treatment (Aerobic)',
+};
+
+const ko = {
+  // Header
+  headerTitle: 'Scope 1 & 2 온실가스 배출량 계산기',
+  headerSubtitle: '조직의 직접 및 간접 온실가스 배출량을 계산하세요.',
+
+  // Footer
+  footerCopyright: '© 2024 GHG Calculator Inc. 모든 권리 보유.',
+  footerBasedOn: 'GHG 프로토콜 기업 표준 기준.',
+
+  // Categories
+  'Stationary Combustion': '고정 연소',
+  'Mobile Combustion': '이동 연소',
+  'Process Emissions': '공정 배출',
+  'Fugitive Emissions': '탈루 배출',
+  'Purchased Energy': '구매 에너지',
+  'Waste': '폐기물',
+
+  // Descriptions for categories
+  stationaryDescription: '보일러, 용광로 등 고정된 장비에서 연료를 연소하여 발생하는 배출.',
+  mobileDescription: '회사가 소유하거나 통제하는 차량에서 연료를 연소하여 발생하는 배출.',
+  processDescription: '시멘트 또는 암모니아 생산과 같은 산업 공정 중에 방출되는 배출.',
+  fugitiveDescription: '냉동 및 에어컨 장치와 같은 장비에서 온실가스가 누출되는 배출.',
+  energyDescription: '구매한 에너지로부터 발생하는 배출. GHG 프로토콜은 전력에 대해 이중 보고를 요구합니다.',
+  wasteDescription: '사업장 내 폐기물 소각 또는 폐수 처리 시설에서 발생하는 배출.',
+  
+  // UX Guidance
+  processEmissionsInfoTitle: '공정 배출이란 무엇인가요?',
+  processEmissionsInfoText: '연료 연소가 아닌, 화학적/물리적 공정에서 직접 발생하는 배출입니다(예: 시멘트 생산). 월별 제품 생산량 또는 원료 소비량(예: 클링커 생산 톤수)을 입력하세요.',
+  scope2DualReportingInfoTitle: 'Scope 2 이중 보고',
+  scope2DualReportingInfoText: 'GHG 프로토콜은 Scope 2 배출량을 두 가지 방식으로 보고하도록 요구합니다: 지역 기준(전력망 평균 반영)과 시장 기준(녹색 요금제, REC 등 특정 에너지 구매 반영).',
+  biogenicEmissionsInfoTitle: '바이오매스 CO₂ 배출',
+  biogenicEmissionsInfoText: '바이오매스(예: 목재) 연소로 인한 CO₂ 배출량은 GHG 프로토콜 지침에 따라 별도로 추적되며 Scope 1 합계에 포함되지 않습니다.',
+  
+  // Results Display
+  emissionsSummary: '배출량 요약',
+  reportGeneratedFor: '보고서 생성 대상',
+  basedOn: '기준',
+  totalGHGEmissions: '총 온실가스 배출량 (Scope 1 + 2)',
+  marketBasedTotal: '총계 (시장 기준)',
+  locationBasedTotal: '총계 (지역 기준)',
+  tonnesCO2e: '톤 CO₂e',
+  emissions: '배출량',
+  emissionsByFacility: '시설별 배출량',
+  facility: '시설',
+  appliedBasis: '적용 기준',
+  stationary: '고정',
+  mobile: '이동',
+  process: '공정',
+  fugitive: '탈루',
+  scope1: 'Scope 1',
+  scope2: 'Scope 2',
+  scope2Location: 'Scope 2 (지역)',
+  scope2Market: 'Scope 2 (시장)',
+  biogenicCO2: '바이오매스 CO₂',
+  total: '합계',
+  generateReport: '보고서 생성',
+
+  // Boundary Approaches
+  operationalControl: '운영 통제권',
+  financialControl: '재무 통제권',
+  equityShare: '지분율',
+
+  // Source Card & Row
+  subtotal: '카테고리 소계',
+  addSource: '새 배출원 추가',
+  noSources: '이 카테고리에 추가된 배출원이 아직 없습니다.',
+  removeSourceAria: '배출원 제거',
+  totalYear: '연간 합계',
+  editMonthly: '월별 데이터 수정',
+  emissionsForSource: '배출량',
+  calculationLogic: '계산 로직',
+  activityData: '활동 데이터',
+  emissionFactor: '배출 계수',
+  cancel: '취소',
+  save: '저장',
+  marketBasedMethod: '시장 기준 방법',
+  provideMarketData: '시장 기준 데이터 제공 (예: 공급업체 정보)',
+  marketFactor: '시장 기준 계수 (kg CO₂e / 단위)',
+
+  // Months
+  jan: '1월', feb: '2월', mar: '3월', apr: '4월', may: '5월', jun: '6월',
+  jul: '7월', aug: '8월', sep: '9월', oct: '10월', nov: '11월', dec: '12월',
+
+  // Factor Manager
+  manageFactors: '배출 계수 및 GWP 관리',
+  gwpColumnHeader: '지구 온난화 지수 (GWP)',
+  factorColumnHeader: '배출 계수 (kg CO₂e / 단위)',
+  co2Factor: 'CO₂ 계수',
+  ch4Factor: 'CH₄ 계수',
+  n2oFactor: 'N₂O 계수',
+  isBiomassFuel: '바이오매스 연료입니까?',
+  saveChanges: '변경 사항 저장',
+  selectRegion: '전력 배출계수 지역 선택',
+  regionNote: '지역을 선택하면 표준 지역 기반 전력 배출계수가 로드됩니다. 모든 계수는 직접 수정할 수 있습니다.',
+  countrySouthKorea: '대한민국',
+  countryUSA: '미국',
+  countryJapan: '일본',
+  countryEU: '유럽연합 (평균)',
+  custom: '사용자 정의',
+  source: '출처',
+  viewSource: '출처 보기',
+  addNewSource: '새 배출원 추가',
+  remove: '삭제',
+  confirmRemoveSource: '이 사용자 정의 배출원을 정말로 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.',
+  sourceName: '배출원명',
+  unitsCommaSeparated: '단위 (쉼표로 구분)',
+  factorForUnit: '{unit} 계수',
+  gwp: 'GWP',
+  add: '추가',
+  customSourceNote: '참고: 사용자 정의 배출원은 번역되지 않습니다.',
+
+
+  // Boundary Setup Wizard
+  boundarySetupTitle: '조직 경계 설정 마법사',
+  boundarySetupSubtitle: '정확한 배출량 산정을 위해 조직의 경계를 먼저 설정합니다.',
+  reconfigureBoundary: '조직 경계 재설정',
+  
+  // Wizard Steps
+  step0: '시작',
+  step1: '회사 정보',
+  step2: '질의응답',
+  step3: '연결 기준 및 시설',
+
+  // Step 0: Welcome
+  wizardWelcomeTitle: '조직 경계 설정 마법사에 오신 것을 환영합니다',
+  wizardWelcomeText: '이 마법사는 GHG 프로토콜 기업 표준에 따라 귀사의 구조에 맞는 최적의 온실가스 연결 기준을 선택할 수 있도록 간단한 질문들을 안내합니다.',
+  getStarted: '시작하기',
+
+  // Step 1: Company Info
+  companyInfo: '회사 정보',
+  companyName: '회사명',
+  reportingYear: '보고 연도',
+  
+  // Step 2: Questionnaire
+  wizardQuestionnaireTitle: '조직 경계 설정 질의응답',
+  q1Title: '1. 시설의 운영, 보건, 안전 정책을 수립하고 실행할 권한은 누구에게 있습니까?',
+  q1OptionA: '전적으로 우리 회사에 있습니다.',
+  q1OptionADesc: '모든 권한을 가지고 있는 경우 선택하세요.',
+  q1OptionB: '다른 법인이지만, 우리 회사가 재무적 통제권을 가집니다 (예: 자회사).',
+  q1OptionBDesc: '연결재무제표에 포함되는 경우 선택하세요.',
+  q1OptionC: '공동 운영이며, 우리 회사는 지분만 소유하고 있습니다.',
+  q1OptionCDesc: '합작 투자(JV) 등에 지분율을 소유한 경우 선택하세요.',
+
+  q2Title: '2. 귀사의 사업장 경계 내에 다른 회사(예: 협력업체, 임차인)가 운영하는 시설이 있습니까?',
+  q2OptionYes: '예',
+  q2OptionNo: '아니오',
+  q2GuidanceTitle: '타 법인 시설에 대한 지침',
+  q2GuidanceText: 'GHG 프로토콜에 따라, 귀사가 해당 타 법인 시설에 대한 운영 통제권을 가지고 있다면 배출량을 포함해야 합니다. 통제권이 없는 경우 다른 Scope로 산정하거나, 경계에서 제외하는 사유를 문서화해야 할 수 있습니다.',
+
+  q3Title: '3. 다수의 유사한 소규모 사업장(예: 소매점, 주유소, 통신 기지국)을 운영하십니까?',
+  q3OptionYes: '예',
+  q3OptionNo: '아니오',
+  q3GuidanceTitle: '소규모 시설에 대한 지침',
+  q3GuidanceText: '보고의 편의성을 위해, GHG 프로토콜은 다수의 유사한 소규모 배출원들을 하나의 "통합 사업장"으로 그룹화하는 것을 허용합니다. 다음 단계에서 이를 관리할 수 있습니다.',
+
+  // Step 3: Consolidation & Facilities
+  consolidationApproach: '연결 기준',
+  recommendationText: '답변에 따라 다음 기준을 사용하는 것을 권장합니다:',
+  recommendedBadge: '권장',
+  facilities: '시설',
+  addFacility: '시설 추가',
+  facilityName: '시설 이름',
+  facilityType: '시설 유형',
+  equityShareOptional: '지분율 (%)',
+  operationalControlDescription: '운영 통제권이 있는 시설의 배출량을 100% 산정합니다.',
+  financialControlDescription: '재무 통제권이 있는 시설의 배출량을 100% 산정합니다.',
+  equityShareDescription: '각 시설의 지분율에 따라 배출량을 산정합니다.',
+
+  // Wizard Navigation
+  next: '다음',
+  back: '뒤로',
+  finish: '설정 완료 및 저장',
+
+  // Predefined Facility Types
+  facilityTypeOffice: '본사 / 주사무소',
+  facilityTypePlant: '제조 공장',
+  facilityTypeWarehouse: '창고 / 물류센터',
+  facilityTypeDataCenter: '데이터 센터',
+  facilityTypeRetail: '소매점 / 지점',
+  facilityTypeLab: '연구소 / R&D 센터',
+
+  // Report Generator
+  close: '닫기',
+  printReport: '보고서 인쇄',
+  ghgReportTitle: '온실가스 배출량 보고서',
+  executiveSummary: '종합 요약',
+  methodology: '산정 방법론 및 경계',
+  consolidationApproachUsed: '적용된 연결 기준',
+  scope1Breakdown: 'Scope 1 배출량 상세',
+  scope2Breakdown: 'Scope 2 배출량 상세',
+  emissionsByCategory: '카테고리별 배출량',
+  emissionsBySource: '배출원별 배출량',
+  category: '카테고리',
+  emissionsTonnes: '배출량 (톤 CO₂e)',
+  dataGeneratedOn: '데이터 생성일',
+
+
+  // Fuel translation keys from constants.ts
+  naturalGas: '천연가스',
+  propane: '프로판',
+  heatingOil: '난방유 (2호)',
+  coalBituminous: '석탄 (역청탄)',
+  woodChips: '우드칩',
+  gasoline: '가솔린',
+  diesel: '디젤',
+  jetFuel: '항공유 (등유)',
+  cementProduction: '시멘트 생산',
+  limeProduction: '석회 생산',
+  ammoniaProduction: '암모니아 생산',
+  nitricAcidProduction: '질산 생산',
+  steelProduction: '철강 생산',
+  aluminumProduction: '알루미늄 생산',
+  semiconductorCF4: '반도체 (CF4)',
+  semiconductorNF3: '반도체 (NF3)',
+  hfc134a: 'HFC-134a',
+  r404a: 'R-404A',
+  r410a: 'R-410A',
+  r22: 'R-22 (HCFC-22)',
+  sf6: '육불화황 (SF6)',
+  gridElectricity: '그리드 전력',
+  purchasedSteam: '구매 스팀',
+  purchasedHeating: '구매 열',
+  purchasedCooling: '구매 냉방',
+  mswIncineration: '생활 폐기물 소각',
+  industrialWasteIncineration: '사업장 폐기물 소각',
+  sewageSludgeIncineration: '하수 슬러지 소각',
+  wastewaterAnaerobic: '폐수 처리 (혐기성)',
+  wastewaterAerobic: '폐수 처리 (호기성)',
+};
+
+export const translations = { en, ko };
+
+export type TranslationKey = keyof typeof en;

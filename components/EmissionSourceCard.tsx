@@ -1,0 +1,123 @@
+import React from 'react';
+import { EmissionCategory, EmissionSource, Fuel, Refrigerant, Facility, BoundaryApproach, CO2eFactorFuel } from '../types';
+import { SourceInputRow } from './SourceInputRow';
+import { IconFactory, IconCar, IconFugitive, IconChevronDown, IconProcess, IconSteam, IconInfo, IconWaste } from './IconComponents';
+import { useTranslation } from '../LanguageContext';
+
+interface EmissionSourceCardProps {
+  category: EmissionCategory;
+  sources: EmissionSource[];
+  onAddSource: () => void;
+  onUpdateSource: (id: string, updatedSource: Partial<EmissionSource>) => void;
+  onRemoveSource: (id: string) => void;
+  onFuelTypeChange: (id: string, newFuelType: string, category: EmissionCategory) => void;
+  fuels: (Fuel | Refrigerant | CO2eFactorFuel)[];
+  calculateEmissions: (source: EmissionSource) => { scope1: number, scope2Location: number, scope2Market: number, biogenic: number };
+  description: string;
+  facilities: Facility[];
+  isOpen: boolean;
+  onToggle: () => void;
+  boundaryApproach: BoundaryApproach;
+}
+
+const ICONS: Record<EmissionCategory, React.ReactNode> = {
+    [EmissionCategory.StationaryCombustion]: <IconFactory className="h-8 w-8 text-ghg-green" />,
+    [EmissionCategory.MobileCombustion]: <IconCar className="h-8 w-8 text-ghg-green" />,
+    [EmissionCategory.ProcessEmissions]: <IconProcess className="h-8 w-8 text-ghg-green" />,
+    [EmissionCategory.FugitiveEmissions]: <IconFugitive className="h-8 w-8 text-ghg-green" />,
+    [EmissionCategory.PurchasedEnergy]: <IconSteam className="h-8 w-8 text-ghg-green" />,
+    [EmissionCategory.Waste]: <IconWaste className="h-8 w-8 text-ghg-green" />,
+};
+
+
+export const EmissionSourceCard: React.FC<EmissionSourceCardProps> = ({
+  category,
+  sources,
+  onAddSource,
+  onUpdateSource,
+  onRemoveSource,
+  onFuelTypeChange,
+  fuels,
+  calculateEmissions,
+  description,
+  facilities,
+  isOpen,
+  onToggle,
+  boundaryApproach,
+}) => {
+  const { t } = useTranslation();
+
+  const subtotal = sources.reduce((sum, source) => {
+    const facility = facilities.find(f => f.id === source.facilityId);
+    const ownershipFactor = boundaryApproach === 'equity' && facility ? facility.equityShare / 100 : 1;
+    const emissions = calculateEmissions(source);
+    // For subtotal, use market-based if available, otherwise location-based for Scope 2.
+    const relevantEmissions = emissions.scope1 + emissions.scope2Market;
+    return sum + (relevantEmissions * ownershipFactor);
+  }, 0);
+  
+  return (
+    <div className="bg-white rounded-xl shadow-lg border border-gray-200 flex flex-col dark:bg-gray-700 dark:border-gray-600">
+      <button onClick={onToggle} className="flex items-start justify-between p-6 text-left w-full">
+        <div className="flex-1">
+            <h3 className="text-lg font-semibold text-ghg-dark dark:text-gray-100">{t(category)}</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 pr-4">{description}</p>
+        </div>
+        <div className="flex items-center space-x-4">
+            {ICONS[category]}
+            <IconChevronDown className={`h-5 w-5 text-gray-500 dark:text-gray-400 transform transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        </div>
+      </button>
+
+      {isOpen && (
+        <div className="px-6 pb-6 flex flex-col flex-grow">
+          {(category === EmissionCategory.ProcessEmissions || category === EmissionCategory.PurchasedEnergy) && (
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-800 dark:bg-blue-900/30 dark:border-blue-700/50 dark:text-blue-200 flex items-start gap-3">
+              <IconInfo className="h-5 w-5 mt-0.5 flex-shrink-0" />
+              <div>
+                {category === EmissionCategory.ProcessEmissions && <>
+                    <p className="font-semibold">{t('processEmissionsInfoTitle')}</p>
+                    <p className="text-sm">{t('processEmissionsInfoText')}</p>
+                </>}
+                 {category === EmissionCategory.PurchasedEnergy && <>
+                    <p className="font-semibold">{t('scope2DualReportingInfoTitle')}</p>
+                    <p className="text-sm">{t('scope2DualReportingInfoText')}</p>
+                </>}
+              </div>
+            </div>
+          )}
+          <div className="flex-grow space-y-3 overflow-y-auto pr-2 -mr-2 py-2 border-t dark:border-gray-600">
+            {sources.length > 0 ? (
+              sources.map((source) => (
+                <SourceInputRow
+                  key={source.id}
+                  source={source}
+                  onUpdate={(update) => onUpdateSource(source.id, update)}
+                  onRemove={() => onRemoveSource(source.id)}
+                  onFuelTypeChange={(newFuel) => onFuelTypeChange(source.id, newFuel, category)}
+                  fuels={fuels}
+                  facilities={facilities}
+                  calculateEmissions={calculateEmissions}
+                />
+              ))
+            ) : (
+              <p className="text-center text-gray-400 dark:text-gray-500 text-sm py-4">{t('noSources')}</p>
+            )}
+          </div>
+          <div className="mt-4 pt-4 border-t dark:border-gray-600">
+            <div className="flex justify-between items-center mb-4">
+                <span className="font-semibold">{t('subtotal')}:</span>
+                <span className="font-bold text-ghg-dark dark:text-gray-100 text-lg">{(subtotal / 1000).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} t CO₂e</span>
+            </div>
+            <button
+              onClick={onAddSource}
+              className="w-full bg-ghg-light-green text-white font-semibold py-2 px-4 rounded-lg hover:bg-ghg-green transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ghg-green"
+            >
+              {t('addSource')}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
