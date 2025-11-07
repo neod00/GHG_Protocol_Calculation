@@ -1,18 +1,17 @@
 import React, { useState } from 'react';
-import { EmissionSource, Fuel, Facility, Refrigerant, CO2eFactorFuel, EmissionCategory } from '../types';
+import { EmissionSource, Facility, Refrigerant, CO2eFactorFuel, EmissionCategory } from '../types';
 import { useTranslation } from '../LanguageContext';
 import { TranslationKey } from '../translations';
-import { IconInfo } from './IconComponents';
-import { GWP_VALUES } from '../constants';
+import { IconInfo, IconTrash } from './IconComponents';
 
 interface SourceInputRowProps {
   source: EmissionSource;
   onUpdate: (updatedSource: Partial<EmissionSource>) => void;
   onRemove: () => void;
   onFuelTypeChange: (newFuelType: string) => void;
-  fuels: (Fuel | Refrigerant | CO2eFactorFuel)[];
+  fuels: (CO2eFactorFuel | Refrigerant)[];
   facilities: Facility[];
-  calculateEmissions: (source: EmissionSource) => { scope1: number, scope2Location: number, scope2Market: number, biogenic: number };
+  calculateEmissions: (source: EmissionSource) => { scope1: number, scope2Location: number, scope2Market: number, scope3: number };
 }
 
 export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate, onRemove, onFuelTypeChange, fuels, facilities, calculateEmissions }) => {
@@ -60,10 +59,9 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
 
   const totalQuantity = source.monthlyQuantities.reduce((sum, q) => sum + q, 0);
   const emissionResults = calculateEmissions(source);
-  const totalEmissions = emissionResults.scope1 + emissionResults.scope2Market;
+  const totalEmissions = emissionResults.scope1 + emissionResults.scope2Market + emissionResults.scope3;
   
   const isFugitive = selectedFuel && 'gwp' in selectedFuel;
-  const isCombustion = selectedFuel && 'factors' in selectedFuel && typeof Object.values(selectedFuel.factors)[0] === 'object';
   
   const getCalculationDetails = () => {
       if (isFugitive) {
@@ -77,25 +75,14 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
           </>
         );
       }
-      if (isCombustion) {
-        const fuel = selectedFuel as Fuel;
-        const factors = fuel.factors[source.unit];
-        return (
-          <>
-            <span className="font-bold">{t('calculationLogic')}:</span><br/>
-            CO₂: {totalQuantity.toLocaleString()} {source.unit} &times; {factors.co2} kg/unit = {(totalQuantity * factors.co2).toLocaleString()} kg<br/>
-            CH₄: {totalQuantity.toLocaleString()} {source.unit} &times; {factors.ch4} kg/unit &times; {GWP_VALUES.ch4} GWP = {(totalQuantity * factors.ch4 * GWP_VALUES.ch4).toLocaleString()} kg CO₂e<br/>
-            N₂O: {totalQuantity.toLocaleString()} {source.unit} &times; {factors.n2o} kg/unit &times; {GWP_VALUES.n2o} GWP = {(totalQuantity * factors.n2o * GWP_VALUES.n2o).toLocaleString()} kg CO₂e
-          </>
-        );
-      }
-      // For Scope 2 and simple process emissions
+
+      // For all CO2e factor fuels (Combustion, Process, Waste, Scope 2)
       const factor = selectedFuel && 'factors' in selectedFuel ? selectedFuel.factors[source.unit] || 0 : 0;
       return (
           <>
             <span className="font-bold">{t('calculationLogic')}:</span><br/>
-            {totalQuantity.toLocaleString()} {source.unit} ({t('activityData')})<br/>
-            &times; {typeof factor === 'number' ? factor.toLocaleString() : 'N/A'} kg CO₂e / {source.unit} ({t('emissionFactor')})<br/>
+            {totalQuantity.toLocaleString()} {t(source.unit as TranslationKey) || source.unit} ({t('activityData')})<br/>
+            &times; {typeof factor === 'number' ? factor.toLocaleString() : 'N/A'} kg CO₂e / {t(source.unit as TranslationKey) || source.unit} ({t('emissionFactor')})<br/>
             = {(totalEmissions).toLocaleString('en-US', {maximumFractionDigits: 2})} kg CO₂e
           </>
       )
@@ -123,9 +110,7 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
           className="text-gray-400 hover:text-red-600 p-1 dark:text-gray-500 dark:hover:text-red-500"
           aria-label={t('removeSourceAria')}
         >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clipRule="evenodd" />
-          </svg>
+          <IconTrash className="h-5 w-5" />
         </button>
       </div>
       <div className="grid grid-cols-2 gap-2">
@@ -137,7 +122,7 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
         >
           {fuels.map((fuel) => (
             <option key={fuel.name} value={fuel.name}>
-              {language === 'ko' && fuel.translationKey ? `${t(fuel.translationKey)}` : fuel.name}
+              {language === 'ko' && fuel.translationKey ? `${t(fuel.translationKey as TranslationKey)}` : fuel.name}
             </option>
           ))}
         </select>
@@ -153,7 +138,7 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
           ) : (
             selectedFuel && 'units' in selectedFuel && selectedFuel.units.map((unit) => (
               <option key={unit} value={unit}>
-                {unit}
+                {t(unit as TranslationKey) || unit}
               </option>
             ))
           )}
@@ -193,7 +178,7 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
         <div className="flex justify-between items-center bg-gray-100 dark:bg-gray-700 p-2 rounded-t-md">
             <div>
                 <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{t('totalYear')}: </span>
-                <span className="text-sm font-bold text-ghg-dark dark:text-gray-100">{totalQuantity.toLocaleString()} {source.unit}</span>
+                <span className="text-sm font-bold text-ghg-dark dark:text-gray-100">{totalQuantity.toLocaleString()} {t(source.unit as TranslationKey) || source.unit}</span>
             </div>
             {!isEditing && (
               <button onClick={handleEdit} className="text-sm text-ghg-green font-semibold hover:underline">

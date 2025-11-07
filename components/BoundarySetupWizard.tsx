@@ -1,8 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { BoundaryApproach, Facility } from '../types';
+import { BoundaryApproach, Facility, EmissionCategory } from '../types';
 import { useTranslation } from '../LanguageContext';
 import { IconX, IconInfo } from './IconComponents';
 import { PREDEFINED_FACILITIES } from '../constants';
+
+interface Scope3Settings {
+    isEnabled: boolean;
+    enabledCategories: EmissionCategory[];
+}
 
 interface BoundarySetupWizardProps {
   isOpen: boolean;
@@ -12,27 +17,32 @@ interface BoundarySetupWizardProps {
     reportingYear: string;
     facilities: Facility[];
     boundaryApproach: BoundaryApproach;
+    scope3Settings: Scope3Settings;
   }) => void;
   initialData: {
     companyName: string;
     reportingYear: string;
     facilities: Facility[];
     boundaryApproach: BoundaryApproach;
+    scope3Settings: Scope3Settings;
   };
   isCancellable?: boolean;
+  initialStep?: number;
 }
 
 type AnswerKey = 'q1' | 'q2' | 'q3';
+const allScope3Categories = Object.values(EmissionCategory).filter(c => c.includes(' ') && !c.startsWith('Stationary') && !c.startsWith('Mobile') && !c.startsWith('Process') && !c.startsWith('Fugitive') && !c.startsWith('Purchased Energy') && !c.startsWith('Waste ('));
 
-export const BoundarySetupWizard: React.FC<BoundarySetupWizardProps> = ({ isOpen, onClose, onSave, initialData, isCancellable = true }) => {
+export const BoundarySetupWizard: React.FC<BoundarySetupWizardProps> = ({ isOpen, onClose, onSave, initialData, isCancellable = true, initialStep = 0 }) => {
   const { t } = useTranslation();
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState(initialStep);
 
   // Form data state
   const [companyName, setCompanyName] = useState(initialData.companyName);
   const [reportingYear, setReportingYear] = useState(initialData.reportingYear);
   const [facilities, setFacilities] = useState<Facility[]>(initialData.facilities);
   const [boundaryApproach, setBoundaryApproach] = useState<BoundaryApproach>(initialData.boundaryApproach);
+  const [scope3Settings, setScope3Settings] = useState<Scope3Settings>(initialData.scope3Settings);
 
   // Questionnaire state
   const [answers, setAnswers] = useState<Partial<Record<AnswerKey, string>>>({});
@@ -52,8 +62,16 @@ export const BoundarySetupWizard: React.FC<BoundarySetupWizardProps> = ({ isOpen
     if (q1Answer === 'B') recommendation = 'financial';
     if (q1Answer === 'C') recommendation = 'equity';
     setRecommendedApproach(recommendation);
-    setBoundaryApproach(recommendation); // Auto-select the recommended approach
+    if(step === 3) { // Only auto-select if user is on the consolidation step and makes a change
+        setBoundaryApproach(recommendation);
+    }
   }, [answers.q1]);
+
+  useEffect(() => {
+      if(isOpen) {
+        setStep(initialStep)
+      }
+  }, [isOpen, initialStep])
 
   if (!isOpen) return null;
 
@@ -91,8 +109,17 @@ export const BoundarySetupWizard: React.FC<BoundarySetupWizardProps> = ({ isOpen
     setFacilities(facilities.filter(f => f.id !== id));
   };
   
+  const handleScope3CategoryToggle = (category: EmissionCategory) => {
+      setScope3Settings(prev => {
+          const enabledCategories = prev.enabledCategories.includes(category)
+            ? prev.enabledCategories.filter(c => c !== category)
+            : [...prev.enabledCategories, category];
+          return { ...prev, enabledCategories };
+      })
+  }
+
   const handleSave = () => {
-    onSave({ companyName, reportingYear, facilities, boundaryApproach });
+    onSave({ companyName, reportingYear, facilities, boundaryApproach, scope3Settings });
     onClose();
   };
   
@@ -263,11 +290,47 @@ export const BoundarySetupWizard: React.FC<BoundarySetupWizardProps> = ({ isOpen
             </div>
           </div>
         );
+      case 4: // Scope 3 Setup
+        return (
+            <div>
+                 <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">{t('scope3SetupTitle')}</h3>
+                 <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">{t('scope3SetupDescription')}</p>
+                 <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                    <label className="flex items-center space-x-3 cursor-pointer">
+                        <input 
+                            type="checkbox" 
+                            checked={scope3Settings.isEnabled}
+                            onChange={e => setScope3Settings(prev => ({...prev, isEnabled: e.target.checked}))}
+                            className="h-5 w-5 rounded text-ghg-green focus:ring-ghg-green"
+                        />
+                        <span className="font-medium text-gray-800 dark:text-gray-200">{t('enableScope3Reporting')}</span>
+                    </label>
+                 </div>
+                 {scope3Settings.isEnabled && (
+                     <div className="mt-6">
+                        <p className="font-medium text-gray-800 dark:text-gray-200">{t('selectApplicableCategories')}</p>
+                        <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 max-h-60 overflow-y-auto pr-2">
+                            {allScope3Categories.map(category => (
+                                <label key={category} className="flex items-center space-x-3 cursor-pointer">
+                                    <input 
+                                        type="checkbox"
+                                        checked={scope3Settings.enabledCategories.includes(category)}
+                                        onChange={() => handleScope3CategoryToggle(category)}
+                                        className="h-4 w-4 rounded text-ghg-green focus:ring-ghg-green"
+                                    />
+                                    <span className="text-sm text-gray-700 dark:text-gray-300">{t(category)}</span>
+                                </label>
+                            ))}
+                        </div>
+                     </div>
+                 )}
+            </div>
+        )
       default: return null;
     }
   };
 
-  const maxSteps = 3;
+  const maxSteps = 4;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 backdrop-blur-sm" onClick={isCancellable ? onClose : undefined}>

@@ -1,4 +1,4 @@
-import { Fuel, Refrigerant, CO2eFactorFuel } from './types';
+import { CO2eFactorFuel, Refrigerant } from './types';
 
 // Global Warming Potential (GWP) values from IPCC Fifth Assessment Report (AR5)
 export const GWP_VALUES = {
@@ -7,17 +7,17 @@ export const GWP_VALUES = {
   n2o: 265,
 };
 
-// Emission factors are disaggregated into CO2, CH4, and N2O (in kg per unit)
-// Source: US EPA GHG Emission Factors Hub (updated March 2023), converted from various units.
+// Emission factors are now a single CO2e value (in kg per unit)
+// Source: US EPA GHG Emission Factors Hub (updated March 2023), converted and aggregated.
 
-export const STATIONARY_FUELS: Fuel[] = [
+export const STATIONARY_FUELS: CO2eFactorFuel[] = [
   {
     name: 'Natural Gas',
     translationKey: 'naturalGas',
     units: ['cubic meters', 'therms'],
     factors: { 
-      'cubic meters': { co2: 1.9, ch4: 0.000035, n2o: 0.0000035 },
-      'therms': { co2: 5.3, ch4: 0.0001, n2o: 0.00001 },
+      'cubic meters': 1.9019075,
+      'therms': 5.30545,
     },
   },
   {
@@ -25,8 +25,8 @@ export const STATIONARY_FUELS: Fuel[] = [
     translationKey: 'propane',
     units: ['liters', 'gallons'],
     factors: { 
-      'liters': { co2: 1.51, ch4: 0.00004, n2o: 0.00002 },
-      'gallons': { co2: 5.72, ch4: 0.00015, n2o: 0.00008 },
+      'liters': 1.51642,
+      'gallons': 5.7454,
      },
   },
   {
@@ -34,8 +34,8 @@ export const STATIONARY_FUELS: Fuel[] = [
     translationKey: 'heatingOil',
     units: ['liters', 'gallons'],
     factors: { 
-      'liters': { co2: 2.68, ch4: 0.000008, n2o: 0.000016 },
-      'gallons': { co2: 10.15, ch4: 0.00003, n2o: 0.00006 },
+      'liters': 2.684464,
+      'gallons': 10.16674,
     },
   },
   {
@@ -43,8 +43,8 @@ export const STATIONARY_FUELS: Fuel[] = [
     translationKey: 'coalBituminous',
     units: ['kg', 'tonnes'],
     factors: { 
-      'kg': { co2: 2.3, ch4: 0.0002, n2o: 0.00004 },
-      'tonnes': { co2: 2300, ch4: 0.2, n2o: 0.04 },
+      'kg': 2.3162,
+      'tonnes': 2316.2,
     },
   },
   {
@@ -52,21 +52,20 @@ export const STATIONARY_FUELS: Fuel[] = [
     translationKey: 'woodChips',
     units: ['kg', 'tonnes'],
     factors: {
-      'kg': { co2: 1.6, ch4: 0.0007, n2o: 0.0001 },
-      'tonnes': { co2: 1600, ch4: 0.7, n2o: 0.1 },
+      'kg': 1.6461,
+      'tonnes': 1646.1,
     },
-    isBiomass: true,
   },
 ];
 
-export const MOBILE_FUELS: Fuel[] = [
+export const MOBILE_FUELS: CO2eFactorFuel[] = [
   {
     name: 'Gasoline',
     translationKey: 'gasoline',
     units: ['liters', 'gallons'],
     factors: { 
-      'liters': { co2: 2.29, ch4: 0.00005, n2o: 0.00003 },
-      'gallons': { co2: 8.78, ch4: 0.0002, n2o: 0.0001 },
+      'liters': 2.29935,
+      'gallons': 8.8121,
     },
   },
   {
@@ -74,8 +73,8 @@ export const MOBILE_FUELS: Fuel[] = [
     translationKey: 'diesel',
     units: ['liters', 'gallons'],
     factors: { 
-      'liters': { co2: 2.66, ch4: 0.00001, n2o: 0.00002 },
-      'gallons': { co2: 10.18, ch4: 0.00004, n2o: 0.00008 },
+      'liters': 2.66558,
+      'gallons': 10.20232,
     },
   },
   {
@@ -83,8 +82,8 @@ export const MOBILE_FUELS: Fuel[] = [
     translationKey: 'jetFuel',
     units: ['liters', 'gallons'],
     factors: { 
-      'liters': { co2: 2.53, ch4: 0.000005, n2o: 0.00001 },
-      'gallons': { co2: 9.57, ch4: 0.00002, n2o: 0.00004 },
+      'liters': 2.53279,
+      'gallons': 9.58116,
     },
   },
 ];
@@ -240,6 +239,99 @@ export const SCOPE2_ENERGY_SOURCES: CO2eFactorFuel[] = [
         factors: { 'MWh': 70, 'ton-hour': 0.06 }, // Example factors, based on district cooling
     },
 ];
+
+// --- SCOPE 3 FACTORS ---
+// Source: EPA GHG Emission Factors Hub (updated 2023/2024), UK DEFRA GHG Conversion Factors.
+// Simplified for this tool.
+
+export const BUSINESS_TRAVEL_FACTORS: CO2eFactorFuel[] = [
+  {
+    name: 'Air Travel - Short-haul (<463 km)',
+    translationKey: 'airTravelShort',
+    units: ['passenger-km'],
+    factors: { 'passenger-km': 0.255 },
+  },
+  {
+    name: 'Air Travel - Medium-haul (463-1108 km)',
+    translationKey: 'airTravelMedium',
+    units: ['passenger-km'],
+    factors: { 'passenger-km': 0.156 },
+  },
+  {
+    name: 'Air Travel - Long-haul (>1108 km)',
+    translationKey: 'airTravelLong',
+    units: ['passenger-km'],
+    factors: { 'passenger-km': 0.150 },
+  },
+  {
+    name: 'Rail (National)',
+    translationKey: 'railNational',
+    units: ['passenger-km'],
+    factors: { 'passenger-km': 0.035 },
+  },
+  {
+    name: 'Car (Average Gasoline)',
+    translationKey: 'carGasoline',
+    units: ['km'],
+    factors: { 'km': 0.21 }, // Assumes average occupancy
+  },
+  {
+    name: 'Hotel Stay (per night)',
+    translationKey: 'hotelStay',
+    units: ['night'],
+    factors: { 'night': 25.0 }, // Highly variable global average
+  },
+];
+
+export const EMPLOYEE_COMMUTING_FACTORS: CO2eFactorFuel[] = [
+  {
+    name: 'Personal Car (Gasoline)',
+    translationKey: 'personalCarGasoline',
+    units: ['km'],
+    factors: { 'km': 0.17 },
+  },
+  {
+    name: 'Personal Car (Diesel)',
+    translationKey: 'personalCarDiesel',
+    units: ['km'],
+    factors: { 'km': 0.165 },
+  },
+  {
+    name: 'Bus',
+    translationKey: 'bus',
+    units: ['passenger-km'],
+    factors: { 'passenger-km': 0.103 },
+  },
+  {
+    name: 'Subway / Metro',
+    translationKey: 'subway',
+    units: ['passenger-km'],
+    factors: { 'passenger-km': 0.028 },
+  },
+];
+
+// Factors for waste generated in operations but treated OFF-SITE by third parties (Scope 3)
+export const SCOPE3_WASTE_FACTORS: CO2eFactorFuel[] = [
+  {
+    name: 'MSW sent to Landfill',
+    translationKey: 'mswLandfill',
+    units: ['tonnes'],
+    factors: { 'tonnes': 690 }, // Includes collection, transport, and landfill CH4 emissions.
+  },
+  {
+    name: 'MSW Incinerated (off-site)',
+    translationKey: 'mswIncinerationOffsite',
+    units: ['tonnes'],
+    factors: { 'tonnes': 320 }, // Lower than Scope 1 as it often involves energy recovery.
+  },
+  {
+    name: 'Mixed Recyclables',
+    translationKey: 'mixedRecyclables',
+    units: ['tonnes'],
+    factors: { 'tonnes': 25 }, // Emissions from collection and processing.
+  },
+];
+
 
 // Predefined common facility types based on GHG Protocol guidance
 export const PREDEFINED_FACILITIES: { name: string, translationKey: string }[] = [

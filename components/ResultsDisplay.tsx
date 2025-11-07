@@ -3,7 +3,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import { EmissionCategory, Facility, BoundaryApproach } from '../types';
 import { useTranslation } from '../LanguageContext';
 import { useTheme } from '../ThemeContext';
-import { IconProcess, IconInfo } from './IconComponents';
+import { IconProcess } from './IconComponents';
 
 interface ResultsDisplayProps {
   totalEmissionsMarket: number;
@@ -11,8 +11,8 @@ interface ResultsDisplayProps {
   scope1Total: number;
   scope2LocationTotal: number;
   scope2MarketTotal: number;
-  biogenicTotal: number;
-  facilityBreakdown: { [facility: string]: { scope1: number, scope2Location: number, scope2Market: number } };
+  scope3Total: number;
+  facilityBreakdown: { [facility: string]: { scope1: number, scope2Location: number, scope2Market: number, scope3: number } };
   facilities: Facility[];
   boundaryApproach: BoundaryApproach;
   companyName: string;
@@ -25,6 +25,7 @@ const COLORS = {
     scope1: '#4A6B4C', // ghg-green
     scope2Location: '#8DB08C', // ghg-light-green
     scope2Market: '#F2A900', // ghg-accent
+    scope3: '#6B4C6B', // A deep purple
 };
 
 export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ 
@@ -33,7 +34,7 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
     scope1Total,
     scope2LocationTotal,
     scope2MarketTotal,
-    biogenicTotal,
+    scope3Total,
     facilityBreakdown, 
     facilities, 
     boundaryApproach,
@@ -50,14 +51,31 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
   const tooltipBg = theme === 'dark' ? '#1F2937' : '#FFFFFF';
   const tooltipText = theme === 'dark' ? '#F9FAFB' : '#374151';
     
-  const chartData = [
-    { 
-      name: t('emissions'), 
-      [t('scope1')]: parseFloat((scope1Total / 1000).toFixed(2)),
-      [t('scope2Location')]: parseFloat((scope2LocationTotal / 1000).toFixed(2)),
-      [t('scope2Market')]: parseFloat((scope2MarketTotal / 1000).toFixed(2)),
-    },
-  ];
+  const hasMarketBasedValues = scope2MarketTotal !== scope2LocationTotal;
+
+  const chartData = hasMarketBasedValues
+    ? [
+        {
+          name: t('marketBasedTotal'),
+          [t('scope1')]: parseFloat((scope1Total / 1000).toFixed(2)),
+          [t('scope2Market')]: parseFloat((scope2MarketTotal / 1000).toFixed(2)),
+          [t('scope3')]: parseFloat((scope3Total / 1000).toFixed(2)),
+        },
+        {
+          name: t('locationBasedTotal'),
+          [t('scope1')]: parseFloat((scope1Total / 1000).toFixed(2)),
+          [t('scope2Location')]: parseFloat((scope2LocationTotal / 1000).toFixed(2)),
+          [t('scope3')]: parseFloat((scope3Total / 1000).toFixed(2)),
+        },
+      ]
+    : [
+        {
+          name: t('emissions'),
+          [t('scope1')]: parseFloat((scope1Total / 1000).toFixed(2)),
+          [t('scope2Market')]: parseFloat((scope2MarketTotal / 1000).toFixed(2)),
+          [t('scope3')]: parseFloat((scope3Total / 1000).toFixed(2)),
+        },
+      ];
 
   const formatNumber = (num: number) => (num / 1000).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -75,7 +93,6 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
     return '100%';
   }
   
-  const hasMarketBasedValues = scope2MarketTotal !== scope2LocationTotal;
 
   return (
     <>
@@ -105,7 +122,7 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
             <div className="flex-shrink-0">
                 <p className="text-gray-500 dark:text-gray-400">{t('totalGHGEmissions')}</p>
-                <p className="text-5xl font-bold text-ghg-green">
+                <p className="text-5xl font-bold text-ghg-dark dark:text-white">
                 {formatNumber(totalEmissionsMarket)}
                 </p>
                 <p className="text-lg text-gray-600 dark:text-gray-300 mb-4">{t('tonnesCO2e')} ({t('marketBasedTotal')})</p>
@@ -124,17 +141,24 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                     </div>
                     <div>
                         <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full" style={{backgroundColor: COLORS.scope2Location}}></div>
-                            <span className="text-sm font-semibold">{t('scope2Location')}</span>
-                        </div>
-                        <p className="font-bold text-ghg-dark dark:text-gray-100 text-xl">{formatNumber(scope2LocationTotal)}</p>
-                    </div>
-                     <div>
-                        <div className="flex items-center gap-2">
                             <div className="w-3 h-3 rounded-full" style={{backgroundColor: COLORS.scope2Market}}></div>
                             <span className="text-sm font-semibold">{t('scope2Market')}</span>
                         </div>
                         <p className="font-bold text-ghg-dark dark:text-gray-100 text-xl">{formatNumber(scope2MarketTotal)}</p>
+                    </div>
+                     <div>
+                        <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full" style={{backgroundColor: COLORS.scope3}}></div>
+                            <span className="text-sm font-semibold">{t('scope3')}</span>
+                        </div>
+                        <p className="font-bold text-ghg-dark dark:text-gray-100 text-xl">{formatNumber(scope3Total)}</p>
+                    </div>
+                    <div className="opacity-70">
+                        <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full" style={{backgroundColor: COLORS.scope2Location}}></div>
+                            <span className="text-sm font-semibold">{t('scope2Location')}</span>
+                        </div>
+                        <p className="font-bold text-ghg-dark dark:text-gray-100 text-xl">{formatNumber(scope2LocationTotal)}</p>
                     </div>
                 </div>
             </div>
@@ -143,7 +167,7 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                     <BarChart data={chartData} layout="vertical" margin={{ top: 20, right: 20, left: 20, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke={gridColor} />
                         <XAxis type="number" unit=" t" tick={{ fill: tickColor }} />
-                        <YAxis dataKey="name" type="category" hide />
+                        <YAxis dataKey="name" type="category" width={hasMarketBasedValues ? 130 : 80} tick={{ fill: tickColor, fontSize: 12 }} />
                         <Tooltip 
                             formatter={(value: number, name: string) => [`${value.toLocaleString()} t`, name]}
                             contentStyle={{ backgroundColor: tooltipBg, border: 'none', borderRadius: '0.5rem', color: tooltipText }}
@@ -151,22 +175,13 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                         />
                         <Legend wrapperStyle={{ color: tickColor, bottom: -10 }}/>
                         <Bar dataKey={t('scope1')} stackId="a" fill={COLORS.scope1} />
-                        <Bar dataKey={t('scope2Location')} stackId="a" fill={COLORS.scope2Location} />
-                        <Bar dataKey={t('scope2Market')} stackId="a" fill={COLORS.scope2Market} />
+                        <Bar dataKey={t('scope2Market')} stackId="a" fill={COLORS.scope2Market} name={t('scope2Market')} />
+                        <Bar dataKey={t('scope2Location')} stackId="a" fill={COLORS.scope2Location} name={t('scope2Location')} />
+                        <Bar dataKey={t('scope3')} stackId="a" fill={COLORS.scope3} />
                     </BarChart>
                 </ResponsiveContainer>
             </div>
         </div>
-
-        {biogenicTotal > 0 && (
-             <div className="mt-6 p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-800 dark:bg-blue-900/30 dark:border-blue-700/50 dark:text-blue-200 flex items-start gap-3">
-              <IconInfo className="h-5 w-5 mt-0.5 flex-shrink-0" />
-              <div>
-                <p className="font-semibold">{t('biogenicEmissionsInfoTitle')}</p>
-                <p className="text-sm">{t('biogenicEmissionsInfoText')} <span className="font-bold">{formatNumber(biogenicTotal)} {t('tonnesCO2e')}.</span></p>
-              </div>
-            </div>
-        )}
       </div>
 
       {Object.keys(facilityBreakdown).length > 0 && (
@@ -179,23 +194,23 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('facility')}</th>
                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('appliedBasis')}</th>
                             <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('scope1')}</th>
-                            <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('scope2Location')}</th>
                             <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('scope2Market')}</th>
+                            <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('scope3')}</th>
                             <th scope="col" className="px-6 py-3 text-right text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">{t('total')}</th>
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200 dark:bg-gray-700 dark:divide-gray-600">
                         {Object.entries(facilityBreakdown).map(([facilityName, emissions]) => {
-                            const typedEmissions = emissions as { scope1: number; scope2Location: number, scope2Market: number };
+                            const typedEmissions = emissions as { scope1: number; scope2Location: number, scope2Market: number, scope3: number };
                             const facility = facilities.find(f => f.name === facilityName);
-                            const facilityTotal = typedEmissions.scope1 + typedEmissions.scope2Market;
+                            const facilityTotal = typedEmissions.scope1 + typedEmissions.scope2Market + typedEmissions.scope3;
                             return (
                                 <tr key={facilityName}>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">{facilityName}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-left">{getFacilityBasisText(facility)}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-right">{formatNumber(typedEmissions.scope1)}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-right">{formatNumber(typedEmissions.scope2Location)}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-right">{formatNumber(typedEmissions.scope2Market)}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-right">{formatNumber(typedEmissions.scope3)}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-ghg-dark dark:text-gray-50 text-right">{formatNumber(facilityTotal)}</td>
                                 </tr>
                             );

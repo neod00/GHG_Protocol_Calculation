@@ -1,7 +1,8 @@
 import React from 'react';
-import { EmissionCategory, EmissionSource, Fuel, Refrigerant, Facility, BoundaryApproach, CO2eFactorFuel } from '../types';
+// Fix: Removed non-existent 'Fuel' type from import.
+import { EmissionCategory, EmissionSource, Refrigerant, Facility, BoundaryApproach, CO2eFactorFuel } from '../types';
 import { SourceInputRow } from './SourceInputRow';
-import { IconFactory, IconCar, IconFugitive, IconChevronDown, IconProcess, IconSteam, IconInfo, IconWaste } from './IconComponents';
+import { IconFactory, IconCar, IconFugitive, IconChevronDown, IconProcess, IconSteam, IconInfo, IconWaste, IconBriefcase, IconUsers, IconRecycle, IconValueChain } from './IconComponents';
 import { useTranslation } from '../LanguageContext';
 
 interface EmissionSourceCardProps {
@@ -11,13 +12,16 @@ interface EmissionSourceCardProps {
   onUpdateSource: (id: string, updatedSource: Partial<EmissionSource>) => void;
   onRemoveSource: (id: string) => void;
   onFuelTypeChange: (id: string, newFuelType: string, category: EmissionCategory) => void;
-  fuels: (Fuel | Refrigerant | CO2eFactorFuel)[];
-  calculateEmissions: (source: EmissionSource) => { scope1: number, scope2Location: number, scope2Market: number, biogenic: number };
+  // Fix: Removed non-existent 'Fuel' type.
+  fuels: (Refrigerant | CO2eFactorFuel)[];
+  // Fix: Updated calculateEmissions prop type to align with implementation and remove unused 'biogenic' property.
+  calculateEmissions: (source: EmissionSource) => { scope1: number, scope2Location: number, scope2Market: number, scope3: number };
   description: string;
   facilities: Facility[];
   isOpen: boolean;
   onToggle: () => void;
   boundaryApproach: BoundaryApproach;
+  isDisabled?: boolean;
 }
 
 const ICONS: Record<EmissionCategory, React.ReactNode> = {
@@ -27,6 +31,22 @@ const ICONS: Record<EmissionCategory, React.ReactNode> = {
     [EmissionCategory.FugitiveEmissions]: <IconFugitive className="h-8 w-8 text-ghg-green" />,
     [EmissionCategory.PurchasedEnergy]: <IconSteam className="h-8 w-8 text-ghg-green" />,
     [EmissionCategory.Waste]: <IconWaste className="h-8 w-8 text-ghg-green" />,
+    [EmissionCategory.BusinessTravel]: <IconBriefcase className="h-8 w-8 text-purple-700" />,
+    [EmissionCategory.EmployeeCommuting]: <IconUsers className="h-8 w-8 text-purple-700" />,
+    [EmissionCategory.WasteGeneratedInOperations]: <IconRecycle className="h-8 w-8 text-purple-700" />,
+    // Default icons for other Scope 3
+    [EmissionCategory.PurchasedGoodsAndServices]: <IconValueChain className="h-8 w-8 text-purple-700" />,
+    [EmissionCategory.CapitalGoods]: <IconValueChain className="h-8 w-8 text-purple-700" />,
+    [EmissionCategory.FuelAndEnergyRelatedActivities]: <IconValueChain className="h-8 w-8 text-purple-700" />,
+    [EmissionCategory.UpstreamTransportationAndDistribution]: <IconValueChain className="h-8 w-8 text-purple-700" />,
+    [EmissionCategory.UpstreamLeasedAssets]: <IconValueChain className="h-8 w-8 text-purple-700" />,
+    [EmissionCategory.DownstreamTransportationAndDistribution]: <IconValueChain className="h-8 w-8 text-purple-700" />,
+    [EmissionCategory.ProcessingOfSoldProducts]: <IconValueChain className="h-8 w-8 text-purple-700" />,
+    [EmissionCategory.UseOfSoldProducts]: <IconValueChain className="h-8 w-8 text-purple-700" />,
+    [EmissionCategory.EndOfLifeTreatmentOfSoldProducts]: <IconValueChain className="h-8 w-8 text-purple-700" />,
+    [EmissionCategory.DownstreamLeasedAssets]: <IconValueChain className="h-8 w-8 text-purple-700" />,
+    [EmissionCategory.Franchises]: <IconValueChain className="h-8 w-8 text-purple-700" />,
+    [EmissionCategory.Investments]: <IconValueChain className="h-8 w-8 text-purple-700" />,
 };
 
 
@@ -44,6 +64,7 @@ export const EmissionSourceCard: React.FC<EmissionSourceCardProps> = ({
   isOpen,
   onToggle,
   boundaryApproach,
+  isDisabled = false,
 }) => {
   const { t } = useTranslation();
 
@@ -51,25 +72,30 @@ export const EmissionSourceCard: React.FC<EmissionSourceCardProps> = ({
     const facility = facilities.find(f => f.id === source.facilityId);
     const ownershipFactor = boundaryApproach === 'equity' && facility ? facility.equityShare / 100 : 1;
     const emissions = calculateEmissions(source);
-    // For subtotal, use market-based if available, otherwise location-based for Scope 2.
-    const relevantEmissions = emissions.scope1 + emissions.scope2Market;
+    // For subtotal, use market-based if available for S2, plus S1 and S3
+    const relevantEmissions = emissions.scope1 + emissions.scope2Market + emissions.scope3;
     return sum + (relevantEmissions * ownershipFactor);
   }, 0);
   
+  const cardClasses = isDisabled
+    ? "bg-gray-100 rounded-xl shadow-lg border border-gray-200 flex flex-col dark:bg-gray-800/50 dark:border-gray-700 opacity-60 cursor-not-allowed"
+    : "bg-white rounded-xl shadow-lg border border-gray-200 flex flex-col dark:bg-gray-700 dark:border-gray-600";
+
   return (
-    <div className="bg-white rounded-xl shadow-lg border border-gray-200 flex flex-col dark:bg-gray-700 dark:border-gray-600">
-      <button onClick={onToggle} className="flex items-start justify-between p-6 text-left w-full">
+    <div className={cardClasses}>
+      <button onClick={!isDisabled ? onToggle : undefined} className="flex items-start justify-between p-6 text-left w-full relative">
+        {isDisabled && <span className="absolute top-2 right-2 text-xs font-semibold bg-gray-500 text-white px-2 py-0.5 rounded-full">{t('comingSoon')}</span>}
         <div className="flex-1">
             <h3 className="text-lg font-semibold text-ghg-dark dark:text-gray-100">{t(category)}</h3>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 pr-4">{description}</p>
         </div>
         <div className="flex items-center space-x-4">
             {ICONS[category]}
-            <IconChevronDown className={`h-5 w-5 text-gray-500 dark:text-gray-400 transform transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+            {!isDisabled && <IconChevronDown className={`h-5 w-5 text-gray-500 dark:text-gray-400 transform transition-transform ${isOpen ? 'rotate-180' : ''}`} />}
         </div>
       </button>
 
-      {isOpen && (
+      {isOpen && !isDisabled && (
         <div className="px-6 pb-6 flex flex-col flex-grow">
           {(category === EmissionCategory.ProcessEmissions || category === EmissionCategory.PurchasedEnergy) && (
             <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-800 dark:bg-blue-900/30 dark:border-blue-700/50 dark:text-blue-200 flex items-start gap-3">
@@ -101,7 +127,10 @@ export const EmissionSourceCard: React.FC<EmissionSourceCardProps> = ({
                 />
               ))
             ) : (
-              <p className="text-center text-gray-400 dark:text-gray-500 text-sm py-4">{t('noSources')}</p>
+              <div className="text-center text-gray-400 dark:text-gray-500 text-sm py-4">
+                <p>{t('noSources')}</p>
+                <p className="text-xs mt-1">{t('noSourcesHelp')}</p>
+              </div>
             )}
           </div>
           <div className="mt-4 pt-4 border-t dark:border-gray-600">

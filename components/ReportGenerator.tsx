@@ -15,8 +15,8 @@ interface ReportGeneratorProps {
     scope1Total: number;
     scope2LocationTotal: number;
     scope2MarketTotal: number;
-    biogenicTotal: number;
-    facilityBreakdown: { [facilityName: string]: { scope1: number; scope2Location: number, scope2Market: number } };
+    scope3Total: number;
+    facilityBreakdown: { [facilityName: string]: { scope1: number; scope2Location: number, scope2Market: number, scope3: number } };
   };
   facilities: Facility[];
   boundaryApproach: BoundaryApproach;
@@ -128,8 +128,8 @@ export const ReportGenerator: React.FC<ReportGeneratorProps> = ({
             {/* Summary */}
             <div className="p-4 border rounded-lg print-shadow-none">
                 <h2 className="text-xl font-semibold mb-3 print-text-black">{t('executiveSummary')}</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="col-span-1 sm:col-span-2 text-center p-3 bg-gray-800/10 rounded-lg">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="col-span-1 sm:col-span-3 text-center p-3 bg-gray-800/10 rounded-lg">
                         <p className="text-sm font-semibold text-gray-800 print-text-black">{t('totalGHGEmissions')} ({t('marketBasedTotal')})</p>
                         <p className="text-3xl font-bold text-ghg-dark print-text-black">{formatNumber(results.totalEmissionsMarket)}</p>
                         <p className="text-xs text-gray-500 print-text-black">{t('tonnesCO2e')}</p>
@@ -141,17 +141,14 @@ export const ReportGenerator: React.FC<ReportGeneratorProps> = ({
                     </div>
                      <div className="p-3 bg-ghg-accent/10 rounded-lg text-center">
                         <p className="text-sm font-semibold text-ghg-accent print-text-black">{t('scope2')}</p>
-                        <p className="text-2xl font-bold text-ghg-dark print-text-black">{formatNumber(results.scope2MarketTotal)} <span className="text-base font-medium text-gray-600">({t('marketBasedTotal')})</span></p>
-                        <p className="text-lg font-medium text-gray-700 print-text-black">{formatNumber(results.scope2LocationTotal)} <span className="text-base font-medium text-gray-600">({t('locationBasedTotal')})</span></p>
+                        <p className="text-xl font-bold text-ghg-dark print-text-black">{formatNumber(results.scope2MarketTotal)} <span className="text-sm font-medium text-gray-600">({t('marketBasedTotal')})</span></p>
+                        <p className="text-lg font-medium text-gray-700 print-text-black">{formatNumber(results.scope2LocationTotal)} <span className="text-sm font-medium text-gray-600">({t('locationBasedTotal')})</span></p>
+                    </div>
+                    <div className="p-3 bg-purple-600/10 rounded-lg text-center">
+                        <p className="text-sm font-semibold text-purple-800 print-text-black">{t('scope3')}</p>
+                        <p className="text-2xl font-bold text-ghg-dark print-text-black">{formatNumber(results.scope3Total)}</p>
                     </div>
                 </div>
-                 {results.biogenicTotal > 0 && 
-                    <div className="mt-4 p-3 bg-blue-50/50 rounded-lg text-center">
-                        <p className="text-sm font-semibold text-blue-800 print-text-black">{t('biogenicCO2')}</p>
-                        <p className="text-2xl font-bold text-blue-900 print-text-black">{formatNumber(results.biogenicTotal)}</p>
-                        <p className="text-xs text-gray-500 print-text-black">{t('tonnesCO2e')}</p>
-                    </div>
-                 }
             </div>
 
             {/* Breakdowns - This part can be simplified or expanded as needed */}
@@ -166,23 +163,23 @@ export const ReportGenerator: React.FC<ReportGeneratorProps> = ({
                                 <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider print-text-black">{t('facility')}</th>
                                 <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider print-text-black">{t('appliedBasis')}</th>
                                 <th scope="col" className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider print-text-black">{t('scope1')}</th>
-                                <th scope="col" className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider print-text-black">{t('scope2Location')}</th>
                                 <th scope="col" className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider print-text-black">{t('scope2Market')}</th>
+                                <th scope="col" className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider print-text-black">{t('scope3')}</th>
                                 <th scope="col" className="px-4 py-2 text-right text-xs font-bold text-gray-600 uppercase tracking-wider print-text-black">{t('total')}</th>
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y">
                             {Object.entries(results.facilityBreakdown).map(([facilityName, emissions]) => {
-                                const typedEmissions = emissions as { scope1: number; scope2Location: number, scope2Market: number };
+                                const typedEmissions = emissions as { scope1: number; scope2Location: number, scope2Market: number, scope3: number };
                                 const facility = facilities.find(f => f.name === facilityName);
-                                const total = typedEmissions.scope1 + typedEmissions.scope2Market;
+                                const total = typedEmissions.scope1 + typedEmissions.scope2Market + typedEmissions.scope3;
                                 return (
                                     <tr key={facilityName}>
                                         <td className="px-4 py-2 whitespace-nowrap text-sm font-medium print-text-black">{facilityName}</td>
                                         <td className="px-4 py-2 whitespace-nowrap text-sm text-left print-text-black">{getFacilityBasisText(facility)}</td>
                                         <td className="px-4 py-2 whitespace-nowrap text-sm text-right print-text-black">{formatNumber(typedEmissions.scope1)}</td>
-                                        <td className="px-4 py-2 whitespace-nowrap text-sm text-right print-text-black">{formatNumber(typedEmissions.scope2Location)}</td>
                                         <td className="px-4 py-2 whitespace-nowrap text-sm text-right print-text-black">{formatNumber(typedEmissions.scope2Market)}</td>
+                                        <td className="px-4 py-2 whitespace-nowrap text-sm text-right print-text-black">{formatNumber(typedEmissions.scope3)}</td>
                                         <td className="px-4 py-2 whitespace-nowrap text-sm font-bold text-right print-text-black">{formatNumber(total)}</td>
                                     </tr>
                                 );

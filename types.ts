@@ -1,23 +1,6 @@
 // Fix: Define and export interfaces and enums for use throughout the application.
 // This resolves circular dependency and missing type export errors.
 
-// Represents disaggregated emission factors for combustion sources
-export interface GasFactors {
-  co2: number; // kg CO2 / unit
-  ch4: number; // kg CH4 / unit
-  n2o: number; // kg N2O / unit
-}
-
-export interface Fuel {
-  name: string;
-  translationKey?: string;
-  units: string[];
-  // Factors are now disaggregated by gas type for accurate biogenic CO2 calculation
-  factors: { [key: string]: GasFactors }; 
-  isBiomass?: boolean;
-  isCustom?: boolean;
-}
-
 export interface Refrigerant {
   name: string;
   translationKey?: string;
@@ -25,7 +8,7 @@ export interface Refrigerant {
   isCustom?: boolean;
 }
 
-// Represents a simple CO2e factor, used for Scope 2 and some process emissions
+// Represents a simple CO2e factor, used for all combustion, process, waste, and Scope 2 sources.
 export interface CO2eFactorFuel {
     name: string;
     translationKey?: string;
@@ -34,19 +17,38 @@ export interface CO2eFactorFuel {
     isCustom?: boolean;
 }
 
-
-export interface EditableFuel extends Fuel {}
 export interface EditableCO2eFactorFuel extends CO2eFactorFuel {}
 export interface EditableRefrigerant extends Refrigerant {}
 
 export enum EmissionCategory {
+  // Scope 1
   StationaryCombustion = 'Stationary Combustion',
   MobileCombustion = 'Mobile Combustion',
   ProcessEmissions = 'Process Emissions',
   FugitiveEmissions = 'Fugitive Emissions',
+  Waste = 'Waste', // This is Scope 1 on-site treatment
+
+  // Scope 2
   PurchasedEnergy = 'Purchased Energy',
-  Waste = 'Waste',
+  
+  // Scope 3
+  PurchasedGoodsAndServices = 'Purchased Goods and Services',
+  CapitalGoods = 'Capital Goods',
+  FuelAndEnergyRelatedActivities = 'Fuel- and Energy-Related Activities',
+  UpstreamTransportationAndDistribution = 'Upstream Transportation and Distribution',
+  WasteGeneratedInOperations = 'Waste Generated in Operations', // This is Scope 3 off-site treatment
+  BusinessTravel = 'Business Travel',
+  EmployeeCommuting = 'Employee Commuting',
+  UpstreamLeasedAssets = 'Upstream Leased Assets',
+  DownstreamTransportationAndDistribution = 'Downstream Transportation and Distribution',
+  ProcessingOfSoldProducts = 'Processing of Sold Products',
+  UseOfSoldProducts = 'Use of Sold Products',
+  EndOfLifeTreatmentOfSoldProducts = 'End-of-Life Treatment of Sold Products',
+  DownstreamLeasedAssets = 'Downstream Leased Assets',
+  Franchises = 'Franchises',
+  Investments = 'Investments',
 }
+
 
 export type BoundaryApproach = 'operational' | 'financial' | 'equity';
 
