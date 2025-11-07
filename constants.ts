@@ -1,4 +1,4 @@
-import { CO2eFactorFuel, Refrigerant } from './types';
+import { CO2eFactorFuel, Refrigerant, EmissionCategory } from './types';
 
 // Global Warming Potential (GWP) values from IPCC Fifth Assessment Report (AR5)
 export const GWP_VALUES = {
@@ -332,6 +332,23 @@ export const SCOPE3_WASTE_FACTORS: CO2eFactorFuel[] = [
   },
 ];
 
+export const ALL_SCOPE3_CATEGORIES: EmissionCategory[] = [
+  EmissionCategory.PurchasedGoodsAndServices,
+  EmissionCategory.CapitalGoods,
+  EmissionCategory.FuelAndEnergyRelatedActivities,
+  EmissionCategory.UpstreamTransportationAndDistribution,
+  EmissionCategory.WasteGeneratedInOperations,
+  EmissionCategory.BusinessTravel,
+  EmissionCategory.EmployeeCommuting,
+  EmissionCategory.UpstreamLeasedAssets,
+  EmissionCategory.DownstreamTransportationAndDistribution,
+  EmissionCategory.ProcessingOfSoldProducts,
+  EmissionCategory.UseOfSoldProducts,
+  EmissionCategory.EndOfLifeTreatmentOfSoldProducts,
+  EmissionCategory.DownstreamLeasedAssets,
+  EmissionCategory.Franchises,
+  EmissionCategory.Investments,
+];
 
 // Predefined common facility types based on GHG Protocol guidance
 export const PREDEFINED_FACILITIES: { name: string, translationKey: string }[] = [

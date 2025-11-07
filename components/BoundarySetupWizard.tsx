@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BoundaryApproach, Facility, EmissionCategory } from '../types';
 import { useTranslation } from '../LanguageContext';
 import { IconX, IconInfo } from './IconComponents';
-import { PREDEFINED_FACILITIES } from '../constants';
+import { PREDEFINED_FACILITIES, ALL_SCOPE3_CATEGORIES } from '../constants';
 
 interface Scope3Settings {
     isEnabled: boolean;
@@ -31,7 +31,6 @@ interface BoundarySetupWizardProps {
 }
 
 type AnswerKey = 'q1' | 'q2' | 'q3';
-const allScope3Categories = Object.values(EmissionCategory).filter(c => c.includes(' ') && !c.startsWith('Stationary') && !c.startsWith('Mobile') && !c.startsWith('Process') && !c.startsWith('Fugitive') && !c.startsWith('Purchased Energy') && !c.startsWith('Waste ('));
 
 export const BoundarySetupWizard: React.FC<BoundarySetupWizardProps> = ({ isOpen, onClose, onSave, initialData, isCancellable = true, initialStep = 0 }) => {
   const { t } = useTranslation();
@@ -310,7 +309,7 @@ export const BoundarySetupWizard: React.FC<BoundarySetupWizardProps> = ({ isOpen
                      <div className="mt-6">
                         <p className="font-medium text-gray-800 dark:text-gray-200">{t('selectApplicableCategories')}</p>
                         <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 max-h-60 overflow-y-auto pr-2">
-                            {allScope3Categories.map(category => (
+                            {ALL_SCOPE3_CATEGORIES.map(category => (
                                 <label key={category} className="flex items-center space-x-3 cursor-pointer">
                                     <input 
                                         type="checkbox"

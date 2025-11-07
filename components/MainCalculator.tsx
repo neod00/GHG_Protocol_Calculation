@@ -1,7 +1,7 @@
 // Fix: Corrected typo in React import
 import React, { useState, useMemo, useEffect } from 'react';
 import { EmissionCategory, EmissionSource, Refrigerant, Facility, BoundaryApproach, EditableRefrigerant, CO2eFactorFuel } from '../types';
-import { STATIONARY_FUELS, MOBILE_FUELS, PROCESS_MATERIALS, FUGITIVE_GASES, SCOPE2_ENERGY_SOURCES, WASTE_SOURCES, BUSINESS_TRAVEL_FACTORS, EMPLOYEE_COMMUTING_FACTORS, SCOPE3_WASTE_FACTORS } from '../constants';
+import { STATIONARY_FUELS, MOBILE_FUELS, PROCESS_MATERIALS, FUGITIVE_GASES, SCOPE2_ENERGY_SOURCES, WASTE_SOURCES, BUSINESS_TRAVEL_FACTORS, EMPLOYEE_COMMUTING_FACTORS, SCOPE3_WASTE_FACTORS, ALL_SCOPE3_CATEGORIES } from '../constants';
 import { EmissionSourceCard } from './EmissionSourceCard';
 import { ResultsDisplay } from './ResultsDisplay';
 import { useTranslation } from '../LanguageContext';
@@ -442,7 +442,9 @@ export const MainCalculator: React.FC = () => {
                 ))}
                 {activeTab === 'scope3' && scope3Settings.isEnabled && (
                     <>
-                        {scope3Settings.enabledCategories.map((category) => (
+                        {ALL_SCOPE3_CATEGORIES
+                          .filter(category => scope3Settings.enabledCategories.includes(category))
+                          .map((category) => (
                             <EmissionSourceCard
                                 key={category}
                                 category={category}
