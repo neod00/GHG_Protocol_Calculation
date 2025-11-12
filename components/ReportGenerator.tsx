@@ -46,18 +46,18 @@ const ReportTable: React.FC<{title: string, data: {[key: string]: number}, col1H
                 <table className="min-w-full divide-y">
                     <thead className="bg-gray-50 print-bg-white">
                         <tr>
-                            <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider print-text-black">{col1Header}</th>
-                            <th scope="col" className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider print-text-black">{col2Header}</th>
+                            <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider print-text-black">{col1Header}</th>
+                            <th scope="col" className="px-4 py-2 text-right text-xs font-medium text-gray-700 uppercase tracking-wider print-text-black">{col2Header}</th>
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y">
                         {Object.entries(data).map(([key, value]) => (
                             <tr key={`${keyPrefix}-${key}`}>
-                                <td className="px-4 py-2 whitespace-nowrap text-sm font-medium print-text-black">
+                                <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100 print-text-black">
                                     {keyPrefix === 'scope2' && language === 'ko' ? getFuelTranslation(key) : t(key)}
                                 </td>
                                 {/* Fix: Cast value to number to resolve type error from Object.entries. */}
-                                <td className="px-4 py-2 whitespace-nowrap text-sm text-right print-text-black">{formatNumber(value as number)}</td>
+                                <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-600 dark:text-gray-300 print-text-black">{formatNumber(value as number)}</td>
                             </tr>
                         ))}
                     </tbody>
@@ -160,11 +160,11 @@ export const ReportGenerator: React.FC<ReportGeneratorProps> = ({
                     <table className="min-w-full divide-y">
                         <thead className="bg-gray-50 print-bg-white">
                             <tr>
-                                <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider print-text-black">{t('facility')}</th>
-                                <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider print-text-black">{t('appliedBasis')}</th>
-                                <th scope="col" className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider print-text-black">{t('scope1')}</th>
-                                <th scope="col" className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider print-text-black">{t('scope2Market')}</th>
-                                <th scope="col" className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider print-text-black">{t('scope3')}</th>
+                                <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider print-text-black">{t('facility')}</th>
+                                <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider print-text-black">{t('appliedBasis')}</th>
+                                <th scope="col" className="px-4 py-2 text-right text-xs font-medium text-gray-700 uppercase tracking-wider print-text-black">{t('scope1')}</th>
+                                <th scope="col" className="px-4 py-2 text-right text-xs font-medium text-gray-700 uppercase tracking-wider print-text-black">{t('scope2Market')}</th>
+                                <th scope="col" className="px-4 py-2 text-right text-xs font-medium text-gray-700 uppercase tracking-wider print-text-black">{t('scope3')}</th>
                                 <th scope="col" className="px-4 py-2 text-right text-xs font-bold text-gray-600 uppercase tracking-wider print-text-black">{t('total')}</th>
                             </tr>
                         </thead>
@@ -175,12 +175,12 @@ export const ReportGenerator: React.FC<ReportGeneratorProps> = ({
                                 const total = typedEmissions.scope1 + typedEmissions.scope2Market + typedEmissions.scope3;
                                 return (
                                     <tr key={facilityName}>
-                                        <td className="px-4 py-2 whitespace-nowrap text-sm font-medium print-text-black">{facilityName}</td>
-                                        <td className="px-4 py-2 whitespace-nowrap text-sm text-left print-text-black">{getFacilityBasisText(facility)}</td>
-                                        <td className="px-4 py-2 whitespace-nowrap text-sm text-right print-text-black">{formatNumber(typedEmissions.scope1)}</td>
-                                        <td className="px-4 py-2 whitespace-nowrap text-sm text-right print-text-black">{formatNumber(typedEmissions.scope2Market)}</td>
-                                        <td className="px-4 py-2 whitespace-nowrap text-sm text-right print-text-black">{formatNumber(typedEmissions.scope3)}</td>
-                                        <td className="px-4 py-2 whitespace-nowrap text-sm font-bold text-right print-text-black">{formatNumber(total)}</td>
+                                        <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100 print-text-black">{facilityName}</td>
+                                        <td className="px-4 py-2 whitespace-nowrap text-sm text-left text-gray-600 dark:text-gray-300 print-text-black">{getFacilityBasisText(facility)}</td>
+                                        <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-600 dark:text-gray-300 print-text-black">{formatNumber(typedEmissions.scope1)}</td>
+                                        <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-600 dark:text-gray-300 print-text-black">{formatNumber(typedEmissions.scope2Market)}</td>
+                                        <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-600 dark:text-gray-300 print-text-black">{formatNumber(typedEmissions.scope3)}</td>
+                                        <td className="px-4 py-2 whitespace-nowrap text-sm font-bold text-right text-ghg-dark dark:text-gray-50 print-text-black">{formatNumber(total)}</td>
                                     </tr>
                                 );
                             })}

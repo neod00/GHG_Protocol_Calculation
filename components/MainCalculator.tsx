@@ -206,6 +206,23 @@ export const MainCalculator: React.FC = () => {
 
   const handleAddSource = (category: EmissionCategory) => {
     const fuelsForCategory = FUELS_MAP[category];
+    // For Category 1, we allow adding a blank, customizable source.
+    if (category === EmissionCategory.PurchasedGoodsAndServices) {
+      const newSource: EmissionSource = {
+        id: `source-${Date.now()}`,
+        facilityId: facilities[0]?.id || 'default',
+        category,
+        description: '',
+        fuelType: '', // User will fill this in as the description
+        monthlyQuantities: Array(12).fill(0),
+        unit: 'KRW', // Default unit
+        dataType: 'spend_krw', // Default data type
+        customFactor: 0,
+      };
+      setSources(prev => ({ ...prev, [category]: [...prev[category], newSource] }));
+      return;
+    }
+    
     if (!fuelsForCategory || fuelsForCategory.length === 0) return;
 
     const defaultFuel = fuelsForCategory[0];
@@ -215,6 +232,7 @@ export const MainCalculator: React.FC = () => {
       id: `source-${Date.now()}`,
       facilityId: facilities[0]?.id || 'default',
       category,
+      description: '',
       fuelType: defaultFuel.name,
       monthlyQuantities: Array(12).fill(0),
       unit: defaultUnit,
@@ -230,6 +248,9 @@ export const MainCalculator: React.FC = () => {
   };
   
   const handleFuelTypeChange = (id: string, newFuelType: string, category: EmissionCategory) => {
+    // This function is now only for non-Cat1 sources with predefined fuels.
+    if (category === EmissionCategory.PurchasedGoodsAndServices) return;
+
     const fuelsForCategory = FUELS_MAP[category];
     if (!fuelsForCategory) return;
     
@@ -263,6 +284,13 @@ export const MainCalculator: React.FC = () => {
   
   const calculateSourceEmissions = (source: EmissionSource): { scope1: number, scope2Location: number, scope2Market: number, scope3: number } => {
     const totalQuantity = source.monthlyQuantities.reduce((sum, q) => sum + q, 0);
+
+    // New logic for Category 1 with custom factors
+    if (source.category === EmissionCategory.PurchasedGoodsAndServices && typeof source.customFactor === 'number') {
+        const emissions = totalQuantity * source.customFactor;
+        return { scope1: 0, scope2Location: 0, scope2Market: 0, scope3: emissions };
+    }
+
     const categoryFuels = FUELS_MAP[source.category];
     if (!categoryFuels) return { scope1: 0, scope2Location: 0, scope2Market: 0, scope3: 0 };
     
@@ -276,7 +304,7 @@ export const MainCalculator: React.FC = () => {
         return { scope1: totalQuantity * fuel.gwp, scope2Location: 0, scope2Market: 0, scope3: 0 };
     }
 
-    // All other sources use a simple CO2e factor now
+    // All other sources use a simple CO2e factor
     if ('factors' in fuel) {
         const co2eFuel = fuel as CO2eFactorFuel;
         const factor = co2eFuel.factors[source.unit] || 0;
@@ -301,6 +329,7 @@ export const MainCalculator: React.FC = () => {
     let scope2LocationTotal = 0;
     let scope2MarketTotal = 0;
     let scope3Total = 0;
+    const scope3CategoryBreakdown: { [category: string]: number } = {};
 
     const facilityBreakdown: { [facilityName: string]: { scope1: number, scope2Location: number, scope2Market: number, scope3: number } } = {};
     facilities.forEach(f => {
@@ -308,10 +337,13 @@ export const MainCalculator: React.FC = () => {
     });
     
     for (const category of Object.values(EmissionCategory)) {
-        // Skip Scope 3 calculation if it's disabled or the category is not selected
-        if (getScopeForCategory(category) === 'scope3') {
+        const scope = getScopeForCategory(category);
+        if (scope === 'scope3') {
             if (!scope3Settings.isEnabled || !scope3Settings.enabledCategories.includes(category)) {
                 continue;
+            }
+            if (!scope3CategoryBreakdown[category]) {
+                scope3CategoryBreakdown[category] = 0;
             }
         }
 
@@ -332,6 +364,10 @@ export const MainCalculator: React.FC = () => {
             scope2MarketTotal += adjScope2M;
             scope3Total += adjScope3;
 
+            if (scope === 'scope3') {
+                scope3CategoryBreakdown[source.category] += adjScope3;
+            }
+
             if(facilityBreakdown[facility.name]) {
                 facilityBreakdown[facility.name].scope1 += adjScope1;
                 facilityBreakdown[facility.name].scope2Location += adjScope2L;
@@ -344,7 +380,7 @@ export const MainCalculator: React.FC = () => {
     const totalEmissionsMarket = scope1Total + scope2MarketTotal + scope3Total;
     const totalEmissionsLocation = scope1Total + scope2LocationTotal + scope3Total;
     
-    return { totalEmissionsMarket, totalEmissionsLocation, scope1Total, scope2LocationTotal, scope2MarketTotal, scope3Total, facilityBreakdown };
+    return { totalEmissionsMarket, totalEmissionsLocation, scope1Total, scope2LocationTotal, scope2MarketTotal, scope3Total, facilityBreakdown, scope3CategoryBreakdown };
   }, [sources, facilities, boundaryApproach, scope3Settings, stationaryFuels, mobileFuels, processMaterials, fugitiveGases, scope2EnergySources, wasteSources, businessTravelFactors, employeeCommutingFactors, scope3WasteFactors]);
   
   const boundaryApproachText = {
@@ -434,6 +470,7 @@ export const MainCalculator: React.FC = () => {
             scope2MarketTotal={results.scope2MarketTotal}
             scope3Total={results.scope3Total}
             facilityBreakdown={results.facilityBreakdown}
+            scope3CategoryBreakdown={results.scope3CategoryBreakdown}
             facilities={facilities}
             boundaryApproach={boundaryApproach}
             companyName={companyName}

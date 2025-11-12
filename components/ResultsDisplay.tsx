@@ -1,5 +1,5 @@
-import React from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import React, { useMemo } from 'react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { EmissionCategory, Facility, BoundaryApproach } from '../types';
 import { useTranslation } from '../LanguageContext';
 import { useTheme } from '../ThemeContext';
@@ -13,6 +13,7 @@ interface ResultsDisplayProps {
   scope2MarketTotal: number;
   scope3Total: number;
   facilityBreakdown: { [facility: string]: { scope1: number, scope2Location: number, scope2Market: number, scope3: number } };
+  scope3CategoryBreakdown: { [key: string]: number };
   facilities: Facility[];
   boundaryApproach: BoundaryApproach;
   companyName: string;
@@ -28,6 +29,9 @@ const COLORS = {
     scope3: '#6B4C6B', // A deep purple
 };
 
+const SCOPE3_CATEGORY_COLORS = ['#6B4C6B', '#8E44AD', '#9B59B6', '#AF7AC5', '#C39BD3', '#D7BDE2', '#E8DAEF', '#34495E', '#5D6D7E', '#85929E', '#AEB6BF', '#D6DBDF'];
+
+
 export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ 
     totalEmissionsMarket,
     totalEmissionsLocation,
@@ -36,6 +40,7 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
     scope2MarketTotal,
     scope3Total,
     facilityBreakdown, 
+    scope3CategoryBreakdown,
     facilities, 
     boundaryApproach,
     companyName,
@@ -93,6 +98,34 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
     return '100%';
   }
   
+  const scope3ChartData = useMemo(() => {
+    if (!scope3CategoryBreakdown || scope3Total === 0) return [];
+    return Object.entries(scope3CategoryBreakdown)
+      .map(([category, emissions]) => ({
+        name: t(category),
+        value: parseFloat((emissions / 1000).toFixed(2)),
+      }))
+      .filter(item => item.value > 0.005) // Filter out negligible values to avoid clutter
+      .sort((a, b) => b.value - a.value);
+  }, [scope3CategoryBreakdown, scope3Total, t]);
+
+  const CustomTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      // FIX: Use Number() to safely convert `data.value` from an `any` type to a number for arithmetic operations.
+      // The previous type assertion `as number` was not sufficient to resolve the TypeScript error.
+      // `data.value` is in tonnes, while `scope3Total` is in kg, so we convert tonnes to kg for correct percentage calculation.
+      // FIX: Explicitly cast `data.value` to a number to resolve arithmetic operation error.
+      const percentage = scope3Total > 0 ? ((Number(data.value) * 1000 / scope3Total) * 100).toFixed(1) : 0;
+      return (
+        <div className="bg-white dark:bg-gray-800 p-2 border border-gray-300 dark:border-gray-600 rounded shadow-lg text-sm">
+          <p className="font-semibold text-ghg-dark dark:text-gray-100">{data.name}</p>
+          <p className="text-gray-600 dark:text-gray-300">{`${Number(data.value).toLocaleString()} t CO₂e (${percentage}%)`}</p>
+        </div>
+      );
+    }
+    return null;
+  };
 
   return (
     <>
@@ -184,6 +217,57 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
         </div>
       </div>
 
+      {scope3Total > 0 && (
+        <div className="bg-white rounded-xl shadow-lg p-6 md:p-8 border border-gray-200 mt-8 dark:bg-gray-700 dark:border-gray-600">
+          <h3 className="text-xl font-semibold text-ghg-dark dark:text-gray-100 mb-4">{t('scope3Breakdown')}</h3>
+          {scope3ChartData.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+              <div className="w-full h-72">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={scope3ChartData}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      outerRadius={110}
+                      fill="#8884d8"
+                      dataKey="value"
+                      nameKey="name"
+                    >
+                      {scope3ChartData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={SCOPE3_CATEGORY_COLORS[index % SCOPE3_CATEGORY_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip content={<CustomTooltip />} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="space-y-2 max-h-72 overflow-y-auto pr-2">
+                {scope3ChartData.map((entry, index) => {
+                   const percentage = scope3Total > 0 ? ((entry.value * 1000 / scope3Total) * 100) : 0;
+                   return (
+                      <div key={entry.name} className="flex items-center justify-between text-sm p-2 bg-gray-50 dark:bg-gray-800/50 rounded-md">
+                        <div className="flex items-center gap-2 truncate">
+                          <div
+                            className="w-3 h-3 rounded-full flex-shrink-0"
+                            style={{ backgroundColor: SCOPE3_CATEGORY_COLORS[index % SCOPE3_CATEGORY_COLORS.length] }}
+                          />
+                          <span className="text-gray-700 dark:text-gray-300 truncate" title={entry.name}>{entry.name}</span>
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                            <span className="font-semibold text-ghg-dark dark:text-gray-100">{entry.value.toLocaleString()} t</span>
+                            <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">({percentage.toFixed(1)}%)</span>
+                        </div>
+                      </div>
+                   );
+                })}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      )}
+
       {Object.keys(facilityBreakdown).length > 0 && (
         <div className="bg-white rounded-xl shadow-lg p-6 md:p-8 border border-gray-200 mt-8 dark:bg-gray-700 dark:border-gray-600">
             <h3 className="text-xl font-semibold text-ghg-dark dark:text-gray-100 mb-4">{t('emissionsByFacility')}</h3>
@@ -191,11 +275,11 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                 <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-600">
                     <thead className="bg-gray-50 dark:bg-gray-800">
                         <tr>
-                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('facility')}</th>
-                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('appliedBasis')}</th>
-                            <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('scope1')}</th>
-                            <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('scope2Market')}</th>
-                            <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('scope3')}</th>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-400 uppercase tracking-wider">{t('facility')}</th>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-400 uppercase tracking-wider">{t('appliedBasis')}</th>
+                            <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-700 dark:text-gray-400 uppercase tracking-wider">{t('scope1')}</th>
+                            <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-700 dark:text-gray-400 uppercase tracking-wider">{t('scope2Market')}</th>
+                            <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-700 dark:text-gray-400 uppercase tracking-wider">{t('scope3')}</th>
                             <th scope="col" className="px-6 py-3 text-right text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">{t('total')}</th>
                         </tr>
                     </thead>

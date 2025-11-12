@@ -1,5 +1,5 @@
 {
-  "name": "Copy of GHG Protocol Scope 1 & 2 Calculator",
+  "name": "GHG Protocol Scope 1,2,3 Calculator",
   "description": "A corporate accounting tool to calculate Scope 1 (direct) and Scope 2 (indirect from electricity) greenhouse gas emissions based on the GHG Protocol standard. It covers stationary combustion, mobile combustion, fugitive emissions, and purchased electricity. Now supports English and Korean.",
   "requestFramePermissions": []
 }

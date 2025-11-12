@@ -41,13 +41,13 @@ const AddNewCO2eSourceForm: React.FC<{
         <div className="p-4 mt-4 border-t border-dashed dark:border-gray-600 bg-gray-50 dark:bg-gray-800/50 rounded-b-lg">
             <h4 className="font-semibold text-ghg-dark dark:text-gray-100 mb-2">{t('addNewSource')}</h4>
             <div className="space-y-3">
-                <input type="text" placeholder={t('sourceName')} value={name} onChange={e => setName(e.target.value)} className="w-full border border-gray-300 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100 rounded-md shadow-sm py-1 px-2 text-sm focus:outline-none focus:ring-ghg-green focus:border-ghg-green" />
-                <input type="text" placeholder={t('unitsCommaSeparated')} value={unitsStr} onChange={handleUnitsChange} className="w-full border border-gray-300 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100 rounded-md shadow-sm py-1 px-2 text-sm focus:outline-none focus:ring-ghg-green focus:border-ghg-green" />
+                <input type="text" placeholder={t('sourceName')} value={name} onChange={e => setName(e.target.value)} className="w-full bg-white text-gray-900 border border-gray-300 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100 rounded-md shadow-sm py-1 px-2 text-sm focus:outline-none focus:ring-ghg-green focus:border-ghg-green" />
+                <input type="text" placeholder={t('unitsCommaSeparated')} value={unitsStr} onChange={handleUnitsChange} className="w-full bg-white text-gray-900 border border-gray-300 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100 rounded-md shadow-sm py-1 px-2 text-sm focus:outline-none focus:ring-ghg-green focus:border-ghg-green" />
                 
                 {Object.keys(factors).map(unit => (
                     <div key={unit} className="p-2 border rounded dark:border-gray-600">
                          <label className="text-sm font-medium mb-2">{t('factorForUnit').replace('{unit}', unit)}</label>
-                        <input type="number" step="any" value={factors[unit]} onChange={e => handleFactorChange(unit, e.target.value)} className="w-full border-gray-300 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100 rounded-md shadow-sm py-1 px-2 text-sm" />
+                        <input type="number" step="any" value={factors[unit]} onChange={e => handleFactorChange(unit, e.target.value)} className="w-full bg-white text-gray-900 border-gray-300 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100 rounded-md shadow-sm py-1 px-2 text-sm" />
                     </div>
                 ))}
             </div>
@@ -79,10 +79,10 @@ const AddNewFugitiveSourceForm: React.FC<{
          <div className="p-4 mt-4 border-t border-dashed dark:border-gray-600 bg-gray-50 dark:bg-gray-800/50 rounded-b-lg">
             <h4 className="font-semibold text-ghg-dark dark:text-gray-100 mb-2">{t('addNewSource')}</h4>
             <div className="space-y-3">
-                <input type="text" placeholder={t('sourceName')} value={name} onChange={e => setName(e.target.value)} className="w-full border border-gray-300 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100 rounded-md shadow-sm py-1 px-2 text-sm focus:outline-none focus:ring-ghg-green focus:border-ghg-green" />
+                <input type="text" placeholder={t('sourceName')} value={name} onChange={e => setName(e.target.value)} className="w-full bg-white text-gray-900 border border-gray-300 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100 rounded-md shadow-sm py-1 px-2 text-sm focus:outline-none focus:ring-ghg-green focus:border-ghg-green" />
                 <div className="flex items-center gap-2">
                     <label className="text-sm w-1/3">{t('gwp')}</label>
-                    <input type="number" step="any" value={gwp} onChange={e => setGwp(parseFloat(e.target.value) || 0)} className="w-2/3 border border-gray-300 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100 rounded-md shadow-sm py-1 px-2 text-sm focus:outline-none focus:ring-ghg-green focus:border-ghg-green" />
+                    <input type="number" step="any" value={gwp} onChange={e => setGwp(parseFloat(e.target.value) || 0)} className="w-2/3 bg-white text-gray-900 border border-gray-300 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100 rounded-md shadow-sm py-1 px-2 text-sm focus:outline-none focus:ring-ghg-green focus:border-ghg-green" />
                 </div>
             </div>
              <p className="mt-2 text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1"><IconInfo className="w-3 h-3"/>{t('customSourceNote')}</p>
@@ -343,8 +343,8 @@ export const FactorManager: React.FC<FactorManagerProps> = (props) => {
   });
 
   const renderActiveTabContent = () => {
-    const commonInputClass = "w-full border-gray-300 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100 rounded-md shadow-sm py-1 px-2 text-sm";
-    const commonCellClass = "px-3 py-2 whitespace-nowrap text-sm";
+    const commonInputClass = "w-full bg-white text-gray-900 border-gray-300 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100 rounded-md shadow-sm py-1 px-2 text-sm";
+    const commonCellClass = "px-3 py-2 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300";
     
     let activeCategoryForTable: string = activeTab;
     if (activeTab === 'Scope 3') {
@@ -361,22 +361,22 @@ export const FactorManager: React.FC<FactorManagerProps> = (props) => {
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-600">
             <thead className="bg-gray-50 dark:bg-gray-800">
                 <tr>
-                    <th className={`${commonCellClass} text-left font-medium text-gray-500 dark:text-gray-300`}>{t('sourceName')}</th>
-                    <th className={`${commonCellClass} text-left font-medium text-gray-500 dark:text-gray-300`}>{t('factorColumnHeader')}</th>
-                    <th className={`${commonCellClass} text-left font-medium text-gray-500 dark:text-gray-300`}></th>
+                    <th className={`${commonCellClass} text-left font-medium text-gray-700 dark:text-gray-300`}>{t('sourceName')}</th>
+                    <th className={`${commonCellClass} text-left font-medium text-gray-700 dark:text-gray-300`}>{t('factorColumnHeader')}</th>
+                    <th className={`${commonCellClass} text-left font-medium text-gray-700 dark:text-gray-300`}></th>
                 </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200 dark:bg-gray-700 dark:divide-gray-600">
                 {co2eData.map((item, index) => Object.entries(item.factors).map(([unit, factor], unitIndex) => (
                      <tr key={`${item.name}-${unit}`}>
-                        {unitIndex === 0 && <td rowSpan={Object.keys(item.factors).length} className={`${commonCellClass} font-medium align-top`}>{language === 'ko' && item.translationKey ? t(item.translationKey as TranslationKey) : item.name}</td>}
+                        {unitIndex === 0 && <td rowSpan={Object.keys(item.factors).length} className={`${commonCellClass} font-medium align-top text-gray-900 dark:text-gray-100`}>{language === 'ko' && item.translationKey ? t(item.translationKey as TranslationKey) : item.name}</td>}
                         <td className={commonCellClass}><div className="flex items-center gap-1">{t(unit as TranslationKey) || unit}:<input type="number" step="any" value={factor} onChange={e => changeHandler(index, unit, e.target.value)} className={commonInputClass} /></div></td>
                         {unitIndex === 0 && <td rowSpan={Object.keys(item.factors).length} className={`${commonCellClass} text-center align-top`}>{item.isCustom && <button onClick={() => deleteHandler(item.name)} className="text-red-500 hover:text-red-700"><IconTrash className="w-4 h-4" /></button>}</td>}
                     </tr>
                 )))}
                 {newlyAddedData.map((item, index) => Object.entries(item.factors).map(([unit, factor], unitIndex) => (
                      <tr key={`new-${item.name}-${unit}`} className="bg-green-50 dark:bg-green-900/20">
-                        {unitIndex === 0 && <td rowSpan={Object.keys(item.factors).length} className={`${commonCellClass} font-medium align-top`}>
+                        {unitIndex === 0 && <td rowSpan={Object.keys(item.factors).length} className={`${commonCellClass} font-medium align-top text-gray-900 dark:text-gray-100`}>
                             <div className="flex items-center gap-2">
                                 <span>{item.name}</span>
                                 <span className="text-xs font-semibold bg-ghg-accent text-white px-2 py-0.5 rounded-full">{t('newBadge')}</span>
@@ -415,22 +415,22 @@ export const FactorManager: React.FC<FactorManagerProps> = (props) => {
                 <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-600">
                     <thead className="bg-gray-50 dark:bg-gray-800">
                         <tr>
-                            <th className={`${commonCellClass} text-left font-medium text-gray-500 dark:text-gray-300`}>{t('sourceName')}</th>
-                            <th className={`${commonCellClass} text-left font-medium text-gray-500 dark:text-gray-300`}>{t('gwpColumnHeader')}</th>
-                            <th className={`${commonCellClass} text-left font-medium text-gray-500 dark:text-gray-300`}></th>
+                            <th className={`${commonCellClass} text-left font-medium text-gray-700 dark:text-gray-300`}>{t('sourceName')}</th>
+                            <th className={`${commonCellClass} text-left font-medium text-gray-700 dark:text-gray-300`}>{t('gwpColumnHeader')}</th>
+                            <th className={`${commonCellClass} text-left font-medium text-gray-700 dark:text-gray-300`}></th>
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200 dark:bg-gray-700 dark:divide-gray-600">
                         {editedFugitive.map((item, index) => (
                              <tr key={item.name}>
-                                <td className={`${commonCellClass} font-medium`}>{language === 'ko' && item.translationKey ? t(item.translationKey as TranslationKey) : item.name}</td>
+                                <td className={`${commonCellClass} font-medium text-gray-900 dark:text-gray-100`}>{language === 'ko' && item.translationKey ? t(item.translationKey as TranslationKey) : item.name}</td>
                                 <td className={commonCellClass}><input type="number" step="any" value={item.gwp} onChange={e => handleGWPChange(index, e.target.value)} className={commonInputClass} /></td>
                                 <td className={`${commonCellClass} text-center`}>{item.isCustom && <button onClick={() => handleDelete(item.name, setEditedFugitive)} className="text-red-500 hover:text-red-700"><IconTrash className="w-4 h-4" /></button>}</td>
                             </tr>
                         ))}
                         {((newlyAddedMap[activeTab] || []) as EditableRefrigerant[]).map((item, index) => (
                              <tr key={`new-${item.name}`} className="bg-green-50 dark:bg-green-900/20">
-                                <td className={`${commonCellClass} font-medium`}>
+                                <td className={`${commonCellClass} font-medium text-gray-900 dark:text-gray-100`}>
                                     <div className="flex items-center gap-2">
                                         <span>{item.name}</span>
                                         <span className="text-xs font-semibold bg-ghg-accent text-white px-2 py-0.5 rounded-full">{t('newBadge')}</span>
@@ -503,7 +503,7 @@ export const FactorManager: React.FC<FactorManagerProps> = (props) => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 items-end">
                     <div>
                         <label htmlFor="region-select" className="block text-sm font-medium text-gray-700 dark:text-gray-300">{t('selectRegion')}</label>
-                        <select id="region-select" value={selectedRegion} onChange={(e) => handleRegionChange(e.target.value)} className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-ghg-green focus:border-ghg-green sm:text-sm rounded-md dark:bg-gray-700 dark:border-gray-500">
+                        <select id="region-select" value={selectedRegion} onChange={(e) => handleRegionChange(e.target.value)} className="mt-1 block w-full pl-3 pr-10 py-2 text-base bg-white text-gray-900 border-gray-300 focus:outline-none focus:ring-ghg-green focus:border-ghg-green sm:text-sm rounded-md dark:bg-gray-700 dark:text-gray-200 dark:border-gray-500">
                             <option value="Custom">{t('custom')}</option>
                             {Object.keys(SCOPE2_FACTORS_BY_REGION).map(region => <option key={region} value={region}>{t(SCOPE2_FACTORS_BY_REGION[region].translationKey as TranslationKey)}</option>)}
                         </select>
@@ -521,7 +521,7 @@ export const FactorManager: React.FC<FactorManagerProps> = (props) => {
                     id="scope3-category-select" 
                     value={activeScope3Category} 
                     onChange={(e) => setActiveScope3Category(e.target.value as EmissionCategory)}
-                    className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-ghg-green focus:border-ghg-green sm:text-sm rounded-md dark:bg-gray-700 dark:border-gray-500"
+                    className="mt-1 block w-full pl-3 pr-10 py-2 text-base bg-white text-gray-900 border-gray-300 focus:outline-none focus:ring-ghg-green focus:border-ghg-green sm:text-sm rounded-md dark:bg-gray-700 dark:text-gray-200 dark:border-gray-500"
                 >
                     {scope3FactorCategories
                       .filter(cat => enabledScope3Categories.includes(cat))

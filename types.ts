@@ -61,10 +61,14 @@ export interface Facility {
 export interface EmissionSource {
   id: string;
   facilityId: string;
+  description: string; // User-provided name/description for the specific emission source (e.g., "Main Boiler #1", "Delivery Truck A"). Not used for Category 1.
   category: EmissionCategory;
-  fuelType: string;
+  fuelType: string; // For most categories, this is the fuel/gas/material from a predefined list. For Cat 1, this is used for the item description.
   monthlyQuantities: number[];
   unit: string;
-  // New field to support market-based Scope 2 dual reporting
-  marketBasedFactor?: number; // User-provided kg CO2e / unit
+  marketBasedFactor?: number;
+  
+  // New fields for hybrid approach, especially for Scope 3 Category 1
+  dataType?: string; // e.g. 'spend-krw', 'weight-tonnes'
+  customFactor?: number;
 }
