@@ -244,6 +244,56 @@ export const SCOPE2_ENERGY_SOURCES: CO2eFactorFuel[] = [
 // Source: EPA GHG Emission Factors Hub (updated 2023/2024), UK DEFRA GHG Conversion Factors.
 // Simplified for this tool.
 
+// Category 1
+export const PURCHASED_GOODS_SERVICES_FACTORS: CO2eFactorFuel[] = [
+  { name: 'Professional Services (spend)', translationKey: 'profServicesSpend', units: ['USD', 'KRW'], factors: { 'USD': 0.05, 'KRW': 0.00004 } },
+  { name: 'IT Services (spend)', translationKey: 'itServicesSpend', units: ['USD', 'KRW'], factors: { 'USD': 0.1, 'KRW': 0.00008 } },
+];
+
+// Category 2
+export const CAPITAL_GOODS_FACTORS: CO2eFactorFuel[] = [
+  { name: 'Computer Hardware (spend)', translationKey: 'computerHardwareSpend', units: ['USD', 'KRW'], factors: { 'USD': 0.3, 'KRW': 0.00025 } },
+  { name: 'Heavy Machinery (spend)', translationKey: 'heavyMachinerySpend', units: ['USD', 'KRW'], factors: { 'USD': 0.8, 'KRW': 0.00065 } },
+];
+
+// Category 3
+export const FUEL_ENERGY_ACTIVITIES_FACTORS: CO2eFactorFuel[] = [
+  { name: 'Upstream - Natural Gas', translationKey: 'upstreamNaturalGas', units: ['cubic meters', 'therms'], factors: { 'cubic meters': 0.5, 'therms': 1.4 } },
+  { name: 'Upstream - Gasoline', translationKey: 'upstreamGasoline', units: ['liters', 'gallons'], factors: { 'liters': 0.6, 'gallons': 2.2 } },
+  { name: 'Electricity T&D Losses', translationKey: 'electricityT&DLosses', units: ['kWh', 'MWh'], factors: { 'kWh': 0.03, 'MWh': 30 } },
+];
+
+// Category 4 & 9
+export const TRANSPORTATION_DISTRIBUTION_FACTORS: CO2eFactorFuel[] = [
+  { name: 'Road Freight (tonne-km)', translationKey: 'roadFreight', units: ['tonne-km'], factors: { 'tonne-km': 0.12 } },
+  { name: 'Rail Freight (tonne-km)', translationKey: 'railFreight', units: ['tonne-km'], factors: { 'tonne-km': 0.02 } },
+  { name: 'Sea Freight (tonne-km)', translationKey: 'seaFreight', units: ['tonne-km'], factors: { 'tonne-km': 0.015 } },
+  { name: 'Air Freight (tonne-km)', translationKey: 'airFreight', units: ['tonne-km'], factors: { 'tonne-km': 0.6 } },
+];
+
+// Category 5: Factors for waste generated in operations but treated OFF-SITE by third parties (Scope 3)
+export const SCOPE3_WASTE_FACTORS: CO2eFactorFuel[] = [
+  {
+    name: 'MSW sent to Landfill',
+    translationKey: 'mswLandfill',
+    units: ['tonnes'],
+    factors: { 'tonnes': 690 }, // Includes collection, transport, and landfill CH4 emissions.
+  },
+  {
+    name: 'MSW Incinerated (off-site)',
+    translationKey: 'mswIncinerationOffsite',
+    units: ['tonnes'],
+    factors: { 'tonnes': 320 }, // Lower than Scope 1 as it often involves energy recovery.
+  },
+  {
+    name: 'Mixed Recyclables',
+    translationKey: 'mixedRecyclables',
+    units: ['tonnes'],
+    factors: { 'tonnes': 25 }, // Emissions from collection and processing.
+  },
+];
+
+// Category 6
 export const BUSINESS_TRAVEL_FACTORS: CO2eFactorFuel[] = [
   {
     name: 'Air Travel - Short-haul (<463 km)',
@@ -283,6 +333,7 @@ export const BUSINESS_TRAVEL_FACTORS: CO2eFactorFuel[] = [
   },
 ];
 
+// Category 7
 export const EMPLOYEE_COMMUTING_FACTORS: CO2eFactorFuel[] = [
   {
     name: 'Personal Car (Gasoline)',
@@ -310,27 +361,42 @@ export const EMPLOYEE_COMMUTING_FACTORS: CO2eFactorFuel[] = [
   },
 ];
 
-// Factors for waste generated in operations but treated OFF-SITE by third parties (Scope 3)
-export const SCOPE3_WASTE_FACTORS: CO2eFactorFuel[] = [
-  {
-    name: 'MSW sent to Landfill',
-    translationKey: 'mswLandfill',
-    units: ['tonnes'],
-    factors: { 'tonnes': 690 }, // Includes collection, transport, and landfill CH4 emissions.
-  },
-  {
-    name: 'MSW Incinerated (off-site)',
-    translationKey: 'mswIncinerationOffsite',
-    units: ['tonnes'],
-    factors: { 'tonnes': 320 }, // Lower than Scope 1 as it often involves energy recovery.
-  },
-  {
-    name: 'Mixed Recyclables',
-    translationKey: 'mixedRecyclables',
-    units: ['tonnes'],
-    factors: { 'tonnes': 25 }, // Emissions from collection and processing.
-  },
+// Category 8 & 13
+export const LEASED_ASSETS_FACTORS: CO2eFactorFuel[] = [
+  { name: 'Leased Office Space', translationKey: 'leasedOffice', units: ['square meter-year'], factors: { 'square meter-year': 35 } },
+  { name: 'Leased Warehouse', translationKey: 'leasedWarehouse', units: ['square meter-year'], factors: { 'square meter-year': 20 } },
 ];
+
+// Category 10
+export const PROCESSING_SOLD_PRODUCTS_FACTORS: CO2eFactorFuel[] = [
+  { name: 'Chemical Processing', translationKey: 'chemProcessing', units: ['tonnes processed'], factors: { 'tonnes processed': 250 } },
+  { name: 'Metal Forging', translationKey: 'metalForging', units: ['tonnes processed'], factors: { 'tonnes processed': 400 } },
+];
+
+// Category 11
+export const USE_SOLD_PRODUCTS_FACTORS: CO2eFactorFuel[] = [
+  { name: 'Electronics Lifetime Energy', translationKey: 'electronicsLifetime', units: ['product-unit'], factors: { 'product-unit': 150 } }, // kg CO2e per unit sold, assuming lifetime kWh * grid factor
+  { name: 'Vehicle Lifetime Fuel', translationKey: 'vehicleLifetime', units: ['product-unit'], factors: { 'product-unit': 35000 } }, // kg CO2e per vehicle, assuming lifetime mileage * fuel factor
+];
+
+// Category 12
+export const END_OF_LIFE_TREATMENT_FACTORS: CO2eFactorFuel[] = [
+  { name: 'Sold Product to Landfill', translationKey: 'soldProductLandfill', units: ['tonnes'], factors: { 'tonnes': 690 } },
+  { name: 'Sold Product Incinerated', translationKey: 'soldProductIncinerated', units: ['tonnes'], factors: { 'tonnes': 320 } },
+];
+
+// Category 14
+export const FRANCHISES_FACTORS: CO2eFactorFuel[] = [
+  { name: 'Retail Franchise', translationKey: 'retailFranchise', units: ['location-year'], factors: { 'location-year': 50000 } }, // 50 tCO2e
+  { name: 'Restaurant Franchise', translationKey: 'restaurantFranchise', units: ['location-year'], factors: { 'location-year': 150000 } }, // 150 tCO2e
+];
+
+// Category 15
+export const INVESTMENTS_FACTORS: CO2eFactorFuel[] = [
+  { name: 'Investment in Tech Sector', translationKey: 'investTech', units: ['USD invested', 'KRW invested'], factors: { 'USD invested': 0.02, 'KRW invested': 0.000015 } },
+  { name: 'Investment in Manufacturing', translationKey: 'investManufacturing', units: ['USD invested', 'KRW invested'], factors: { 'USD invested': 0.25, 'KRW invested': 0.0002 } },
+];
+
 
 export const ALL_SCOPE3_CATEGORIES: EmissionCategory[] = [
   EmissionCategory.PurchasedGoodsAndServices,

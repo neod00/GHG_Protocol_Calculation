@@ -1,13 +1,21 @@
 // Fix: Corrected typo in React import
 import React, { useState, useMemo, useEffect } from 'react';
 import { EmissionCategory, EmissionSource, Refrigerant, Facility, BoundaryApproach, EditableRefrigerant, CO2eFactorFuel } from '../types';
-import { STATIONARY_FUELS, MOBILE_FUELS, PROCESS_MATERIALS, FUGITIVE_GASES, SCOPE2_ENERGY_SOURCES, WASTE_SOURCES, BUSINESS_TRAVEL_FACTORS, EMPLOYEE_COMMUTING_FACTORS, SCOPE3_WASTE_FACTORS, ALL_SCOPE3_CATEGORIES } from '../constants';
-import { EmissionSourceCard } from './EmissionSourceCard';
+import { 
+    STATIONARY_FUELS, MOBILE_FUELS, PROCESS_MATERIALS, FUGITIVE_GASES, SCOPE2_ENERGY_SOURCES, WASTE_SOURCES, 
+    BUSINESS_TRAVEL_FACTORS, EMPLOYEE_COMMUTING_FACTORS, SCOPE3_WASTE_FACTORS,
+    PURCHASED_GOODS_SERVICES_FACTORS, CAPITAL_GOODS_FACTORS, FUEL_ENERGY_ACTIVITIES_FACTORS,
+    TRANSPORTATION_DISTRIBUTION_FACTORS, LEASED_ASSETS_FACTORS, PROCESSING_SOLD_PRODUCTS_FACTORS,
+    USE_SOLD_PRODUCTS_FACTORS, END_OF_LIFE_TREATMENT_FACTORS, FRANCHISES_FACTORS, INVESTMENTS_FACTORS
+} from '../constants';
 import { ResultsDisplay } from './ResultsDisplay';
 import { useTranslation } from '../LanguageContext';
 import { FactorManager } from './FactorManager';
 import { BoundarySetupWizard } from './BoundarySetupWizard';
 import { ReportGenerator } from './ReportGenerator';
+import { Scope1Calculator } from './Scope1Calculator';
+import { Scope2Calculator } from './Scope2Calculator';
+import { Scope3Calculator } from './Scope3Calculator';
 
 const allCategories = Object.values(EmissionCategory);
 
@@ -71,18 +79,22 @@ export const MainCalculator: React.FC = () => {
       const saved = localStorage.getItem('ghg-calc-scope2EnergySources');
       return saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(SCOPE2_ENERGY_SOURCES));
   });
-  const [businessTravelFactors, setBusinessTravelFactors] = useState<CO2eFactorFuel[]>(() => {
-      const saved = localStorage.getItem('ghg-calc-businessTravelFactors');
-      return saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(BUSINESS_TRAVEL_FACTORS));
-  });
-  const [employeeCommutingFactors, setEmployeeCommutingFactors] = useState<CO2eFactorFuel[]>(() => {
-      const saved = localStorage.getItem('ghg-calc-employeeCommutingFactors');
-      return saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(EMPLOYEE_COMMUTING_FACTORS));
-  });
-  const [scope3WasteFactors, setScope3WasteFactors] = useState<CO2eFactorFuel[]>(() => {
-      const saved = localStorage.getItem('ghg-calc-scope3WasteFactors');
-      return saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(SCOPE3_WASTE_FACTORS));
-  });
+  // Scope 3 Factors State
+    const [purchasedGoodsFactors, setPurchasedGoodsFactors] = useState<CO2eFactorFuel[]>(() => JSON.parse(localStorage.getItem('ghg-calc-purchasedGoodsFactors') || JSON.stringify(PURCHASED_GOODS_SERVICES_FACTORS)));
+    const [capitalGoodsFactors, setCapitalGoodsFactors] = useState<CO2eFactorFuel[]>(() => JSON.parse(localStorage.getItem('ghg-calc-capitalGoodsFactors') || JSON.stringify(CAPITAL_GOODS_FACTORS)));
+    const [fuelEnergyActivitiesFactors, setFuelEnergyActivitiesFactors] = useState<CO2eFactorFuel[]>(() => JSON.parse(localStorage.getItem('ghg-calc-fuelEnergyActivitiesFactors') || JSON.stringify(FUEL_ENERGY_ACTIVITIES_FACTORS)));
+    const [upstreamTransportationDistributionFactors, setUpstreamTransportationDistributionFactors] = useState<CO2eFactorFuel[]>(() => JSON.parse(localStorage.getItem('ghg-calc-upstreamTransportationDistributionFactors') || JSON.stringify(TRANSPORTATION_DISTRIBUTION_FACTORS)));
+    const [downstreamTransportationDistributionFactors, setDownstreamTransportationDistributionFactors] = useState<CO2eFactorFuel[]>(() => JSON.parse(localStorage.getItem('ghg-calc-downstreamTransportationDistributionFactors') || JSON.stringify(TRANSPORTATION_DISTRIBUTION_FACTORS)));
+    const [scope3WasteFactors, setScope3WasteFactors] = useState<CO2eFactorFuel[]>(() => JSON.parse(localStorage.getItem('ghg-calc-scope3WasteFactors') || JSON.stringify(SCOPE3_WASTE_FACTORS)));
+    const [businessTravelFactors, setBusinessTravelFactors] = useState<CO2eFactorFuel[]>(() => JSON.parse(localStorage.getItem('ghg-calc-businessTravelFactors') || JSON.stringify(BUSINESS_TRAVEL_FACTORS)));
+    const [employeeCommutingFactors, setEmployeeCommutingFactors] = useState<CO2eFactorFuel[]>(() => JSON.parse(localStorage.getItem('ghg-calc-employeeCommutingFactors') || JSON.stringify(EMPLOYEE_COMMUTING_FACTORS)));
+    const [upstreamLeasedAssetsFactors, setUpstreamLeasedAssetsFactors] = useState<CO2eFactorFuel[]>(() => JSON.parse(localStorage.getItem('ghg-calc-upstreamLeasedAssetsFactors') || JSON.stringify(LEASED_ASSETS_FACTORS)));
+    const [downstreamLeasedAssetsFactors, setDownstreamLeasedAssetsFactors] = useState<CO2eFactorFuel[]>(() => JSON.parse(localStorage.getItem('ghg-calc-downstreamLeasedAssetsFactors') || JSON.stringify(LEASED_ASSETS_FACTORS)));
+    const [processingSoldProductsFactors, setProcessingSoldProductsFactors] = useState<CO2eFactorFuel[]>(() => JSON.parse(localStorage.getItem('ghg-calc-processingSoldProductsFactors') || JSON.stringify(PROCESSING_SOLD_PRODUCTS_FACTORS)));
+    const [useSoldProductsFactors, setUseSoldProductsFactors] = useState<CO2eFactorFuel[]>(() => JSON.parse(localStorage.getItem('ghg-calc-useSoldProductsFactors') || JSON.stringify(USE_SOLD_PRODUCTS_FACTORS)));
+    const [endOfLifeTreatmentFactors, setEndOfLifeTreatmentFactors] = useState<CO2eFactorFuel[]>(() => JSON.parse(localStorage.getItem('ghg-calc-endOfLifeTreatmentFactors') || JSON.stringify(END_OF_LIFE_TREATMENT_FACTORS)));
+    const [franchisesFactors, setFranchisesFactors] = useState<CO2eFactorFuel[]>(() => JSON.parse(localStorage.getItem('ghg-calc-franchisesFactors') || JSON.stringify(FRANCHISES_FACTORS)));
+    const [investmentsFactors, setInvestmentsFactors] = useState<CO2eFactorFuel[]>(() => JSON.parse(localStorage.getItem('ghg-calc-investmentsFactors') || JSON.stringify(INVESTMENTS_FACTORS)));
 
   
   // UI State
@@ -112,11 +124,31 @@ export const MainCalculator: React.FC = () => {
       localStorage.setItem('ghg-calc-fugitiveGases', JSON.stringify(fugitiveGases));
       localStorage.setItem('ghg-calc-scope2EnergySources', JSON.stringify(scope2EnergySources));
       localStorage.setItem('ghg-calc-wasteSources', JSON.stringify(wasteSources));
+      // Persist Scope 3 factors
+      localStorage.setItem('ghg-calc-purchasedGoodsFactors', JSON.stringify(purchasedGoodsFactors));
+      localStorage.setItem('ghg-calc-capitalGoodsFactors', JSON.stringify(capitalGoodsFactors));
+      localStorage.setItem('ghg-calc-fuelEnergyActivitiesFactors', JSON.stringify(fuelEnergyActivitiesFactors));
+      localStorage.setItem('ghg-calc-upstreamTransportationDistributionFactors', JSON.stringify(upstreamTransportationDistributionFactors));
+      localStorage.setItem('ghg-calc-downstreamTransportationDistributionFactors', JSON.stringify(downstreamTransportationDistributionFactors));
+      localStorage.setItem('ghg-calc-scope3WasteFactors', JSON.stringify(scope3WasteFactors));
       localStorage.setItem('ghg-calc-businessTravelFactors', JSON.stringify(businessTravelFactors));
       localStorage.setItem('ghg-calc-employeeCommutingFactors', JSON.stringify(employeeCommutingFactors));
-      localStorage.setItem('ghg-calc-scope3WasteFactors', JSON.stringify(scope3WasteFactors));
+      localStorage.setItem('ghg-calc-upstreamLeasedAssetsFactors', JSON.stringify(upstreamLeasedAssetsFactors));
+      localStorage.setItem('ghg-calc-downstreamLeasedAssetsFactors', JSON.stringify(downstreamLeasedAssetsFactors));
+      localStorage.setItem('ghg-calc-processingSoldProductsFactors', JSON.stringify(processingSoldProductsFactors));
+      localStorage.setItem('ghg-calc-useSoldProductsFactors', JSON.stringify(useSoldProductsFactors));
+      localStorage.setItem('ghg-calc-endOfLifeTreatmentFactors', JSON.stringify(endOfLifeTreatmentFactors));
+      localStorage.setItem('ghg-calc-franchisesFactors', JSON.stringify(franchisesFactors));
+      localStorage.setItem('ghg-calc-investmentsFactors', JSON.stringify(investmentsFactors));
     }
-  }, [companyName, reportingYear, facilities, boundaryApproach, scope3Settings, isSetupComplete, sources, stationaryFuels, mobileFuels, processMaterials, fugitiveGases, scope2EnergySources, wasteSources, businessTravelFactors, employeeCommutingFactors, scope3WasteFactors]);
+  }, [
+      companyName, reportingYear, facilities, boundaryApproach, scope3Settings, isSetupComplete, sources, 
+      stationaryFuels, mobileFuels, processMaterials, fugitiveGases, scope2EnergySources, wasteSources,
+      purchasedGoodsFactors, capitalGoodsFactors, fuelEnergyActivitiesFactors, upstreamTransportationDistributionFactors, downstreamTransportationDistributionFactors,
+      scope3WasteFactors, businessTravelFactors, employeeCommutingFactors, upstreamLeasedAssetsFactors, downstreamLeasedAssetsFactors,
+      processingSoldProductsFactors, useSoldProductsFactors, endOfLifeTreatmentFactors,
+      franchisesFactors, investmentsFactors
+  ]);
 
 
   const FUELS_MAP: { [key in EmissionCategory]?: (CO2eFactorFuel | Refrigerant)[] } = {
@@ -126,9 +158,22 @@ export const MainCalculator: React.FC = () => {
     [EmissionCategory.FugitiveEmissions]: fugitiveGases,
     [EmissionCategory.PurchasedEnergy]: scope2EnergySources,
     [EmissionCategory.Waste]: wasteSources,
+    // Scope 3
+    [EmissionCategory.PurchasedGoodsAndServices]: purchasedGoodsFactors,
+    [EmissionCategory.CapitalGoods]: capitalGoodsFactors,
+    [EmissionCategory.FuelAndEnergyRelatedActivities]: fuelEnergyActivitiesFactors,
+    [EmissionCategory.UpstreamTransportationAndDistribution]: upstreamTransportationDistributionFactors,
+    [EmissionCategory.WasteGeneratedInOperations]: scope3WasteFactors,
     [EmissionCategory.BusinessTravel]: businessTravelFactors,
     [EmissionCategory.EmployeeCommuting]: employeeCommutingFactors,
-    [EmissionCategory.WasteGeneratedInOperations]: scope3WasteFactors,
+    [EmissionCategory.UpstreamLeasedAssets]: upstreamLeasedAssetsFactors,
+    [EmissionCategory.DownstreamTransportationAndDistribution]: downstreamTransportationDistributionFactors,
+    [EmissionCategory.ProcessingOfSoldProducts]: processingSoldProductsFactors,
+    [EmissionCategory.UseOfSoldProducts]: useSoldProductsFactors,
+    [EmissionCategory.EndOfLifeTreatmentOfSoldProducts]: endOfLifeTreatmentFactors,
+    [EmissionCategory.DownstreamLeasedAssets]: downstreamLeasedAssetsFactors,
+    [EmissionCategory.Franchises]: franchisesFactors,
+    [EmissionCategory.Investments]: investmentsFactors,
   };
   
   const categoryDescriptions: Record<EmissionCategory, string> = {
@@ -203,19 +248,16 @@ export const MainCalculator: React.FC = () => {
     }));
   };
 
-  const scope1Categories = [
-    EmissionCategory.StationaryCombustion,
-    EmissionCategory.MobileCombustion,
-    EmissionCategory.ProcessEmissions,
-    EmissionCategory.FugitiveEmissions,
-    EmissionCategory.Waste,
-  ];
-
-  const scope2Categories = [EmissionCategory.PurchasedEnergy];
-  
   const getScopeForCategory = (category: EmissionCategory): 'scope1' | 'scope2' | 'scope3' => {
+      const scope1Categories = [
+        EmissionCategory.StationaryCombustion,
+        EmissionCategory.MobileCombustion,
+        EmissionCategory.ProcessEmissions,
+        EmissionCategory.FugitiveEmissions,
+        EmissionCategory.Waste,
+      ];
       if (scope1Categories.includes(category)) return 'scope1';
-      if (scope2Categories.includes(category)) return 'scope2';
+      if (category === EmissionCategory.PurchasedEnergy) return 'scope2';
       return 'scope3';
   }
   
@@ -339,6 +381,21 @@ export const MainCalculator: React.FC = () => {
         : 'text-gray-500 hover:text-ghg-dark dark:hover:text-gray-300'
     }`;
 
+  const commonCalculatorProps = {
+    sources: sources,
+    onAddSource: handleAddSource,
+    onUpdateSource: handleUpdateSource,
+    onRemoveSource: handleRemoveSource,
+    onFuelTypeChange: handleFuelTypeChange,
+    fuelsMap: FUELS_MAP,
+    calculateEmissions: calculateSourceEmissions,
+    categoryDescriptions: categoryDescriptions,
+    facilities: facilities,
+    openCategory: openCategory,
+    onToggleCategory: handleToggleCategory,
+    boundaryApproach: boundaryApproach,
+  };
+
   return (
     <>
       <BoundarySetupWizard 
@@ -404,70 +461,14 @@ export const MainCalculator: React.FC = () => {
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {activeTab === 'scope1' && scope1Categories.map((category) => (
-                    <EmissionSourceCard
-                        key={category}
-                        category={category}
-                        sources={sources[category]}
-                        onAddSource={() => handleAddSource(category)}
-                        onUpdateSource={(id, update) => handleUpdateSource(id, category, update)}
-                        onRemoveSource={(id) => handleRemoveSource(id, category)}
-                        onFuelTypeChange={handleFuelTypeChange}
-                        fuels={FUELS_MAP[category] || []}
-                        calculateEmissions={calculateSourceEmissions}
-                        description={categoryDescriptions[category]}
-                        facilities={facilities}
-                        isOpen={openCategory === category}
-                        onToggle={() => handleToggleCategory(category)}
-                        boundaryApproach={boundaryApproach}
-                    />
-                ))}
-                {activeTab === 'scope2' && scope2Categories.map((category) => (
-                    <EmissionSourceCard
-                        key={category}
-                        category={category}
-                        sources={sources[category]}
-                        onAddSource={() => handleAddSource(category)}
-                        onUpdateSource={(id, update) => handleUpdateSource(id, category, update)}
-                        onRemoveSource={(id) => handleRemoveSource(id, category)}
-                        onFuelTypeChange={handleFuelTypeChange}
-                        fuels={FUELS_MAP[category] || []}
-                        calculateEmissions={calculateSourceEmissions}
-                        description={categoryDescriptions[category]}
-                        facilities={facilities}
-                        isOpen={openCategory === category}
-                        onToggle={() => handleToggleCategory(category)}
-                        boundaryApproach={boundaryApproach}
-                    />
-                ))}
+                {activeTab === 'scope1' && <Scope1Calculator {...commonCalculatorProps} />}
+                {activeTab === 'scope2' && <Scope2Calculator {...commonCalculatorProps} />}
                 {activeTab === 'scope3' && scope3Settings.isEnabled && (
-                    <>
-                        {ALL_SCOPE3_CATEGORIES
-                          .filter(category => scope3Settings.enabledCategories.includes(category))
-                          .map((category) => (
-                            <EmissionSourceCard
-                                key={category}
-                                category={category}
-                                sources={sources[category]}
-                                onAddSource={() => handleAddSource(category)}
-                                onUpdateSource={(id, update) => handleUpdateSource(id, category, update)}
-                                onRemoveSource={(id) => handleRemoveSource(id, category)}
-                                onFuelTypeChange={handleFuelTypeChange}
-                                fuels={FUELS_MAP[category] || []}
-                                calculateEmissions={calculateSourceEmissions}
-                                description={categoryDescriptions[category]}
-                                facilities={facilities}
-                                isOpen={openCategory === category}
-                                onToggle={() => handleToggleCategory(category)}
-                                boundaryApproach={boundaryApproach}
-                            />
-                        ))}
-                        <div className="md:col-span-2 flex justify-center items-center p-6 bg-gray-50 dark:bg-gray-800/50 rounded-xl border-2 border-dashed dark:border-gray-600">
-                             <button onClick={() => openWizard(4)} className="bg-white dark:bg-gray-700 text-ghg-dark dark:text-gray-100 font-semibold py-2 px-4 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ghg-green border dark:border-gray-500">
-                                {t('manageScope3Categories')}
-                            </button>
-                        </div>
-                    </>
+                    <Scope3Calculator 
+                        {...commonCalculatorProps} 
+                        enabledScope3Categories={scope3Settings.enabledCategories}
+                        onManageScope3={() => openWizard(4)}
+                    />
                 )}
             </div>
         </div>
@@ -479,18 +480,46 @@ export const MainCalculator: React.FC = () => {
             fugitiveGases={fugitiveGases}
             scope2EnergySources={scope2EnergySources}
             wasteSources={wasteSources}
+            // Scope 3 props
+            purchasedGoodsFactors={purchasedGoodsFactors}
+            capitalGoodsFactors={capitalGoodsFactors}
+            fuelEnergyActivitiesFactors={fuelEnergyActivitiesFactors}
+            upstreamTransportationDistributionFactors={upstreamTransportationDistributionFactors}
+            downstreamTransportationDistributionFactors={downstreamTransportationDistributionFactors}
+            scope3WasteFactors={scope3WasteFactors}
             businessTravelFactors={businessTravelFactors}
             employeeCommutingFactors={employeeCommutingFactors}
-            scope3WasteFactors={scope3WasteFactors}
+            upstreamLeasedAssetsFactors={upstreamLeasedAssetsFactors}
+            downstreamLeasedAssetsFactors={downstreamLeasedAssetsFactors}
+            processingSoldProductsFactors={processingSoldProductsFactors}
+            useSoldProductsFactors={useSoldProductsFactors}
+            endOfLifeTreatmentFactors={endOfLifeTreatmentFactors}
+            franchisesFactors={franchisesFactors}
+            investmentsFactors={investmentsFactors}
+            // Setters
             onStationaryChange={setStationaryFuels}
             onMobileChange={setMobileFuels}
             onProcessChange={setProcessMaterials}
             onFugitiveChange={setFugitiveGases}
             onScope2Change={setScope2EnergySources}
             onWasteChange={setWasteSources}
+            // Scope 3 setters
+            onPurchasedGoodsChange={setPurchasedGoodsFactors}
+            onCapitalGoodsChange={setCapitalGoodsFactors}
+            onFuelEnergyActivitiesChange={setFuelEnergyActivitiesFactors}
+            onUpstreamTransportationDistributionChange={setUpstreamTransportationDistributionFactors}
+            onDownstreamTransportationDistributionChange={setDownstreamTransportationDistributionFactors}
+            onScope3WasteChange={setScope3WasteFactors}
             onBusinessTravelChange={setBusinessTravelFactors}
             onEmployeeCommutingChange={setEmployeeCommutingFactors}
-            onScope3WasteChange={setScope3WasteFactors}
+            onUpstreamLeasedAssetsChange={setUpstreamLeasedAssetsFactors}
+            onDownstreamLeasedAssetsChange={setDownstreamLeasedAssetsFactors}
+            onProcessingSoldProductsChange={setProcessingSoldProductsFactors}
+            onUseSoldProductsChange={setUseSoldProductsFactors}
+            onEndOfLifeTreatmentChange={setEndOfLifeTreatmentFactors}
+            onFranchisesChange={setFranchisesFactors}
+            onInvestmentsChange={setInvestmentsFactors}
+
             enabledScope3Categories={scope3Settings.enabledCategories}
         />
       </div>

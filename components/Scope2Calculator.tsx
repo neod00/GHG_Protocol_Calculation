@@ -17,18 +17,12 @@ interface ScopeCalculatorProps {
   boundaryApproach: BoundaryApproach;
 }
 
-const scope1Categories = [
-  EmissionCategory.StationaryCombustion,
-  EmissionCategory.MobileCombustion,
-  EmissionCategory.ProcessEmissions,
-  EmissionCategory.FugitiveEmissions,
-  EmissionCategory.Waste,
-];
+const scope2Categories = [EmissionCategory.PurchasedEnergy];
 
-export const Scope1Calculator: React.FC<ScopeCalculatorProps> = (props) => {
+export const Scope2Calculator: React.FC<ScopeCalculatorProps> = (props) => {
   return (
     <>
-      {scope1Categories.map((category) => (
+      {scope2Categories.map((category) => (
         <EmissionSourceCard
           key={category}
           category={category}

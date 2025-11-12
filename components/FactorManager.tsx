@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { EditableRefrigerant, EditableCO2eFactorFuel, EmissionCategory } from '../types';
 import { useTranslation } from '../LanguageContext';
-import { SCOPE2_FACTORS_BY_REGION } from '../constants';
+import { ALL_SCOPE3_CATEGORIES, SCOPE2_FACTORS_BY_REGION } from '../constants';
 import { IconTrash, IconInfo } from './IconComponents';
 import { TranslationKey } from '../translations';
 
@@ -101,54 +101,68 @@ interface FactorManagerProps {
   fugitiveGases: EditableRefrigerant[];
   scope2EnergySources: EditableCO2eFactorFuel[];
   wasteSources: EditableCO2eFactorFuel[];
+  // Scope 3
+  purchasedGoodsFactors: EditableCO2eFactorFuel[];
+  capitalGoodsFactors: EditableCO2eFactorFuel[];
+  fuelEnergyActivitiesFactors: EditableCO2eFactorFuel[];
+  upstreamTransportationDistributionFactors: EditableCO2eFactorFuel[];
+  downstreamTransportationDistributionFactors: EditableCO2eFactorFuel[];
+  scope3WasteFactors: EditableCO2eFactorFuel[];
   businessTravelFactors: EditableCO2eFactorFuel[];
   employeeCommutingFactors: EditableCO2eFactorFuel[];
-  scope3WasteFactors: EditableCO2eFactorFuel[];
+  upstreamLeasedAssetsFactors: EditableCO2eFactorFuel[];
+  downstreamLeasedAssetsFactors: EditableCO2eFactorFuel[];
+  processingSoldProductsFactors: EditableCO2eFactorFuel[];
+  useSoldProductsFactors: EditableCO2eFactorFuel[];
+  endOfLifeTreatmentFactors: EditableCO2eFactorFuel[];
+  franchisesFactors: EditableCO2eFactorFuel[];
+  investmentsFactors: EditableCO2eFactorFuel[];
+
   onStationaryChange: (fuels: EditableCO2eFactorFuel[]) => void;
   onMobileChange: (fuels: EditableCO2eFactorFuel[]) => void;
   onProcessChange: (fuels: EditableCO2eFactorFuel[]) => void;
   onFugitiveChange: (refrigerants: EditableRefrigerant[]) => void;
   onScope2Change: (fuels: EditableCO2eFactorFuel[]) => void;
   onWasteChange: (fuels: EditableCO2eFactorFuel[]) => void;
+  // Scope 3 setters
+  onPurchasedGoodsChange: (fuels: EditableCO2eFactorFuel[]) => void;
+  onCapitalGoodsChange: (fuels: EditableCO2eFactorFuel[]) => void;
+  onFuelEnergyActivitiesChange: (fuels: EditableCO2eFactorFuel[]) => void;
+  onUpstreamTransportationDistributionChange: (fuels: EditableCO2eFactorFuel[]) => void;
+  onDownstreamTransportationDistributionChange: (fuels: EditableCO2eFactorFuel[]) => void;
+  onScope3WasteChange: (fuels: EditableCO2eFactorFuel[]) => void;
   onBusinessTravelChange: (fuels: EditableCO2eFactorFuel[]) => void;
   onEmployeeCommutingChange: (fuels: EditableCO2eFactorFuel[]) => void;
-  onScope3WasteChange: (fuels: EditableCO2eFactorFuel[]) => void;
+  onUpstreamLeasedAssetsChange: (fuels: EditableCO2eFactorFuel[]) => void;
+  onDownstreamLeasedAssetsChange: (fuels: EditableCO2eFactorFuel[]) => void;
+  onProcessingSoldProductsChange: (fuels: EditableCO2eFactorFuel[]) => void;
+  onUseSoldProductsChange: (fuels: EditableCO2eFactorFuel[]) => void;
+  onEndOfLifeTreatmentChange: (fuels: EditableCO2eFactorFuel[]) => void;
+  onFranchisesChange: (fuels: EditableCO2eFactorFuel[]) => void;
+  onInvestmentsChange: (fuels: EditableCO2eFactorFuel[]) => void;
+  
   enabledScope3Categories: EmissionCategory[];
 }
 
 type ActiveTab = 'Scope 1 - Stationary' | 'Scope 1 - Mobile' | 'Scope 1 - Process' | 'Scope 1 - Fugitive' | 'Scope 1 - Waste' | 'Scope 2' | 'Scope 3';
 
-const scope3FactorCategories = [
-    EmissionCategory.BusinessTravel,
-    EmissionCategory.EmployeeCommuting,
-    EmissionCategory.WasteGeneratedInOperations,
-];
+const scope3FactorCategories = ALL_SCOPE3_CATEGORIES;
 
-export const FactorManager: React.FC<FactorManagerProps> = ({
-  stationaryFuels,
-  mobileFuels,
-  processMaterials,
-  fugitiveGases,
-  scope2EnergySources,
-  wasteSources,
-  businessTravelFactors,
-  employeeCommutingFactors,
-  scope3WasteFactors,
-  onStationaryChange,
-  onMobileChange,
-  onProcessChange,
-  onFugitiveChange,
-  onScope2Change,
-  onWasteChange,
-  onBusinessTravelChange,
-  onEmployeeCommutingChange,
-  onScope3WasteChange,
-  enabledScope3Categories,
-}) => {
+export const FactorManager: React.FC<FactorManagerProps> = (props) => {
   const { t, language } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<ActiveTab>('Scope 1 - Stationary');
   
+  const {
+      stationaryFuels, mobileFuels, processMaterials, fugitiveGases, scope2EnergySources, wasteSources,
+      purchasedGoodsFactors, capitalGoodsFactors, fuelEnergyActivitiesFactors, 
+      upstreamTransportationDistributionFactors, downstreamTransportationDistributionFactors,
+      scope3WasteFactors, businessTravelFactors, employeeCommutingFactors, 
+      upstreamLeasedAssetsFactors, downstreamLeasedAssetsFactors,
+      processingSoldProductsFactors, useSoldProductsFactors, endOfLifeTreatmentFactors,
+      franchisesFactors, investmentsFactors, enabledScope3Categories,
+  } = props;
+
   // State for existing items being edited
   const [editedStationary, setEditedStationary] = useState<EditableCO2eFactorFuel[]>([]);
   const [editedMobile, setEditedMobile] = useState<EditableCO2eFactorFuel[]>([]);
@@ -156,27 +170,32 @@ export const FactorManager: React.FC<FactorManagerProps> = ({
   const [editedFugitive, setEditedFugitive] = useState<EditableRefrigerant[]>([]);
   const [editedWaste, setEditedWaste] = useState<EditableCO2eFactorFuel[]>([]);
   const [editedScope2, setEditedScope2] = useState<EditableCO2eFactorFuel[]>([]);
+  // Scope 3 edit states
+  const [editedPurchasedGoods, setEditedPurchasedGoods] = useState<EditableCO2eFactorFuel[]>([]);
+  const [editedCapitalGoods, setEditedCapitalGoods] = useState<EditableCO2eFactorFuel[]>([]);
+  const [editedFuelEnergy, setEditedFuelEnergy] = useState<EditableCO2eFactorFuel[]>([]);
+  const [editedUpstreamTransportation, setEditedUpstreamTransportation] = useState<EditableCO2eFactorFuel[]>([]);
+  const [editedDownstreamTransportation, setEditedDownstreamTransportation] = useState<EditableCO2eFactorFuel[]>([]);
+  const [editedScope3Waste, setEditedScope3Waste] = useState<EditableCO2eFactorFuel[]>([]);
   const [editedBusinessTravel, setEditedBusinessTravel] = useState<EditableCO2eFactorFuel[]>([]);
   const [editedEmployeeCommuting, setEditedEmployeeCommuting] = useState<EditableCO2eFactorFuel[]>([]);
-  const [editedScope3Waste, setEditedScope3Waste] = useState<EditableCO2eFactorFuel[]>([]);
-  
-  // State for newly added, unsaved items
-  const [newlyAddedStationary, setNewlyAddedStationary] = useState<EditableCO2eFactorFuel[]>([]);
-  const [newlyAddedMobile, setNewlyAddedMobile] = useState<EditableCO2eFactorFuel[]>([]);
-  const [newlyAddedProcess, setNewlyAddedProcess] = useState<EditableCO2eFactorFuel[]>([]);
-  const [newlyAddedFugitive, setNewlyAddedFugitive] = useState<EditableRefrigerant[]>([]);
-  const [newlyAddedWaste, setNewlyAddedWaste] = useState<EditableCO2eFactorFuel[]>([]);
-  const [newlyAddedBusinessTravel, setNewlyAddedBusinessTravel] = useState<EditableCO2eFactorFuel[]>([]);
-  const [newlyAddedEmployeeCommuting, setNewlyAddedEmployeeCommuting] = useState<EditableCO2eFactorFuel[]>([]);
-  const [newlyAddedScope3Waste, setNewlyAddedScope3Waste] = useState<EditableCO2eFactorFuel[]>([]);
+  const [editedUpstreamLeasedAssets, setEditedUpstreamLeasedAssets] = useState<EditableCO2eFactorFuel[]>([]);
+  const [editedDownstreamLeasedAssets, setEditedDownstreamLeasedAssets] = useState<EditableCO2eFactorFuel[]>([]);
+  const [editedProcessingSold, setEditedProcessingSold] = useState<EditableCO2eFactorFuel[]>([]);
+  const [editedUseSold, setEditedUseSold] = useState<EditableCO2eFactorFuel[]>([]);
+  const [editedEndOfLife, setEditedEndOfLife] = useState<EditableCO2eFactorFuel[]>([]);
+  const [editedFranchises, setEditedFranchises] = useState<EditableCO2eFactorFuel[]>([]);
+  const [editedInvestments, setEditedInvestments] = useState<EditableCO2eFactorFuel[]>([]);
 
+  // State for newly added, unsaved items
+  const [newlyAddedMap, setNewlyAddedMap] = useState<{[key: string]: (EditableCO2eFactorFuel[] | EditableRefrigerant[])}>({});
+  
   const [activeScope3Category, setActiveScope3Category] = useState<EmissionCategory>(scope3FactorCategories[0]);
   const [selectedRegion, setSelectedRegion] = useState<string>('Custom');
   const [showAddForm, setShowAddForm] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
-      // Set editable states
       setEditedStationary(JSON.parse(JSON.stringify(stationaryFuels)));
       setEditedMobile(JSON.parse(JSON.stringify(mobileFuels)));
       setEditedProcess(JSON.parse(JSON.stringify(processMaterials)));
@@ -184,23 +203,26 @@ export const FactorManager: React.FC<FactorManagerProps> = ({
       setEditedWaste(JSON.parse(JSON.stringify(wasteSources)));
       const scope2Copy = JSON.parse(JSON.stringify(scope2EnergySources));
       setEditedScope2(scope2Copy);
+      
+      // Scope 3
+      setEditedPurchasedGoods(JSON.parse(JSON.stringify(purchasedGoodsFactors)));
+      setEditedCapitalGoods(JSON.parse(JSON.stringify(capitalGoodsFactors)));
+      setEditedFuelEnergy(JSON.parse(JSON.stringify(fuelEnergyActivitiesFactors)));
+      setEditedUpstreamTransportation(JSON.parse(JSON.stringify(upstreamTransportationDistributionFactors)));
+      setEditedDownstreamTransportation(JSON.parse(JSON.stringify(downstreamTransportationDistributionFactors)));
+      setEditedScope3Waste(JSON.parse(JSON.stringify(scope3WasteFactors)));
       setEditedBusinessTravel(JSON.parse(JSON.stringify(businessTravelFactors)));
       setEditedEmployeeCommuting(JSON.parse(JSON.stringify(employeeCommutingFactors)));
-      setEditedScope3Waste(JSON.parse(JSON.stringify(scope3WasteFactors)));
+      setEditedUpstreamLeasedAssets(JSON.parse(JSON.stringify(upstreamLeasedAssetsFactors)));
+      setEditedDownstreamLeasedAssets(JSON.parse(JSON.stringify(downstreamLeasedAssetsFactors)));
+      setEditedProcessingSold(JSON.parse(JSON.stringify(processingSoldProductsFactors)));
+      setEditedUseSold(JSON.parse(JSON.stringify(useSoldProductsFactors)));
+      setEditedEndOfLife(JSON.parse(JSON.stringify(endOfLifeTreatmentFactors)));
+      setEditedFranchises(JSON.parse(JSON.stringify(franchisesFactors)));
+      setEditedInvestments(JSON.parse(JSON.stringify(investmentsFactors)));
 
+      setNewlyAddedMap({});
       
-      // Clear temporary newly added states
-      setNewlyAddedStationary([]);
-      setNewlyAddedMobile([]);
-      setNewlyAddedProcess([]);
-      setNewlyAddedFugitive([]);
-      setNewlyAddedWaste([]);
-      setNewlyAddedBusinessTravel([]);
-      setNewlyAddedEmployeeCommuting([]);
-      setNewlyAddedScope3Waste([]);
-
-
-      // Logic for Scope 2 region matching
       const electricitySource = scope2Copy.find((s: EditableCO2eFactorFuel) => s.name === 'Grid Electricity');
       if (electricitySource) {
         const currentFactors = electricitySource.factors;
@@ -214,30 +236,28 @@ export const FactorManager: React.FC<FactorManagerProps> = ({
         setSelectedRegion(matchedRegion);
       }
     }
-  }, [isOpen, stationaryFuels, mobileFuels, processMaterials, fugitiveGases, scope2EnergySources, wasteSources, businessTravelFactors, employeeCommutingFactors, scope3WasteFactors]);
+  }, [isOpen, stationaryFuels, mobileFuels, processMaterials, fugitiveGases, scope2EnergySources, wasteSources,
+      purchasedGoodsFactors, capitalGoodsFactors, fuelEnergyActivitiesFactors, upstreamTransportationDistributionFactors, downstreamTransportationDistributionFactors,
+      scope3WasteFactors, businessTravelFactors, employeeCommutingFactors, upstreamLeasedAssetsFactors, downstreamLeasedAssetsFactors,
+      processingSoldProductsFactors, useSoldProductsFactors, endOfLifeTreatmentFactors,
+      franchisesFactors, investmentsFactors
+  ]);
 
-  const handleCO2eFactorChange = (itemIndex: number, unit: string, value: string, category: 'stationary' | 'mobile' | 'process' | 'scope2' | 'waste' | 'businessTravel' | 'employeeCommuting' | 'scope3Waste') => {
+  const handleCO2eFactorChange = (itemIndex: number, unit: string, value: string, setFn: React.Dispatch<React.SetStateAction<EditableCO2eFactorFuel[]>>) => {
     const newValue = parseFloat(value) || 0;
     const updater = (p: EditableCO2eFactorFuel[]) => p.map((f, i) => i === itemIndex ? {...f, factors: {...f.factors, [unit]: newValue}} : f);
-    
-    switch(category) {
-        case 'stationary': setEditedStationary(updater); break;
-        case 'mobile': setEditedMobile(updater); break;
-        case 'process': setEditedProcess(updater); break;
-        case 'waste': setEditedWaste(updater); break;
-        case 'businessTravel': setEditedBusinessTravel(updater); break;
-        case 'employeeCommuting': setEditedEmployeeCommuting(updater); break;
-        case 'scope3Waste': setEditedScope3Waste(updater); break;
-        case 'scope2':
-             setEditedScope2(p => p.map((f, i) => {
-                if (i === itemIndex) {
-                    if (f.name === 'Grid Electricity') setSelectedRegion('Custom');
-                    return {...f, factors: {...f.factors, [unit]: newValue}};
-                }
-                return f;
-            }));
-            break;
-    }
+    setFn(updater);
+  };
+
+  const handleScope2FactorChange = (itemIndex: number, unit: string, value: string) => {
+    const newValue = parseFloat(value) || 0;
+    setEditedScope2(p => p.map((f, i) => {
+        if (i === itemIndex) {
+            if (f.name === 'Grid Electricity') setSelectedRegion('Custom');
+            return {...f, factors: {...f.factors, [unit]: newValue}};
+        }
+        return f;
+    }));
   };
 
   const handleGWPChange = (refIndex: number, value: string) => {
@@ -256,60 +276,43 @@ export const FactorManager: React.FC<FactorManagerProps> = ({
     }
   };
 
-  const handleDelete = (nameToDelete: string, category: ActiveTab | EmissionCategory) => {
+  const handleDelete = (nameToDelete: string, setFn: React.Dispatch<React.SetStateAction<any[]>>) => {
     if (window.confirm(t('confirmRemoveSource'))) {
-        switch(category) {
-            case 'Scope 1 - Stationary':
-                setEditedStationary(prev => prev.filter(item => item.name !== nameToDelete));
-                break;
-            case 'Scope 1 - Mobile':
-                setEditedMobile(prev => prev.filter(item => item.name !== nameToDelete));
-                break;
-            case 'Scope 1 - Process':
-                setEditedProcess(prev => prev.filter(item => item.name !== nameToDelete));
-                break;
-            case 'Scope 1 - Fugitive':
-                setEditedFugitive(prev => prev.filter(item => item.name !== nameToDelete));
-                break;
-            case 'Scope 1 - Waste':
-                setEditedWaste(prev => prev.filter(item => item.name !== nameToDelete));
-                break;
-            case EmissionCategory.BusinessTravel:
-                setEditedBusinessTravel(prev => prev.filter(item => item.name !== nameToDelete));
-                break;
-            case EmissionCategory.EmployeeCommuting:
-                setEditedEmployeeCommuting(prev => prev.filter(item => item.name !== nameToDelete));
-                break;
-            case EmissionCategory.WasteGeneratedInOperations:
-                setEditedScope3Waste(prev => prev.filter(item => item.name !== nameToDelete));
-                break;
-        }
+        setFn(prev => prev.filter(item => item.name !== nameToDelete));
     }
   }
   
-  const handleDeleteNew = (index: number, category: ActiveTab | EmissionCategory) => {
-    switch(category) {
-        case 'Scope 1 - Stationary': setNewlyAddedStationary(p => p.filter((_, i) => i !== index)); break;
-        case 'Scope 1 - Mobile': setNewlyAddedMobile(p => p.filter((_, i) => i !== index)); break;
-        case 'Scope 1 - Process': setNewlyAddedProcess(p => p.filter((_, i) => i !== index)); break;
-        case 'Scope 1 - Fugitive': setNewlyAddedFugitive(p => p.filter((_, i) => i !== index)); break;
-        case 'Scope 1 - Waste': setNewlyAddedWaste(p => p.filter((_, i) => i !== index)); break;
-        case EmissionCategory.BusinessTravel: setNewlyAddedBusinessTravel(p => p.filter((_, i) => i !== index)); break;
-        case EmissionCategory.EmployeeCommuting: setNewlyAddedEmployeeCommuting(p => p.filter((_, i) => i !== index)); break;
-        case EmissionCategory.WasteGeneratedInOperations: setNewlyAddedScope3Waste(p => p.filter((_, i) => i !== index)); break;
-    }
+  const handleDeleteNew = (index: number, category: string) => {
+    setNewlyAddedMap(p => ({
+        ...p,
+        [category]: p[category].filter((_, i) => i !== index)
+    }));
   }
 
   const handleSaveChanges = () => {
-    onStationaryChange([...editedStationary, ...newlyAddedStationary]);
-    onMobileChange([...editedMobile, ...newlyAddedMobile]);
-    onProcessChange([...editedProcess, ...newlyAddedProcess]);
-    onFugitiveChange([...editedFugitive, ...newlyAddedFugitive]);
-    onWasteChange([...editedWaste, ...newlyAddedWaste]);
-    onScope2Change(editedScope2);
-    onBusinessTravelChange([...editedBusinessTravel, ...newlyAddedBusinessTravel]);
-    onEmployeeCommutingChange([...editedEmployeeCommuting, ...newlyAddedEmployeeCommuting]);
-    onScope3WasteChange([...editedScope3Waste, ...newlyAddedScope3Waste]);
+    props.onStationaryChange([...editedStationary, ...(newlyAddedMap['Scope 1 - Stationary'] || []) as EditableCO2eFactorFuel[]]);
+    props.onMobileChange([...editedMobile, ...(newlyAddedMap['Scope 1 - Mobile'] || []) as EditableCO2eFactorFuel[]]);
+    props.onProcessChange([...editedProcess, ...(newlyAddedMap['Scope 1 - Process'] || []) as EditableCO2eFactorFuel[]]);
+    props.onFugitiveChange([...editedFugitive, ...(newlyAddedMap['Scope 1 - Fugitive'] || []) as EditableRefrigerant[]]);
+    props.onWasteChange([...editedWaste, ...(newlyAddedMap['Scope 1 - Waste'] || []) as EditableCO2eFactorFuel[]]);
+    props.onScope2Change(editedScope2);
+
+    props.onPurchasedGoodsChange([...editedPurchasedGoods, ...(newlyAddedMap[EmissionCategory.PurchasedGoodsAndServices] || []) as EditableCO2eFactorFuel[]]);
+    props.onCapitalGoodsChange([...editedCapitalGoods, ...(newlyAddedMap[EmissionCategory.CapitalGoods] || []) as EditableCO2eFactorFuel[]]);
+    props.onFuelEnergyActivitiesChange([...editedFuelEnergy, ...(newlyAddedMap[EmissionCategory.FuelAndEnergyRelatedActivities] || []) as EditableCO2eFactorFuel[]]);
+    props.onUpstreamTransportationDistributionChange([...editedUpstreamTransportation, ...(newlyAddedMap[EmissionCategory.UpstreamTransportationAndDistribution] || []) as EditableCO2eFactorFuel[]]);
+    props.onDownstreamTransportationDistributionChange([...editedDownstreamTransportation, ...(newlyAddedMap[EmissionCategory.DownstreamTransportationAndDistribution] || []) as EditableCO2eFactorFuel[]]);
+    props.onScope3WasteChange([...editedScope3Waste, ...(newlyAddedMap[EmissionCategory.WasteGeneratedInOperations] || []) as EditableCO2eFactorFuel[]]);
+    props.onBusinessTravelChange([...editedBusinessTravel, ...(newlyAddedMap[EmissionCategory.BusinessTravel] || []) as EditableCO2eFactorFuel[]]);
+    props.onEmployeeCommutingChange([...editedEmployeeCommuting, ...(newlyAddedMap[EmissionCategory.EmployeeCommuting] || []) as EditableCO2eFactorFuel[]]);
+    props.onUpstreamLeasedAssetsChange([...editedUpstreamLeasedAssets, ...(newlyAddedMap[EmissionCategory.UpstreamLeasedAssets] || []) as EditableCO2eFactorFuel[]]);
+    props.onDownstreamLeasedAssetsChange([...editedDownstreamLeasedAssets, ...(newlyAddedMap[EmissionCategory.DownstreamLeasedAssets] || []) as EditableCO2eFactorFuel[]]);
+    props.onProcessingSoldProductsChange([...editedProcessingSold, ...(newlyAddedMap[EmissionCategory.ProcessingOfSoldProducts] || []) as EditableCO2eFactorFuel[]]);
+    props.onUseSoldProductsChange([...editedUseSold, ...(newlyAddedMap[EmissionCategory.UseOfSoldProducts] || []) as EditableCO2eFactorFuel[]]);
+    props.onEndOfLifeTreatmentChange([...editedEndOfLife, ...(newlyAddedMap[EmissionCategory.EndOfLifeTreatmentOfSoldProducts] || []) as EditableCO2eFactorFuel[]]);
+    props.onFranchisesChange([...editedFranchises, ...(newlyAddedMap[EmissionCategory.Franchises] || []) as EditableCO2eFactorFuel[]]);
+    props.onInvestmentsChange([...editedInvestments, ...(newlyAddedMap[EmissionCategory.Investments] || []) as EditableCO2eFactorFuel[]]);
+
     setIsOpen(false);
   };
 
@@ -321,72 +324,92 @@ export const FactorManager: React.FC<FactorManagerProps> = ({
   const tabClasses = (tabName: ActiveTab) => `px-3 py-2 text-sm font-medium rounded-md focus:outline-none whitespace-nowrap ${activeTab === tabName ? 'bg-ghg-green text-white' : 'text-gray-600 hover:bg-gray-200 dark:text-gray-300 dark:hover:bg-gray-600'}`;
   const regionData = selectedRegion !== 'Custom' ? SCOPE2_FACTORS_BY_REGION[selectedRegion] : null;
 
+  const getScope3StateAccessors = () => ({
+    [EmissionCategory.PurchasedGoodsAndServices]: { edited: editedPurchasedGoods, setEdited: setEditedPurchasedGoods, newlyAdded: newlyAddedMap[EmissionCategory.PurchasedGoodsAndServices] || [] },
+    [EmissionCategory.CapitalGoods]: { edited: editedCapitalGoods, setEdited: setEditedCapitalGoods, newlyAdded: newlyAddedMap[EmissionCategory.CapitalGoods] || [] },
+    [EmissionCategory.FuelAndEnergyRelatedActivities]: { edited: editedFuelEnergy, setEdited: setEditedFuelEnergy, newlyAdded: newlyAddedMap[EmissionCategory.FuelAndEnergyRelatedActivities] || [] },
+    [EmissionCategory.UpstreamTransportationAndDistribution]: { edited: editedUpstreamTransportation, setEdited: setEditedUpstreamTransportation, newlyAdded: newlyAddedMap[EmissionCategory.UpstreamTransportationAndDistribution] || [] },
+    [EmissionCategory.WasteGeneratedInOperations]: { edited: editedScope3Waste, setEdited: setEditedScope3Waste, newlyAdded: newlyAddedMap[EmissionCategory.WasteGeneratedInOperations] || [] },
+    [EmissionCategory.BusinessTravel]: { edited: editedBusinessTravel, setEdited: setEditedBusinessTravel, newlyAdded: newlyAddedMap[EmissionCategory.BusinessTravel] || [] },
+    [EmissionCategory.EmployeeCommuting]: { edited: editedEmployeeCommuting, setEdited: setEditedEmployeeCommuting, newlyAdded: newlyAddedMap[EmissionCategory.EmployeeCommuting] || [] },
+    [EmissionCategory.UpstreamLeasedAssets]: { edited: editedUpstreamLeasedAssets, setEdited: setEditedUpstreamLeasedAssets, newlyAdded: newlyAddedMap[EmissionCategory.UpstreamLeasedAssets] || [] },
+    [EmissionCategory.DownstreamTransportationAndDistribution]: { edited: editedDownstreamTransportation, setEdited: setEditedDownstreamTransportation, newlyAdded: newlyAddedMap[EmissionCategory.DownstreamTransportationAndDistribution] || [] },
+    [EmissionCategory.ProcessingOfSoldProducts]: { edited: editedProcessingSold, setEdited: setEditedProcessingSold, newlyAdded: newlyAddedMap[EmissionCategory.ProcessingOfSoldProducts] || [] },
+    [EmissionCategory.UseOfSoldProducts]: { edited: editedUseSold, setEdited: setEditedUseSold, newlyAdded: newlyAddedMap[EmissionCategory.UseOfSoldProducts] || [] },
+    [EmissionCategory.EndOfLifeTreatmentOfSoldProducts]: { edited: editedEndOfLife, setEdited: setEditedEndOfLife, newlyAdded: newlyAddedMap[EmissionCategory.EndOfLifeTreatmentOfSoldProducts] || [] },
+    [EmissionCategory.DownstreamLeasedAssets]: { edited: editedDownstreamLeasedAssets, setEdited: setEditedDownstreamLeasedAssets, newlyAdded: newlyAddedMap[EmissionCategory.DownstreamLeasedAssets] || [] },
+    [EmissionCategory.Franchises]: { edited: editedFranchises, setEdited: setEditedFranchises, newlyAdded: newlyAddedMap[EmissionCategory.Franchises] || [] },
+    [EmissionCategory.Investments]: { edited: editedInvestments, setEdited: setEditedInvestments, newlyAdded: newlyAddedMap[EmissionCategory.Investments] || [] },
+  });
+
   const renderActiveTabContent = () => {
     const commonInputClass = "w-full border-gray-300 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100 rounded-md shadow-sm py-1 px-2 text-sm";
     const commonCellClass = "px-3 py-2 whitespace-nowrap text-sm";
     
-    let activeCategoryForTable: ActiveTab | EmissionCategory = activeTab;
+    let activeCategoryForTable: string = activeTab;
     if (activeTab === 'Scope 3') {
         activeCategoryForTable = activeScope3Category;
     }
 
-    switch(activeCategoryForTable) {
-        case 'Scope 1 - Stationary':
-        case 'Scope 1 - Mobile':
-        case 'Scope 1 - Process':
-        case 'Scope 1 - Waste':
-        case 'Scope 2':
-        case EmissionCategory.BusinessTravel:
-        case EmissionCategory.EmployeeCommuting:
-        case EmissionCategory.WasteGeneratedInOperations:
-            let co2eData: EditableCO2eFactorFuel[];
-            let newlyAddedData: EditableCO2eFactorFuel[] = [];
-            let category: 'stationary' | 'mobile' | 'process' | 'waste' | 'scope2' | 'businessTravel' | 'employeeCommuting' | 'scope3Waste';
+    const renderCo2eTable = (
+        co2eData: EditableCO2eFactorFuel[], 
+        newlyAddedData: EditableCO2eFactorFuel[], 
+        changeHandler: (idx: number, unit: string, val: string) => void, 
+        deleteHandler: (name: string) => void, 
+        deleteNewHandler: (idx: number) => void
+    ) => (
+        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-600">
+            <thead className="bg-gray-50 dark:bg-gray-800">
+                <tr>
+                    <th className={`${commonCellClass} text-left font-medium text-gray-500 dark:text-gray-300`}>{t('sourceName')}</th>
+                    <th className={`${commonCellClass} text-left font-medium text-gray-500 dark:text-gray-300`}>{t('factorColumnHeader')}</th>
+                    <th className={`${commonCellClass} text-left font-medium text-gray-500 dark:text-gray-300`}></th>
+                </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200 dark:bg-gray-700 dark:divide-gray-600">
+                {co2eData.map((item, index) => Object.entries(item.factors).map(([unit, factor], unitIndex) => (
+                     <tr key={`${item.name}-${unit}`}>
+                        {unitIndex === 0 && <td rowSpan={Object.keys(item.factors).length} className={`${commonCellClass} font-medium align-top`}>{language === 'ko' && item.translationKey ? t(item.translationKey as TranslationKey) : item.name}</td>}
+                        <td className={commonCellClass}><div className="flex items-center gap-1">{t(unit as TranslationKey) || unit}:<input type="number" step="any" value={factor} onChange={e => changeHandler(index, unit, e.target.value)} className={commonInputClass} /></div></td>
+                        {unitIndex === 0 && <td rowSpan={Object.keys(item.factors).length} className={`${commonCellClass} text-center align-top`}>{item.isCustom && <button onClick={() => deleteHandler(item.name)} className="text-red-500 hover:text-red-700"><IconTrash className="w-4 h-4" /></button>}</td>}
+                    </tr>
+                )))}
+                {newlyAddedData.map((item, index) => Object.entries(item.factors).map(([unit, factor], unitIndex) => (
+                     <tr key={`new-${item.name}-${unit}`} className="bg-green-50 dark:bg-green-900/20">
+                        {unitIndex === 0 && <td rowSpan={Object.keys(item.factors).length} className={`${commonCellClass} font-medium align-top`}>
+                            <div className="flex items-center gap-2">
+                                <span>{item.name}</span>
+                                <span className="text-xs font-semibold bg-ghg-accent text-white px-2 py-0.5 rounded-full">{t('newBadge')}</span>
+                            </div>
+                        </td>}
+                        <td className={commonCellClass}><div className="flex items-center gap-1">{unit}: {factor.toLocaleString()}</div></td>
+                        {unitIndex === 0 && <td rowSpan={Object.keys(item.factors).length} className={`${commonCellClass} text-center align-top`}><button onClick={() => deleteNewHandler(index)} className="text-red-500 hover:text-red-700"><IconTrash className="w-4 h-4" /></button></td>}
+                    </tr>
+                )))}
+            </tbody>
+        </table>
+    );
 
-            if (activeCategoryForTable === 'Scope 1 - Stationary') { co2eData = editedStationary; newlyAddedData = newlyAddedStationary; category = 'stationary'; }
-            else if (activeCategoryForTable === 'Scope 1 - Mobile') { co2eData = editedMobile; newlyAddedData = newlyAddedMobile; category = 'mobile'; }
-            else if (activeCategoryForTable === 'Scope 1 - Process') { co2eData = editedProcess; newlyAddedData = newlyAddedProcess; category = 'process'; }
-            else if (activeCategoryForTable === 'Scope 1 - Waste') { co2eData = editedWaste; newlyAddedData = newlyAddedWaste; category = 'waste'; }
-            else if (activeCategoryForTable === EmissionCategory.BusinessTravel) { co2eData = editedBusinessTravel; newlyAddedData = newlyAddedBusinessTravel; category = 'businessTravel'; }
-            else if (activeCategoryForTable === EmissionCategory.EmployeeCommuting) { co2eData = editedEmployeeCommuting; newlyAddedData = newlyAddedEmployeeCommuting; category = 'employeeCommuting'; }
-            else if (activeCategoryForTable === EmissionCategory.WasteGeneratedInOperations) { co2eData = editedScope3Waste; newlyAddedData = newlyAddedScope3Waste; category = 'scope3Waste'; }
-            else { co2eData = editedScope2; category = 'scope2'; }
-
-            const co2eHandler = (idx: number, unit: string, val: string) => handleCO2eFactorChange(idx, unit, val, category);
-             return (
-                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-600">
-                    <thead className="bg-gray-50 dark:bg-gray-800">
-                        <tr>
-                            <th className={`${commonCellClass} text-left font-medium text-gray-500 dark:text-gray-300`}>{t('sourceName')}</th>
-                            <th className={`${commonCellClass} text-left font-medium text-gray-500 dark:text-gray-300`}>{t('factorColumnHeader')}</th>
-                            <th className={`${commonCellClass} text-left font-medium text-gray-500 dark:text-gray-300`}></th>
-                        </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200 dark:bg-gray-700 dark:divide-gray-600">
-                        {co2eData.map((item, index) => Object.entries(item.factors).map(([unit, factor], unitIndex) => (
-                             <tr key={`${item.name}-${unit}`}>
-                                {unitIndex === 0 && <td rowSpan={Object.keys(item.factors).length} className={`${commonCellClass} font-medium align-top`}>{language === 'ko' && item.translationKey ? t(item.translationKey as TranslationKey) : item.name}</td>}
-                                <td className={commonCellClass}><div className="flex items-center gap-1">{t(unit as TranslationKey) || unit}:<input type="number" step="any" value={factor} onChange={e => co2eHandler(index, unit, e.target.value)} className={commonInputClass} /></div></td>
-                                {unitIndex === 0 && <td rowSpan={Object.keys(item.factors).length} className={`${commonCellClass} text-center align-top`}>{item.isCustom && <button onClick={() => handleDelete(item.name, activeCategoryForTable)} className="text-red-500 hover:text-red-700"><IconTrash className="w-4 h-4" /></button>}</td>}
-                            </tr>
-                        )))}
-                        {/* Render newly added, unsaved items */}
-                        {newlyAddedData.map((item, index) => Object.entries(item.factors).map(([unit, factor], unitIndex) => (
-                             <tr key={`new-${item.name}-${unit}`} className="bg-green-50 dark:bg-green-900/20">
-                                {unitIndex === 0 && <td rowSpan={Object.keys(item.factors).length} className={`${commonCellClass} font-medium align-top`}>
-                                    <div className="flex items-center gap-2">
-                                        <span>{item.name}</span>
-                                        <span className="text-xs font-semibold bg-ghg-accent text-white px-2 py-0.5 rounded-full">{t('newBadge')}</span>
-                                    </div>
-                                </td>}
-                                <td className={commonCellClass}><div className="flex items-center gap-1">{unit}: {factor.toLocaleString()}</div></td>
-                                {unitIndex === 0 && <td rowSpan={Object.keys(item.factors).length} className={`${commonCellClass} text-center align-top`}><button onClick={() => handleDeleteNew(index, activeCategoryForTable)} className="text-red-500 hover:text-red-700"><IconTrash className="w-4 h-4" /></button></td>}
-                            </tr>
-                        )))}
-                    </tbody>
-                </table>
+    if (activeTab === 'Scope 3') {
+        const accessors = getScope3StateAccessors()[activeScope3Category as EmissionCategory];
+        if (accessors) {
+            return renderCo2eTable(
+                accessors.edited as EditableCO2eFactorFuel[],
+                accessors.newlyAdded as EditableCO2eFactorFuel[],
+                (idx, unit, val) => handleCO2eFactorChange(idx, unit, val, accessors.setEdited),
+                (name) => handleDelete(name, accessors.setEdited),
+                (idx) => handleDeleteNew(idx, activeScope3Category)
             );
-
+        }
+        return null;
+    }
+    
+    switch(activeTab) {
+        case 'Scope 1 - Stationary': return renderCo2eTable(editedStationary, (newlyAddedMap[activeTab] || []) as EditableCO2eFactorFuel[], (i, u, v) => handleCO2eFactorChange(i, u, v, setEditedStationary), (n) => handleDelete(n, setEditedStationary), (i) => handleDeleteNew(i, activeTab));
+        case 'Scope 1 - Mobile': return renderCo2eTable(editedMobile, (newlyAddedMap[activeTab] || []) as EditableCO2eFactorFuel[], (i, u, v) => handleCO2eFactorChange(i, u, v, setEditedMobile), (n) => handleDelete(n, setEditedMobile), (i) => handleDeleteNew(i, activeTab));
+        case 'Scope 1 - Process': return renderCo2eTable(editedProcess, (newlyAddedMap[activeTab] || []) as EditableCO2eFactorFuel[], (i, u, v) => handleCO2eFactorChange(i, u, v, setEditedProcess), (n) => handleDelete(n, setEditedProcess), (i) => handleDeleteNew(i, activeTab));
+        case 'Scope 1 - Waste': return renderCo2eTable(editedWaste, (newlyAddedMap[activeTab] || []) as EditableCO2eFactorFuel[], (i, u, v) => handleCO2eFactorChange(i, u, v, setEditedWaste), (n) => handleDelete(n, setEditedWaste), (i) => handleDeleteNew(i, activeTab));
+        case 'Scope 2': return renderCo2eTable(editedScope2, [], (i, u, v) => handleScope2FactorChange(i, u, v), () => {}, () => {});
         case 'Scope 1 - Fugitive':
             return (
                 <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-600">
@@ -402,11 +425,10 @@ export const FactorManager: React.FC<FactorManagerProps> = ({
                              <tr key={item.name}>
                                 <td className={`${commonCellClass} font-medium`}>{language === 'ko' && item.translationKey ? t(item.translationKey as TranslationKey) : item.name}</td>
                                 <td className={commonCellClass}><input type="number" step="any" value={item.gwp} onChange={e => handleGWPChange(index, e.target.value)} className={commonInputClass} /></td>
-                                <td className={`${commonCellClass} text-center`}>{item.isCustom && <button onClick={() => handleDelete(item.name, activeCategoryForTable)} className="text-red-500 hover:text-red-700"><IconTrash className="w-4 h-4" /></button>}</td>
+                                <td className={`${commonCellClass} text-center`}>{item.isCustom && <button onClick={() => handleDelete(item.name, setEditedFugitive)} className="text-red-500 hover:text-red-700"><IconTrash className="w-4 h-4" /></button>}</td>
                             </tr>
                         ))}
-                         {/* Render newly added, unsaved items */}
-                        {newlyAddedFugitive.map((item, index) => (
+                        {((newlyAddedMap[activeTab] || []) as EditableRefrigerant[]).map((item, index) => (
                              <tr key={`new-${item.name}`} className="bg-green-50 dark:bg-green-900/20">
                                 <td className={`${commonCellClass} font-medium`}>
                                     <div className="flex items-center gap-2">
@@ -415,7 +437,7 @@ export const FactorManager: React.FC<FactorManagerProps> = ({
                                     </div>
                                 </td>
                                 <td className={commonCellClass}>{item.gwp.toLocaleString()}</td>
-                                <td className={`${commonCellClass} text-center`}><button onClick={() => handleDeleteNew(index, activeCategoryForTable)} className="text-red-500 hover:text-red-700"><IconTrash className="w-4 h-4" /></button></td>
+                                <td className={`${commonCellClass} text-center`}><button onClick={() => handleDeleteNew(index, activeTab)} className="text-red-500 hover:text-red-700"><IconTrash className="w-4 h-4" /></button></td>
                             </tr>
                         ))}
                     </tbody>
@@ -427,35 +449,31 @@ export const FactorManager: React.FC<FactorManagerProps> = ({
 
   const renderAddForm = () => {
       if (!showAddForm) return null;
-      let activeCategoryForForm: ActiveTab | EmissionCategory = activeTab;
-      if (activeTab === 'Scope 3') {
-          activeCategoryForForm = activeScope3Category;
+      let activeCategoryForForm = activeTab === 'Scope 3' ? activeScope3Category : activeTab;
+      
+      const onAddCO2e = (fuel: EditableCO2eFactorFuel) => {
+        setNewlyAddedMap(p => ({
+            ...p,
+            [activeCategoryForForm]: [...(p[activeCategoryForForm] || []), fuel]
+        }));
+        setShowAddForm(false);
       }
-      switch(activeCategoryForForm) {
-          case 'Scope 1 - Stationary':
-          case 'Scope 1 - Mobile':
-          case 'Scope 1 - Process':
-          case 'Scope 1 - Waste':
-          case EmissionCategory.BusinessTravel:
-          case EmissionCategory.EmployeeCommuting:
-          case EmissionCategory.WasteGeneratedInOperations:
-               return <AddNewCO2eSourceForm onAdd={(fuel) => {
-                  if (activeCategoryForForm === 'Scope 1 - Stationary') setNewlyAddedStationary(p => [...p, fuel]);
-                  else if (activeCategoryForForm === 'Scope 1 - Mobile') setNewlyAddedMobile(p => [...p, fuel]);
-                  else if (activeCategoryForForm === 'Scope 1 - Process') setNewlyAddedProcess(p => [...p, fuel]);
-                  else if (activeCategoryForForm === 'Scope 1 - Waste') setNewlyAddedWaste(p => [...p, fuel]);
-                  else if (activeCategoryForForm === EmissionCategory.BusinessTravel) setNewlyAddedBusinessTravel(p => [...p, fuel]);
-                  else if (activeCategoryForForm === EmissionCategory.EmployeeCommuting) setNewlyAddedEmployeeCommuting(p => [...p, fuel]);
-                  else setNewlyAddedScope3Waste(p => [...p, fuel]);
-                  setShowAddForm(false);
+
+      if (activeCategoryForForm === 'Scope 1 - Fugitive') {
+          return <AddNewFugitiveSourceForm onAdd={(gas) => {
+                setNewlyAddedMap(p => ({
+                    ...p,
+                    [activeCategoryForForm]: [...(p[activeCategoryForForm] || []), gas]
+                }));
+                setShowAddForm(false);
               }} onCancel={() => setShowAddForm(false)} />;
-          case 'Scope 1 - Fugitive':
-              return <AddNewFugitiveSourceForm onAdd={(gas) => {
-                  setNewlyAddedFugitive(p => [...p, gas]);
-                  setShowAddForm(false);
-              }} onCancel={() => setShowAddForm(false)} />;
-          default: return null;
       }
+
+      if (activeCategoryForForm !== 'Scope 2') {
+          return <AddNewCO2eSourceForm onAdd={onAddCO2e} onCancel={() => setShowAddForm(false)} />
+      }
+
+      return null;
   }
 
   return (
