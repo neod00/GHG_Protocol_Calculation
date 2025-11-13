@@ -56,6 +56,7 @@ export interface Facility {
   id: string;
   name: string;
   equityShare: number; // Stored as a percentage, e.g., 80 for 80%
+  group?: string; // New optional field for grouping, e.g., "Headquarters", "Gumi Plant"
 }
 
 export interface EmissionSource {

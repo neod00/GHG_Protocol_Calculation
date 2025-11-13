@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { EmissionCategory, Facility, BoundaryApproach } from '../types';
 import { useTranslation } from '../LanguageContext';
@@ -31,6 +31,23 @@ const COLORS = {
 
 const SCOPE3_CATEGORY_COLORS = ['#6B4C6B', '#8E44AD', '#9B59B6', '#AF7AC5', '#C39BD3', '#D7BDE2', '#E8DAEF', '#34495E', '#5D6D7E', '#85929E', '#AEB6BF', '#D6DBDF'];
 
+const CustomTooltip = ({ active, payload, scope3Total }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    // FIX: The `data.value` from the chart payload is of type `any`. It must be converted
+    // to a number before performing arithmetic operations to prevent type errors.
+    const valueAsNumber = Number(data.value);
+    // `data.value` is in tonnes, while `scope3Total` is in kg, so we convert tonnes to kg for correct percentage calculation.
+    const percentage = scope3Total > 0 ? ((valueAsNumber * 1000 / scope3Total) * 100).toFixed(1) : 0;
+    return (
+      <div className="bg-white dark:bg-gray-800 p-2 border border-gray-300 dark:border-gray-600 rounded shadow-lg text-sm">
+        <p className="font-semibold text-ghg-dark dark:text-gray-100">{data.name}</p>
+        <p className="text-gray-600 dark:text-gray-300">{`${valueAsNumber.toLocaleString()} t CO₂e (${percentage}%)`}</p>
+      </div>
+    );
+  }
+  return null;
+};
 
 export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ 
     totalEmissionsMarket,
@@ -103,29 +120,39 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
     return Object.entries(scope3CategoryBreakdown)
       .map(([category, emissions]) => ({
         name: t(category),
-        value: parseFloat((emissions / 1000).toFixed(2)),
+        // FIX: Cast `emissions` to `number`. `Object.entries` can lead TypeScript to infer
+        // the value as `unknown`, causing a type error on arithmetic operations.
+        value: parseFloat(((emissions as number) / 1000).toFixed(2)),
       }))
       .filter(item => item.value > 0.005) // Filter out negligible values to avoid clutter
       .sort((a, b) => b.value - a.value);
   }, [scope3CategoryBreakdown, scope3Total, t]);
 
-  const CustomTooltip = ({ active, payload }: any) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload;
-      // FIX: Use Number() to safely convert `data.value` from an `any` type to a number for arithmetic operations.
-      // The previous type assertion `as number` was not sufficient to resolve the TypeScript error.
-      // `data.value` is in tonnes, while `scope3Total` is in kg, so we convert tonnes to kg for correct percentage calculation.
-      // FIX: Explicitly cast `data.value` to a number to resolve arithmetic operation error.
-      const percentage = scope3Total > 0 ? ((Number(data.value) * 1000 / scope3Total) * 100).toFixed(1) : 0;
-      return (
-        <div className="bg-white dark:bg-gray-800 p-2 border border-gray-300 dark:border-gray-600 rounded shadow-lg text-sm">
-          <p className="font-semibold text-ghg-dark dark:text-gray-100">{data.name}</p>
-          <p className="text-gray-600 dark:text-gray-300">{`${Number(data.value).toLocaleString()} t CO₂e (${percentage}%)`}</p>
-        </div>
-      );
-    }
-    return null;
-  };
+  const renderCustomTooltip = useCallback((props: any) => {
+    return <CustomTooltip {...props} scope3Total={scope3Total} />;
+  }, [scope3Total]);
+
+  const groupedFacilityBreakdown = useMemo(() => {
+    const grouped: { [groupName: string]: { name: string, emissions: any, facility?: Facility }[] } = {};
+
+    Object.entries(facilityBreakdown).forEach(([facilityName, emissions]) => {
+        const facility = facilities.find(f => f.name === facilityName);
+        const groupName = facility?.group || t('ungroupedFacilities');
+
+        if (!grouped[groupName]) {
+            grouped[groupName] = [];
+        }
+
+        grouped[groupName].push({
+            name: facilityName,
+            emissions: emissions,
+            facility: facility
+        });
+    });
+
+    return grouped;
+  }, [facilityBreakdown, facilities, t]);
+
 
   return (
     <>
@@ -239,7 +266,7 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                         <Cell key={`cell-${index}`} fill={SCOPE3_CATEGORY_COLORS[index % SCOPE3_CATEGORY_COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip content={<CustomTooltip />} />
+                    <Tooltip content={renderCustomTooltip} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
@@ -284,21 +311,30 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200 dark:bg-gray-700 dark:divide-gray-600">
-                        {Object.entries(facilityBreakdown).map(([facilityName, emissions]) => {
-                            const typedEmissions = emissions as { scope1: number; scope2Location: number, scope2Market: number, scope3: number };
-                            const facility = facilities.find(f => f.name === facilityName);
-                            const facilityTotal = typedEmissions.scope1 + typedEmissions.scope2Market + typedEmissions.scope3;
-                            return (
-                                <tr key={facilityName}>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">{facilityName}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-left">{getFacilityBasisText(facility)}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-right">{formatNumber(typedEmissions.scope1)}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-right">{formatNumber(typedEmissions.scope2Market)}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-right">{formatNumber(typedEmissions.scope3)}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-ghg-dark dark:text-gray-50 text-right">{formatNumber(facilityTotal)}</td>
+                       {Object.entries(groupedFacilityBreakdown).map(([groupName, facilitiesInGroup]) => (
+                            <React.Fragment key={groupName}>
+                                <tr>
+                                    <td colSpan={6} className="px-6 py-3 bg-gray-100 dark:bg-gray-800 text-sm font-bold text-ghg-dark dark:text-gray-200">
+                                        {groupName}
+                                    </td>
                                 </tr>
-                            );
-                        })}
+                                {/* FIX: `facilitiesInGroup` is inferred as `unknown` by the compiler, so it must be cast to an array type to use `.map()`. */}
+                                {(facilitiesInGroup as any[]).map(({ name: facilityName, emissions, facility }) => {
+                                    const typedEmissions = emissions as { scope1: number; scope2Location: number, scope2Market: number, scope3: number };
+                                    const facilityTotal = typedEmissions.scope1 + typedEmissions.scope2Market + typedEmissions.scope3;
+                                    return (
+                                        <tr key={facilityName}>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">{facilityName}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-left">{getFacilityBasisText(facility)}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-right">{formatNumber(typedEmissions.scope1)}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-right">{formatNumber(typedEmissions.scope2Market)}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-right">{formatNumber(typedEmissions.scope3)}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-ghg-dark dark:text-gray-50 text-right">{formatNumber(facilityTotal)}</td>
+                                        </tr>
+                                    );
+                                })}
+                            </React.Fragment>
+                        ))}
                     </tbody>
                 </table>
             </div>

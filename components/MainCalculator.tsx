@@ -1,5 +1,5 @@
 // Fix: Corrected typo in React import
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { EmissionCategory, EmissionSource, Refrigerant, Facility, BoundaryApproach, EditableRefrigerant, CO2eFactorFuel } from '../types';
 import { 
     STATIONARY_FUELS, MOBILE_FUELS, PROCESS_MATERIALS, FUGITIVE_GASES, SCOPE2_ENERGY_SOURCES, WASTE_SOURCES, 
@@ -151,7 +151,7 @@ export const MainCalculator: React.FC = () => {
   ]);
 
 
-  const FUELS_MAP: { [key in EmissionCategory]?: (CO2eFactorFuel | Refrigerant)[] } = {
+  const FUELS_MAP: { [key in EmissionCategory]?: (CO2eFactorFuel | Refrigerant)[] } = useMemo(() => ({
     [EmissionCategory.StationaryCombustion]: stationaryFuels,
     [EmissionCategory.MobileCombustion]: mobileFuels,
     [EmissionCategory.ProcessEmissions]: processMaterials,
@@ -174,9 +174,15 @@ export const MainCalculator: React.FC = () => {
     [EmissionCategory.DownstreamLeasedAssets]: downstreamLeasedAssetsFactors,
     [EmissionCategory.Franchises]: franchisesFactors,
     [EmissionCategory.Investments]: investmentsFactors,
-  };
+  }), [
+    stationaryFuels, mobileFuels, processMaterials, fugitiveGases, scope2EnergySources, wasteSources,
+    purchasedGoodsFactors, capitalGoodsFactors, fuelEnergyActivitiesFactors, upstreamTransportationDistributionFactors,
+    scope3WasteFactors, businessTravelFactors, employeeCommutingFactors, upstreamLeasedAssetsFactors,
+    downstreamTransportationDistributionFactors, processingSoldProductsFactors, useSoldProductsFactors,
+    endOfLifeTreatmentFactors, downstreamLeasedAssetsFactors, franchisesFactors, investmentsFactors
+  ]);
   
-  const categoryDescriptions: Record<EmissionCategory, string> = {
+  const categoryDescriptions: Record<EmissionCategory, string> = useMemo(() => ({
       [EmissionCategory.StationaryCombustion]: t('stationaryDescription'),
       [EmissionCategory.MobileCombustion]: t('mobileDescription'),
       [EmissionCategory.ProcessEmissions]: t('processDescription'),
@@ -198,13 +204,13 @@ export const MainCalculator: React.FC = () => {
       [EmissionCategory.DownstreamLeasedAssets]: t('downstreamLeasedAssetsDescription'),
       [EmissionCategory.Franchises]: t('franchisesDescription'),
       [EmissionCategory.Investments]: t('investmentsDescription'),
-  };
+  }), [t]);
 
-  const handleToggleCategory = (category: EmissionCategory) => {
+  const handleToggleCategory = useCallback((category: EmissionCategory) => {
     setOpenCategory(openCategory === category ? null : category);
-  };
+  }, [openCategory]);
 
-  const handleAddSource = (category: EmissionCategory) => {
+  const handleAddSource = useCallback((category: EmissionCategory) => {
     const fuelsForCategory = FUELS_MAP[category];
     // For Category 1, we allow adding a blank, customizable source.
     if (category === EmissionCategory.PurchasedGoodsAndServices) {
@@ -238,16 +244,23 @@ export const MainCalculator: React.FC = () => {
       unit: defaultUnit,
     };
     setSources(prev => ({ ...prev, [category]: [...prev[category], newSource] }));
-  };
+  }, [facilities, FUELS_MAP]);
 
-  const handleUpdateSource = (id: string, category: EmissionCategory, update: Partial<EmissionSource>) => {
+  const handleUpdateSource = useCallback((id: string, category: EmissionCategory, update: Partial<EmissionSource>) => {
     setSources(prev => ({
       ...prev,
       [category]: prev[category].map(s => s.id === id ? { ...s, ...update } : s),
     }));
-  };
+  }, []);
   
-  const handleFuelTypeChange = (id: string, newFuelType: string, category: EmissionCategory) => {
+  const handleRemoveSource = useCallback((id: string, category: EmissionCategory) => {
+    setSources(prev => ({
+      ...prev,
+      [category]: prev[category].filter(s => s.id !== id),
+    }));
+  }, []);
+
+  const handleFuelTypeChange = useCallback((id: string, newFuelType: string, category: EmissionCategory) => {
     // This function is now only for non-Cat1 sources with predefined fuels.
     if (category === EmissionCategory.PurchasedGoodsAndServices) return;
 
@@ -260,16 +273,9 @@ export const MainCalculator: React.FC = () => {
     const newUnit = 'units' in newFuel ? newFuel.units[0] : 'kg';
     
     handleUpdateSource(id, category, { fuelType: newFuelType, unit: newUnit });
-  };
+  }, [FUELS_MAP, handleUpdateSource]);
 
-  const handleRemoveSource = (id: string, category: EmissionCategory) => {
-    setSources(prev => ({
-      ...prev,
-      [category]: prev[category].filter(s => s.id !== id),
-    }));
-  };
-
-  const getScopeForCategory = (category: EmissionCategory): 'scope1' | 'scope2' | 'scope3' => {
+  const getScopeForCategory = useCallback((category: EmissionCategory): 'scope1' | 'scope2' | 'scope3' => {
       const scope1Categories = [
         EmissionCategory.StationaryCombustion,
         EmissionCategory.MobileCombustion,
@@ -280,9 +286,9 @@ export const MainCalculator: React.FC = () => {
       if (scope1Categories.includes(category)) return 'scope1';
       if (category === EmissionCategory.PurchasedEnergy) return 'scope2';
       return 'scope3';
-  }
+  }, []);
   
-  const calculateSourceEmissions = (source: EmissionSource): { scope1: number, scope2Location: number, scope2Market: number, scope3: number } => {
+  const calculateSourceEmissions = useCallback((source: EmissionSource): { scope1: number, scope2Location: number, scope2Market: number, scope3: number } => {
     const totalQuantity = source.monthlyQuantities.reduce((sum, q) => sum + q, 0);
 
     // New logic for Category 1 with custom factors
@@ -322,7 +328,7 @@ export const MainCalculator: React.FC = () => {
     }
     
     return { scope1: 0, scope2Location: 0, scope2Market: 0, scope3: 0 };
-  };
+  }, [FUELS_MAP, getScopeForCategory]);
   
   const results = useMemo(() => {
     let scope1Total = 0;
@@ -381,15 +387,15 @@ export const MainCalculator: React.FC = () => {
     const totalEmissionsLocation = scope1Total + scope2LocationTotal + scope3Total;
     
     return { totalEmissionsMarket, totalEmissionsLocation, scope1Total, scope2LocationTotal, scope2MarketTotal, scope3Total, facilityBreakdown, scope3CategoryBreakdown };
-  }, [sources, facilities, boundaryApproach, scope3Settings, stationaryFuels, mobileFuels, processMaterials, fugitiveGases, scope2EnergySources, wasteSources, businessTravelFactors, employeeCommutingFactors, scope3WasteFactors]);
+  }, [sources, facilities, boundaryApproach, scope3Settings, calculateSourceEmissions, getScopeForCategory]);
   
-  const boundaryApproachText = {
+  const boundaryApproachText = useMemo(() => ({
       operational: t('operationalControl'),
       financial: t('financialControl'),
-      equity: t('equityShare'),
-  }[boundaryApproach];
+      equity: t('equityControlDescription'),
+  }[boundaryApproach]), [boundaryApproach, t]);
   
-  const handleWizardSave = (details: {
+  const handleWizardSave = useCallback((details: {
     companyName: string;
     reportingYear: string;
     facilities: Facility[];
@@ -403,12 +409,12 @@ export const MainCalculator: React.FC = () => {
     setScope3Settings(details.scope3Settings);
     setIsSetupComplete(true);
     setIsWizardOpen(false);
-  }
+  }, []);
 
-  const openWizard = (startStep: number) => {
+  const openWizard = useCallback((startStep: number) => {
     setWizardStartStep(startStep);
     setIsWizardOpen(true);
-  }
+  }, []);
   
   const tabClasses = (tabName: ActiveTab) =>
     `px-4 py-2 text-lg font-semibold rounded-t-lg transition-colors focus:outline-none ${
@@ -417,20 +423,24 @@ export const MainCalculator: React.FC = () => {
         : 'text-gray-500 hover:text-ghg-dark dark:hover:text-gray-300'
     }`;
 
-  const commonCalculatorProps = {
-    sources: sources,
+  const commonCalculatorProps = useMemo(() => ({
+    sources,
     onAddSource: handleAddSource,
     onUpdateSource: handleUpdateSource,
     onRemoveSource: handleRemoveSource,
     onFuelTypeChange: handleFuelTypeChange,
     fuelsMap: FUELS_MAP,
     calculateEmissions: calculateSourceEmissions,
-    categoryDescriptions: categoryDescriptions,
-    facilities: facilities,
-    openCategory: openCategory,
+    categoryDescriptions,
+    facilities,
+    openCategory,
     onToggleCategory: handleToggleCategory,
-    boundaryApproach: boundaryApproach,
-  };
+    boundaryApproach,
+  }), [
+    sources, handleAddSource, handleUpdateSource, handleRemoveSource, handleFuelTypeChange,
+    FUELS_MAP, calculateSourceEmissions, categoryDescriptions, facilities, openCategory,
+    handleToggleCategory, boundaryApproach
+  ]);
 
   return (
     <>
@@ -481,6 +491,10 @@ export const MainCalculator: React.FC = () => {
         </div>
         
         <div>
+            <div className="text-center my-8">
+                <h2 className="text-2xl font-bold text-ghg-dark dark:text-white">{t('operationalBoundaryTitle')}</h2>
+                <p className="mt-1 text-md text-gray-500 dark:text-gray-400">{t('operationalBoundarySubtitle')}</p>
+            </div>
             <div className="border-b border-gray-200 dark:border-gray-600 mb-8">
                 <nav className="-mb-px flex space-x-6" aria-label="Tabs">
                     <button className={tabClasses('scope1')} onClick={() => setActiveTab('scope1')}>

@@ -343,7 +343,7 @@ export const FactorManager: React.FC<FactorManagerProps> = (props) => {
   });
 
   const renderActiveTabContent = () => {
-    const commonInputClass = "w-full bg-white text-gray-900 border-gray-300 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100 rounded-md shadow-sm py-1 px-2 text-sm";
+    const commonInputClass = "w-full bg-gray-50 text-gray-900 border-gray-300 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100 rounded-md shadow-sm py-1 px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ghg-green focus:border-ghg-green";
     const commonCellClass = "px-3 py-2 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300";
     
     let activeCategoryForTable: string = activeTab;

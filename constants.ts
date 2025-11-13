@@ -416,12 +416,16 @@ export const ALL_SCOPE3_CATEGORIES: EmissionCategory[] = [
   EmissionCategory.Investments,
 ];
 
-// Predefined common facility types based on GHG Protocol guidance
-export const PREDEFINED_FACILITIES: { name: string, translationKey: string }[] = [
-    { name: 'office', translationKey: 'facilityTypeOffice' },
-    { name: 'plant', translationKey: 'facilityTypePlant' },
-    { name: 'warehouse', translationKey: 'facilityTypeWarehouse' },
-    { name: 'data_center', translationKey: 'facilityTypeDataCenter' },
-    { name: 'retail', translationKey: 'facilityTypeRetail' },
-    { name: 'lab', translationKey: 'facilityTypeLab' },
-];
+// Predefined common facility types based on GHG Protocol guidance, grouped by scope
+export const FACILITY_TYPES_BY_SCOPE: { [key: string]: { name: string, translationKey: string }[] } = {
+    'Scope 1': [
+        { name: 'Stationary Combustion Facility', translationKey: 'facilityTypeStationary' },
+        { name: 'Mobile Combustion Facility', translationKey: 'facilityTypeMobile' },
+        { name: 'Fugitive Emission Facility', translationKey: 'facilityTypeFugitive' },
+        { name: 'Process Emission Facility', translationKey: 'facilityTypeProcess' },
+    ],
+    'Scope 2': [
+        { name: 'Electricity Usage Facility', translationKey: 'facilityTypeElectricity' },
+        { name: 'Steam Usage Facility', translationKey: 'facilityTypeSteam' },
+    ],
+};

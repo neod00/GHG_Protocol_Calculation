@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 // Fix: Removed non-existent 'Fuel' type from import.
 import { EmissionCategory, EmissionSource, Refrigerant, Facility, BoundaryApproach, CO2eFactorFuel } from '../types';
 import { SourceInputRow } from './SourceInputRow';
@@ -68,14 +68,14 @@ export const EmissionSourceCard: React.FC<EmissionSourceCardProps> = ({
 }) => {
   const { t } = useTranslation();
 
-  const subtotal = sources.reduce((sum, source) => {
+  const subtotal = useMemo(() => sources.reduce((sum, source) => {
     const facility = facilities.find(f => f.id === source.facilityId);
     const ownershipFactor = boundaryApproach === 'equity' && facility ? facility.equityShare / 100 : 1;
     const emissions = calculateEmissions(source);
     // For subtotal, use market-based if available for S2, plus S1 and S3
     const relevantEmissions = emissions.scope1 + emissions.scope2Market + emissions.scope3;
     return sum + (relevantEmissions * ownershipFactor);
-  }, 0);
+  }, 0), [sources, facilities, boundaryApproach, calculateEmissions]);
   
   const cardClasses = isDisabled
     ? "bg-gray-100 rounded-xl shadow-lg border border-gray-200 flex flex-col dark:bg-gray-800/50 dark:border-gray-700 opacity-60 cursor-not-allowed"

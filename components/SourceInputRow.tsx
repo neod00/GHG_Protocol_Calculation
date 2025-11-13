@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { EmissionSource, Facility, Refrigerant, CO2eFactorFuel, EmissionCategory } from '../types';
 import { useTranslation } from '../LanguageContext';
 import { TranslationKey } from '../translations';
@@ -122,6 +122,25 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
   const commonLabelClass = "block text-xs font-medium text-gray-500 dark:text-gray-400";
   const placeholderKey = getPlaceholderKey(source.category);
 
+  const groupedFacilities = useMemo(() => {
+    const groups: { [key: string]: Facility[] } = {};
+    const ungrouped: Facility[] = [];
+    
+    facilities.forEach(f => {
+        const groupKey = f.group || '';
+        if (groupKey) {
+            if (!groups[groupKey]) {
+                groups[groupKey] = [];
+            }
+            groups[groupKey].push(f);
+        } else {
+            ungrouped.push(f);
+        }
+    });
+    
+    return { groups, ungrouped };
+  }, [facilities]);
+
 
   // == Category 1: Purchased Goods & Services (Hybrid Input UI) ==
   if (source.category === EmissionCategory.PurchasedGoodsAndServices) {
@@ -159,9 +178,21 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
             className={commonSelectClass}
             aria-label={t('facility')}
           >
-            {facilities.map((facility) => (
-              <option key={facility.id} value={facility.id}>{facility.name}</option>
+            {Object.entries(groupedFacilities.groups).map(([groupName, facilitiesInGroup]) => (
+                <optgroup key={groupName} label={groupName}>
+                    {/* FIX: `facilitiesInGroup` is inferred as `unknown` by the compiler, so it must be cast to an array type to use `.map()`. */}
+                    {(facilitiesInGroup as Facility[]).map((facility) => (
+                        <option key={facility.id} value={facility.id}>{facility.name}</option>
+                    ))}
+                </optgroup>
             ))}
+            {groupedFacilities.ungrouped.length > 0 && (
+                <optgroup label={t('ungroupedFacilities')}>
+                    {groupedFacilities.ungrouped.map((facility) => (
+                        <option key={facility.id} value={facility.id}>{facility.name}</option>
+                    ))}
+                </optgroup>
+            )}
           </select>
           <button onClick={onRemove} className="text-gray-400 hover:text-red-600 p-1 dark:text-gray-500 dark:hover:text-red-500" aria-label={t('removeSourceAria')}>
             <IconTrash className="h-5 w-5" />
@@ -288,9 +319,20 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
           className={commonSelectClass}
           aria-label={t('facility')}
         >
-          {facilities.map((facility) => (
-            <option key={facility.id} value={facility.id}>{facility.name}</option>
+          {Object.entries(groupedFacilities.groups).map(([groupName, facilitiesInGroup]) => (
+              <optgroup key={groupName} label={groupName}>
+                  {(facilitiesInGroup as Facility[]).map((facility) => (
+                      <option key={facility.id} value={facility.id}>{facility.name}</option>
+                  ))}
+              </optgroup>
           ))}
+          {groupedFacilities.ungrouped.length > 0 && (
+              <optgroup label={t('ungroupedFacilities')}>
+                  {groupedFacilities.ungrouped.map((facility) => (
+                      <option key={facility.id} value={facility.id}>{facility.name}</option>
+                  ))}
+              </optgroup>
+          )}
         </select>
          <button onClick={onRemove} className="text-gray-400 hover:text-red-600 p-1 dark:text-gray-500 dark:hover:text-red-500" aria-label={t('removeSourceAria')}>
           <IconTrash className="h-5 w-5" />
@@ -317,7 +359,9 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
         </select>
         <select value={source.unit} onChange={(e) => onUpdate({ unit: e.target.value })} className={commonSelectClass} aria-label="Unit" disabled={isFugitive}>
           {isFugitive ? (<option value="kg">kg</option>) : (
-            selectedFuel && 'units' in selectedFuel && selectedFuel.units.map((unit) => (
+            // FIX: The `units` property exists only on the `CO2eFactorFuel` type. The compiler needs
+            // an explicit cast to narrow the type of `selectedFuel` before accessing `units`.
+            selectedFuel && 'units' in selectedFuel && (selectedFuel as CO2eFactorFuel).units.map((unit) => (
               <option key={unit} value={unit}>{t(unit as TranslationKey) || unit}</option>
             ))
           )}

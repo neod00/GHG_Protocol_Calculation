@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, ReactNode } from 'react';
+import React, { createContext, useState, useContext, ReactNode, useCallback } from 'react';
 import { translations, Language, TranslationKey } from './translations';
 
 interface LanguageContextType {
@@ -12,9 +12,9 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [language, setLanguage] = useState<Language>('ko');
 
-  const t = (key: TranslationKey | string): string => {
+  const t = useCallback((key: TranslationKey | string): string => {
     return translations[language][key as TranslationKey] || translations.en[key as TranslationKey] || key;
-  };
+  }, [language]);
 
   return (
     <LanguageContext.Provider value={{ language, setLanguage, t }}>

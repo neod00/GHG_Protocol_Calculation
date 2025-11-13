@@ -22,51 +22,6 @@ interface ReportGeneratorProps {
   boundaryApproach: BoundaryApproach;
 }
 
-const ReportTable: React.FC<{title: string, data: {[key: string]: number}, col1Header: string, col2Header: string, keyPrefix?: string}> = ({title, data, col1Header, col2Header, keyPrefix}) => {
-    const { t } = useTranslation();
-    const formatNumber = (num: number) => (num / 1000).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    const { language } = useTranslation();
-
-    const getFuelTranslation = (key: string): string => {
-        const keyMap = {
-            "Grid Electricity": "gridElectricity",
-            "Purchased Steam": "purchasedSteam",
-            "Purchased Heating": "purchasedHeating",
-            "Purchased Cooling": "purchasedCooling"
-        };
-        const translationKey = keyMap[key as keyof typeof keyMap];
-        return translationKey ? `${t(translationKey)}` : key;
-    }
-
-
-    return (
-        <div className="print-text-black">
-            <h3 className="text-lg font-semibold mb-2 print-text-black">{title}</h3>
-            <div className="overflow-x-auto border rounded-lg print-shadow-none">
-                <table className="min-w-full divide-y">
-                    <thead className="bg-gray-50 print-bg-white">
-                        <tr>
-                            <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase tracking-wider print-text-black">{col1Header}</th>
-                            <th scope="col" className="px-4 py-2 text-right text-xs font-medium text-gray-700 uppercase tracking-wider print-text-black">{col2Header}</th>
-                        </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y">
-                        {Object.entries(data).map(([key, value]) => (
-                            <tr key={`${keyPrefix}-${key}`}>
-                                <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100 print-text-black">
-                                    {keyPrefix === 'scope2' && language === 'ko' ? getFuelTranslation(key) : t(key)}
-                                </td>
-                                {/* Fix: Cast value to number to resolve type error from Object.entries. */}
-                                <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-600 dark:text-gray-300 print-text-black">{formatNumber(value as number)}</td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    );
-}
-
 export const ReportGenerator: React.FC<ReportGeneratorProps> = ({
   isOpen,
   onClose,
