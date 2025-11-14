@@ -1,12 +1,14 @@
 // Fix: Corrected typo in React import
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { EmissionCategory, EmissionSource, Refrigerant, Facility, BoundaryApproach, EditableRefrigerant, CO2eFactorFuel } from '../types';
+// Fix: Import 'EditableCO2eFactorFuel' to resolve type error.
+import { EmissionCategory, EmissionSource, Refrigerant, Facility, BoundaryApproach, EditableRefrigerant, EditableCO2eFactorFuel, CO2eFactorFuel } from '../types';
 import { 
     STATIONARY_FUELS, MOBILE_FUELS, PROCESS_MATERIALS, FUGITIVE_GASES, SCOPE2_ENERGY_SOURCES, WASTE_SOURCES, 
     BUSINESS_TRAVEL_FACTORS, EMPLOYEE_COMMUTING_FACTORS, SCOPE3_WASTE_FACTORS,
     PURCHASED_GOODS_SERVICES_FACTORS, CAPITAL_GOODS_FACTORS, FUEL_ENERGY_ACTIVITIES_FACTORS,
     TRANSPORTATION_DISTRIBUTION_FACTORS, LEASED_ASSETS_FACTORS, PROCESSING_SOLD_PRODUCTS_FACTORS,
-    USE_SOLD_PRODUCTS_FACTORS, END_OF_LIFE_TREATMENT_FACTORS, FRANCHISES_FACTORS, INVESTMENTS_FACTORS
+    USE_SOLD_PRODUCTS_FACTORS, END_OF_LIFE_TREATMENT_FACTORS, FRANCHISES_FACTORS, INVESTMENTS_FACTORS,
+    SCOPE2_FACTORS_BY_REGION
 } from '../constants';
 import { ResultsDisplay } from './ResultsDisplay';
 import { useTranslation } from '../LanguageContext';
@@ -31,6 +33,61 @@ interface Scope3Settings {
 
 type ActiveTab = 'scope1' | 'scope2' | 'scope3';
 
+type FactorCategoryKey = 'stationary' | 'mobile' | 'process' | 'fugitive' | 'waste' | 'scope2' | 'purchasedGoods' | 'capitalGoods' | 'fuelEnergy' | 'upstreamTransport' | 'downstreamTransport' | 'scope3Waste' | 'businessTravel' | 'employeeCommuting' | 'upstreamLeased' | 'downstreamLeased' | 'processingSold' | 'useSold' | 'endOfLife' | 'franchises' | 'investments';
+
+// Fix: Add a data migration function to ensure all custom factors loaded from localStorage have a unique ID.
+// This retroactively fixes old data that was saved without an ID, resolving the bug where they couldn't be deleted.
+const ensureIdsForCustomFactors = <T extends { id?: string; isCustom?: boolean; name: string }>(factors: T[]): T[] => {
+  if (!Array.isArray(factors)) {
+      // Handle cases where localStorage might contain invalid data
+      console.error("Invalid factor data detected. Expected an array.", factors);
+      return [];
+  }
+  return factors.map(factor => {
+    // Check if it's a custom factor that lacks an ID
+    if (factor.isCustom && !factor.id) {
+      // Generate a reasonably unique ID
+      const newId = `custom-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      return { ...factor, id: newId };
+    }
+    return factor;
+  });
+};
+
+const factorConfig = {
+    stationary: { key: 'ghg-calc-stationaryFuels', default: STATIONARY_FUELS },
+    mobile: { key: 'ghg-calc-mobileFuels', default: MOBILE_FUELS },
+    process: { key: 'ghg-calc-processMaterials', default: PROCESS_MATERIALS },
+    fugitive: { key: 'ghg-calc-fugitiveGases', default: FUGITIVE_GASES },
+    waste: { key: 'ghg-calc-wasteSources', default: WASTE_SOURCES },
+    scope2: { key: 'ghg-calc-scope2EnergySources', default: SCOPE2_ENERGY_SOURCES },
+    purchasedGoods: { key: 'ghg-calc-purchasedGoodsFactors', default: PURCHASED_GOODS_SERVICES_FACTORS },
+    capitalGoods: { key: 'ghg-calc-capitalGoodsFactors', default: CAPITAL_GOODS_FACTORS },
+    fuelEnergy: { key: 'ghg-calc-fuelEnergyActivitiesFactors', default: FUEL_ENERGY_ACTIVITIES_FACTORS },
+    upstreamTransport: { key: 'ghg-calc-upstreamTransportationDistributionFactors', default: TRANSPORTATION_DISTRIBUTION_FACTORS },
+    downstreamTransport: { key: 'ghg-calc-downstreamTransportationDistributionFactors', default: TRANSPORTATION_DISTRIBUTION_FACTORS },
+    scope3Waste: { key: 'ghg-calc-scope3WasteFactors', default: SCOPE3_WASTE_FACTORS },
+    businessTravel: { key: 'ghg-calc-businessTravelFactors', default: BUSINESS_TRAVEL_FACTORS },
+    employeeCommuting: { key: 'ghg-calc-employeeCommutingFactors', default: EMPLOYEE_COMMUTING_FACTORS },
+    upstreamLeased: { key: 'ghg-calc-upstreamLeasedAssetsFactors', default: LEASED_ASSETS_FACTORS },
+    downstreamLeased: { key: 'ghg-calc-downstreamLeasedAssetsFactors', default: LEASED_ASSETS_FACTORS },
+    processingSold: { key: 'ghg-calc-processingSoldProductsFactors', default: PROCESSING_SOLD_PRODUCTS_FACTORS },
+    useSold: { key: 'ghg-calc-useSoldProductsFactors', default: USE_SOLD_PRODUCTS_FACTORS },
+    endOfLife: { key: 'ghg-calc-endOfLifeTreatmentFactors', default: END_OF_LIFE_TREATMENT_FACTORS },
+    franchises: { key: 'ghg-calc-franchisesFactors', default: FRANCHISES_FACTORS },
+    investments: { key: 'ghg-calc-investmentsFactors', default: INVESTMENTS_FACTORS },
+};
+
+const getInitialFactors = () => {
+    const loadedFactors: { [key in FactorCategoryKey]?: any[] } = {};
+    for (const [categoryKey, config] of Object.entries(factorConfig)) {
+        const saved = localStorage.getItem(config.key);
+        const loaded = saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(config.default));
+        loadedFactors[categoryKey as FactorCategoryKey] = loaded;
+    }
+    return loadedFactors as { [key in FactorCategoryKey]: (EditableCO2eFactorFuel | EditableRefrigerant)[] };
+};
+
 export const MainCalculator: React.FC = () => {
   const { t } = useTranslation();
   
@@ -54,49 +111,9 @@ export const MainCalculator: React.FC = () => {
       return saved ? JSON.parse(saved) : { isEnabled: true, enabledCategories: [EmissionCategory.BusinessTravel, EmissionCategory.EmployeeCommuting, EmissionCategory.WasteGeneratedInOperations] };
   });
   
-  // State for custom factors, loaded from localStorage or constants
-  const [stationaryFuels, setStationaryFuels] = useState<CO2eFactorFuel[]>(() => {
-      const saved = localStorage.getItem('ghg-calc-stationaryFuels');
-      return saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(STATIONARY_FUELS));
-  });
-  const [mobileFuels, setMobileFuels] = useState<CO2eFactorFuel[]>(() => {
-      const saved = localStorage.getItem('ghg-calc-mobileFuels');
-      return saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(MOBILE_FUELS));
-  });
-  const [processMaterials, setProcessMaterials] = useState<CO2eFactorFuel[]>(() => {
-      const saved = localStorage.getItem('ghg-calc-processMaterials');
-      return saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(PROCESS_MATERIALS));
-  });
-  const [fugitiveGases, setFugitiveGases] = useState<EditableRefrigerant[]>(() => {
-      const saved = localStorage.getItem('ghg-calc-fugitiveGases');
-      return saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(FUGITIVE_GASES));
-  });
-  const [wasteSources, setWasteSources] = useState<CO2eFactorFuel[]>(() => {
-      const saved = localStorage.getItem('ghg-calc-wasteSources');
-      return saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(WASTE_SOURCES));
-  });
-  const [scope2EnergySources, setScope2EnergySources] = useState<CO2eFactorFuel[]>(() => {
-      const saved = localStorage.getItem('ghg-calc-scope2EnergySources');
-      return saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(SCOPE2_ENERGY_SOURCES));
-  });
-  // Scope 3 Factors State
-    const [purchasedGoodsFactors, setPurchasedGoodsFactors] = useState<CO2eFactorFuel[]>(() => JSON.parse(localStorage.getItem('ghg-calc-purchasedGoodsFactors') || JSON.stringify(PURCHASED_GOODS_SERVICES_FACTORS)));
-    const [capitalGoodsFactors, setCapitalGoodsFactors] = useState<CO2eFactorFuel[]>(() => JSON.parse(localStorage.getItem('ghg-calc-capitalGoodsFactors') || JSON.stringify(CAPITAL_GOODS_FACTORS)));
-    const [fuelEnergyActivitiesFactors, setFuelEnergyActivitiesFactors] = useState<CO2eFactorFuel[]>(() => JSON.parse(localStorage.getItem('ghg-calc-fuelEnergyActivitiesFactors') || JSON.stringify(FUEL_ENERGY_ACTIVITIES_FACTORS)));
-    const [upstreamTransportationDistributionFactors, setUpstreamTransportationDistributionFactors] = useState<CO2eFactorFuel[]>(() => JSON.parse(localStorage.getItem('ghg-calc-upstreamTransportationDistributionFactors') || JSON.stringify(TRANSPORTATION_DISTRIBUTION_FACTORS)));
-    const [downstreamTransportationDistributionFactors, setDownstreamTransportationDistributionFactors] = useState<CO2eFactorFuel[]>(() => JSON.parse(localStorage.getItem('ghg-calc-downstreamTransportationDistributionFactors') || JSON.stringify(TRANSPORTATION_DISTRIBUTION_FACTORS)));
-    const [scope3WasteFactors, setScope3WasteFactors] = useState<CO2eFactorFuel[]>(() => JSON.parse(localStorage.getItem('ghg-calc-scope3WasteFactors') || JSON.stringify(SCOPE3_WASTE_FACTORS)));
-    const [businessTravelFactors, setBusinessTravelFactors] = useState<CO2eFactorFuel[]>(() => JSON.parse(localStorage.getItem('ghg-calc-businessTravelFactors') || JSON.stringify(BUSINESS_TRAVEL_FACTORS)));
-    const [employeeCommutingFactors, setEmployeeCommutingFactors] = useState<CO2eFactorFuel[]>(() => JSON.parse(localStorage.getItem('ghg-calc-employeeCommutingFactors') || JSON.stringify(EMPLOYEE_COMMUTING_FACTORS)));
-    const [upstreamLeasedAssetsFactors, setUpstreamLeasedAssetsFactors] = useState<CO2eFactorFuel[]>(() => JSON.parse(localStorage.getItem('ghg-calc-upstreamLeasedAssetsFactors') || JSON.stringify(LEASED_ASSETS_FACTORS)));
-    const [downstreamLeasedAssetsFactors, setDownstreamLeasedAssetsFactors] = useState<CO2eFactorFuel[]>(() => JSON.parse(localStorage.getItem('ghg-calc-downstreamLeasedAssetsFactors') || JSON.stringify(LEASED_ASSETS_FACTORS)));
-    const [processingSoldProductsFactors, setProcessingSoldProductsFactors] = useState<CO2eFactorFuel[]>(() => JSON.parse(localStorage.getItem('ghg-calc-processingSoldProductsFactors') || JSON.stringify(PROCESSING_SOLD_PRODUCTS_FACTORS)));
-    const [useSoldProductsFactors, setUseSoldProductsFactors] = useState<CO2eFactorFuel[]>(() => JSON.parse(localStorage.getItem('ghg-calc-useSoldProductsFactors') || JSON.stringify(USE_SOLD_PRODUCTS_FACTORS)));
-    const [endOfLifeTreatmentFactors, setEndOfLifeTreatmentFactors] = useState<CO2eFactorFuel[]>(() => JSON.parse(localStorage.getItem('ghg-calc-endOfLifeTreatmentFactors') || JSON.stringify(END_OF_LIFE_TREATMENT_FACTORS)));
-    const [franchisesFactors, setFranchisesFactors] = useState<CO2eFactorFuel[]>(() => JSON.parse(localStorage.getItem('ghg-calc-franchisesFactors') || JSON.stringify(FRANCHISES_FACTORS)));
-    const [investmentsFactors, setInvestmentsFactors] = useState<CO2eFactorFuel[]>(() => JSON.parse(localStorage.getItem('ghg-calc-investmentsFactors') || JSON.stringify(INVESTMENTS_FACTORS)));
+  // Centralized state for all emission factors, loaded without migration
+  const [allFactors, setAllFactors] = useState(getInitialFactors);
 
-  
   // UI State
   const [openCategory, setOpenCategory] = useState<EmissionCategory | null>(EmissionCategory.StationaryCombustion);
   const [isWizardOpen, setIsWizardOpen] = useState(false);
@@ -104,6 +121,29 @@ export const MainCalculator: React.FC = () => {
   const [isReportOpen, setIsReportOpen] = useState(false);
   const [isSetupComplete, setIsSetupComplete] = useState<boolean>(() => JSON.parse(localStorage.getItem('ghg-calc-isSetupComplete') || 'false'));
   const [activeTab, setActiveTab] = useState<ActiveTab>('scope1');
+
+  // This effect runs once on mount to ensure legacy custom factors from localStorage have IDs.
+  useEffect(() => {
+    let needsMigration = false;
+    for (const key of Object.keys(factorConfig)) {
+        const factors = allFactors[key as FactorCategoryKey];
+        if (factors && factors.some((f: any) => f.isCustom && !f.id)) {
+            needsMigration = true;
+            break;
+        }
+    }
+
+    if (needsMigration) {
+        setAllFactors(currentFactors => {
+            const migratedFactors = { ...currentFactors };
+            for (const key of Object.keys(factorConfig)) {
+                const categoryKey = key as FactorCategoryKey;
+                migratedFactors[categoryKey] = ensureIdsForCustomFactors(currentFactors[categoryKey] as any[]);
+            }
+            return migratedFactors;
+        });
+    }
+  }, []); // Empty dependency array ensures this runs only once on mount.
 
 
   // Persist all data to localStorage when it changes
@@ -117,70 +157,40 @@ export const MainCalculator: React.FC = () => {
       localStorage.setItem('ghg-calc-scope3Settings', JSON.stringify(scope3Settings));
       localStorage.setItem('ghg-calc-isSetupComplete', 'true');
 
-      // Persist custom factors
-      localStorage.setItem('ghg-calc-stationaryFuels', JSON.stringify(stationaryFuels));
-      localStorage.setItem('ghg-calc-mobileFuels', JSON.stringify(mobileFuels));
-      localStorage.setItem('ghg-calc-processMaterials', JSON.stringify(processMaterials));
-      localStorage.setItem('ghg-calc-fugitiveGases', JSON.stringify(fugitiveGases));
-      localStorage.setItem('ghg-calc-scope2EnergySources', JSON.stringify(scope2EnergySources));
-      localStorage.setItem('ghg-calc-wasteSources', JSON.stringify(wasteSources));
-      // Persist Scope 3 factors
-      localStorage.setItem('ghg-calc-purchasedGoodsFactors', JSON.stringify(purchasedGoodsFactors));
-      localStorage.setItem('ghg-calc-capitalGoodsFactors', JSON.stringify(capitalGoodsFactors));
-      localStorage.setItem('ghg-calc-fuelEnergyActivitiesFactors', JSON.stringify(fuelEnergyActivitiesFactors));
-      localStorage.setItem('ghg-calc-upstreamTransportationDistributionFactors', JSON.stringify(upstreamTransportationDistributionFactors));
-      localStorage.setItem('ghg-calc-downstreamTransportationDistributionFactors', JSON.stringify(downstreamTransportationDistributionFactors));
-      localStorage.setItem('ghg-calc-scope3WasteFactors', JSON.stringify(scope3WasteFactors));
-      localStorage.setItem('ghg-calc-businessTravelFactors', JSON.stringify(businessTravelFactors));
-      localStorage.setItem('ghg-calc-employeeCommutingFactors', JSON.stringify(employeeCommutingFactors));
-      localStorage.setItem('ghg-calc-upstreamLeasedAssetsFactors', JSON.stringify(upstreamLeasedAssetsFactors));
-      localStorage.setItem('ghg-calc-downstreamLeasedAssetsFactors', JSON.stringify(downstreamLeasedAssetsFactors));
-      localStorage.setItem('ghg-calc-processingSoldProductsFactors', JSON.stringify(processingSoldProductsFactors));
-      localStorage.setItem('ghg-calc-useSoldProductsFactors', JSON.stringify(useSoldProductsFactors));
-      localStorage.setItem('ghg-calc-endOfLifeTreatmentFactors', JSON.stringify(endOfLifeTreatmentFactors));
-      localStorage.setItem('ghg-calc-franchisesFactors', JSON.stringify(franchisesFactors));
-      localStorage.setItem('ghg-calc-investmentsFactors', JSON.stringify(investmentsFactors));
+      // Persist all factors from the centralized state
+      for (const [categoryKey, config] of Object.entries(factorConfig)) {
+          localStorage.setItem(config.key, JSON.stringify(allFactors[categoryKey as FactorCategoryKey]));
+      }
     }
   }, [
       companyName, reportingYear, facilities, boundaryApproach, scope3Settings, isSetupComplete, sources, 
-      stationaryFuels, mobileFuels, processMaterials, fugitiveGases, scope2EnergySources, wasteSources,
-      purchasedGoodsFactors, capitalGoodsFactors, fuelEnergyActivitiesFactors, upstreamTransportationDistributionFactors, downstreamTransportationDistributionFactors,
-      scope3WasteFactors, businessTravelFactors, employeeCommutingFactors, upstreamLeasedAssetsFactors, downstreamLeasedAssetsFactors,
-      processingSoldProductsFactors, useSoldProductsFactors, endOfLifeTreatmentFactors,
-      franchisesFactors, investmentsFactors
+      allFactors
   ]);
-
 
   const FUELS_MAP: { [key in EmissionCategory]?: (CO2eFactorFuel | Refrigerant)[] } = useMemo(() => ({
-    [EmissionCategory.StationaryCombustion]: stationaryFuels,
-    [EmissionCategory.MobileCombustion]: mobileFuels,
-    [EmissionCategory.ProcessEmissions]: processMaterials,
-    [EmissionCategory.FugitiveEmissions]: fugitiveGases,
-    [EmissionCategory.PurchasedEnergy]: scope2EnergySources,
-    [EmissionCategory.Waste]: wasteSources,
+    [EmissionCategory.StationaryCombustion]: allFactors.stationary,
+    [EmissionCategory.MobileCombustion]: allFactors.mobile,
+    [EmissionCategory.ProcessEmissions]: allFactors.process,
+    [EmissionCategory.FugitiveEmissions]: allFactors.fugitive,
+    [EmissionCategory.PurchasedEnergy]: allFactors.scope2,
+    [EmissionCategory.Waste]: allFactors.waste,
     // Scope 3
-    [EmissionCategory.PurchasedGoodsAndServices]: purchasedGoodsFactors,
-    [EmissionCategory.CapitalGoods]: capitalGoodsFactors,
-    [EmissionCategory.FuelAndEnergyRelatedActivities]: fuelEnergyActivitiesFactors,
-    [EmissionCategory.UpstreamTransportationAndDistribution]: upstreamTransportationDistributionFactors,
-    [EmissionCategory.WasteGeneratedInOperations]: scope3WasteFactors,
-    [EmissionCategory.BusinessTravel]: businessTravelFactors,
-    [EmissionCategory.EmployeeCommuting]: employeeCommutingFactors,
-    [EmissionCategory.UpstreamLeasedAssets]: upstreamLeasedAssetsFactors,
-    [EmissionCategory.DownstreamTransportationAndDistribution]: downstreamTransportationDistributionFactors,
-    [EmissionCategory.ProcessingOfSoldProducts]: processingSoldProductsFactors,
-    [EmissionCategory.UseOfSoldProducts]: useSoldProductsFactors,
-    [EmissionCategory.EndOfLifeTreatmentOfSoldProducts]: endOfLifeTreatmentFactors,
-    [EmissionCategory.DownstreamLeasedAssets]: downstreamLeasedAssetsFactors,
-    [EmissionCategory.Franchises]: franchisesFactors,
-    [EmissionCategory.Investments]: investmentsFactors,
-  }), [
-    stationaryFuels, mobileFuels, processMaterials, fugitiveGases, scope2EnergySources, wasteSources,
-    purchasedGoodsFactors, capitalGoodsFactors, fuelEnergyActivitiesFactors, upstreamTransportationDistributionFactors,
-    scope3WasteFactors, businessTravelFactors, employeeCommutingFactors, upstreamLeasedAssetsFactors,
-    downstreamTransportationDistributionFactors, processingSoldProductsFactors, useSoldProductsFactors,
-    endOfLifeTreatmentFactors, downstreamLeasedAssetsFactors, franchisesFactors, investmentsFactors
-  ]);
+    [EmissionCategory.PurchasedGoodsAndServices]: allFactors.purchasedGoods,
+    [EmissionCategory.CapitalGoods]: allFactors.capitalGoods,
+    [EmissionCategory.FuelAndEnergyRelatedActivities]: allFactors.fuelEnergy,
+    [EmissionCategory.UpstreamTransportationAndDistribution]: allFactors.upstreamTransport,
+    [EmissionCategory.WasteGeneratedInOperations]: allFactors.scope3Waste,
+    [EmissionCategory.BusinessTravel]: allFactors.businessTravel,
+    [EmissionCategory.EmployeeCommuting]: allFactors.employeeCommuting,
+    [EmissionCategory.UpstreamLeasedAssets]: allFactors.upstreamLeased,
+    [EmissionCategory.DownstreamTransportationAndDistribution]: allFactors.downstreamTransport,
+    [EmissionCategory.ProcessingOfSoldProducts]: allFactors.processingSold,
+    [EmissionCategory.UseOfSoldProducts]: allFactors.useSold,
+    [EmissionCategory.EndOfLifeTreatmentOfSoldProducts]: allFactors.endOfLife,
+    [EmissionCategory.DownstreamLeasedAssets]: allFactors.downstreamLeased,
+    [EmissionCategory.Franchises]: allFactors.franchises,
+    [EmissionCategory.Investments]: allFactors.investments,
+  }), [allFactors]);
   
   const categoryDescriptions: Record<EmissionCategory, string> = useMemo(() => ({
       [EmissionCategory.StationaryCombustion]: t('stationaryDescription'),
@@ -415,7 +425,105 @@ export const MainCalculator: React.FC = () => {
     setWizardStartStep(startStep);
     setIsWizardOpen(true);
   }, []);
-  
+
+  const handleScope2FactorChange = useCallback((categoryKey: FactorCategoryKey, itemIndex: number, changedUnit: string, value: string) => {
+    setAllFactors(prev => {
+        const factorsForCategory = prev[categoryKey] as EditableCO2eFactorFuel[];
+        if (!factorsForCategory) return prev;
+
+        const newFactorsState = { ...prev };
+        
+        const updatedFactors = factorsForCategory.map((item, index) => {
+            if (index !== itemIndex) return item;
+
+            const newValue = parseFloat(value) || 0;
+            const oldValue = item.factors[changedUnit];
+
+            let changeRatio: number | null = null;
+            // Establish ratio only if old value is a positive number
+            if (oldValue && oldValue > 0) {
+                changeRatio = newValue / oldValue;
+            }
+            
+            let newFactors: { [key: string]: number } = {};
+
+            if (changeRatio !== null) {
+                // Proportional update for all related units
+                for (const unit in item.factors) {
+                    if (unit === changedUnit) {
+                        newFactors[unit] = newValue;
+                    } else {
+                        const updatedValue = item.factors[unit] * changeRatio;
+                        // Use toPrecision to handle floating point inaccuracies and limit significant digits
+                        newFactors[unit] = parseFloat(updatedValue.toPrecision(7)); 
+                    }
+                }
+            } else {
+                // If no ratio can be calculated (e.g., old value was 0), just update the single value
+                newFactors = { ...item.factors, [changedUnit]: newValue };
+            }
+            
+            return { ...item, factors: newFactors };
+        });
+        
+        newFactorsState[categoryKey] = updatedFactors;
+        return newFactorsState;
+    });
+  }, []);
+
+
+  const handleGWPChange = useCallback((itemIndex: number, value: string) => {
+      setAllFactors(prev => {
+        const factors = prev.fugitive as EditableRefrigerant[];
+        const updatedFactors = factors.map((r, i) => i === itemIndex ? {...r, gwp: parseFloat(value) || 0} : r);
+        return {...prev, fugitive: updatedFactors};
+      });
+  }, []);
+
+  const handleRegionChange = useCallback((region: string) => {
+      if (region !== 'Custom' && SCOPE2_FACTORS_BY_REGION[region]) {
+          const newFactors = SCOPE2_FACTORS_BY_REGION[region].factors;
+          setAllFactors(prev => {
+              const updatedScope2 = (prev.scope2 as EditableCO2eFactorFuel[]).map(s => s.name === 'Grid Electricity' ? {...s, factors: newFactors} : s);
+              return {...prev, scope2: updatedScope2};
+          });
+      }
+  }, []);
+
+  const handleAddFactor = useCallback((categoryKey: FactorCategoryKey, newItemData: any) => {
+      setAllFactors(prev => {
+          const currentFactors = prev[categoryKey] || [];
+          const newFactor = {
+              ...newItemData,
+              id: `custom-${Date.now()}-${Math.random()}`,
+              isCustom: true,
+          };
+          const updatedFactors = [...currentFactors, newFactor] as (EditableCO2eFactorFuel | EditableRefrigerant)[];
+          return { ...prev, [categoryKey]: updatedFactors };
+      });
+  }, []);
+
+  const handleEditFactor = useCallback((categoryKey: FactorCategoryKey, editedFactorData: any) => {
+      setAllFactors(prev => {
+          const currentFactors = prev[categoryKey] || [];
+          const updatedFactors = currentFactors.map(f => f.id === editedFactorData.id ? editedFactorData : f);
+          return { ...prev, [categoryKey]: updatedFactors };
+      });
+  }, []);
+
+  const handleDeleteFactor = useCallback((categoryKey: FactorCategoryKey, idToDelete: string) => {
+    if (window.confirm(t('confirmRemoveSource'))) {
+        setAllFactors(prevFactors => {
+            const currentFactors = prevFactors[categoryKey] || [];
+            const newFactors = currentFactors.filter((item: any) => item.id !== idToDelete);
+            return {
+                ...prevFactors,
+                [categoryKey]: newFactors
+            };
+        });
+    }
+  }, [t]);
+
   const tabClasses = (tabName: ActiveTab) =>
     `px-4 py-2 text-lg font-semibold rounded-t-lg transition-colors focus:outline-none ${
       activeTab === tabName
@@ -525,52 +633,13 @@ export const MainCalculator: React.FC = () => {
         </div>
 
         <FactorManager
-            stationaryFuels={stationaryFuels}
-            mobileFuels={mobileFuels}
-            processMaterials={processMaterials}
-            fugitiveGases={fugitiveGases}
-            scope2EnergySources={scope2EnergySources}
-            wasteSources={wasteSources}
-            // Scope 3 props
-            purchasedGoodsFactors={purchasedGoodsFactors}
-            capitalGoodsFactors={capitalGoodsFactors}
-            fuelEnergyActivitiesFactors={fuelEnergyActivitiesFactors}
-            upstreamTransportationDistributionFactors={upstreamTransportationDistributionFactors}
-            downstreamTransportationDistributionFactors={downstreamTransportationDistributionFactors}
-            scope3WasteFactors={scope3WasteFactors}
-            businessTravelFactors={businessTravelFactors}
-            employeeCommutingFactors={employeeCommutingFactors}
-            upstreamLeasedAssetsFactors={upstreamLeasedAssetsFactors}
-            downstreamLeasedAssetsFactors={downstreamLeasedAssetsFactors}
-            processingSoldProductsFactors={processingSoldProductsFactors}
-            useSoldProductsFactors={useSoldProductsFactors}
-            endOfLifeTreatmentFactors={endOfLifeTreatmentFactors}
-            franchisesFactors={franchisesFactors}
-            investmentsFactors={investmentsFactors}
-            // Setters
-            onStationaryChange={setStationaryFuels}
-            onMobileChange={setMobileFuels}
-            onProcessChange={setProcessMaterials}
-            onFugitiveChange={setFugitiveGases}
-            onScope2Change={setScope2EnergySources}
-            onWasteChange={setWasteSources}
-            // Scope 3 setters
-            onPurchasedGoodsChange={setPurchasedGoodsFactors}
-            onCapitalGoodsChange={setCapitalGoodsFactors}
-            onFuelEnergyActivitiesChange={setFuelEnergyActivitiesFactors}
-            onUpstreamTransportationDistributionChange={setUpstreamTransportationDistributionFactors}
-            onDownstreamTransportationDistributionChange={setDownstreamTransportationDistributionFactors}
-            onScope3WasteChange={setScope3WasteFactors}
-            onBusinessTravelChange={setBusinessTravelFactors}
-            onEmployeeCommutingChange={setEmployeeCommutingFactors}
-            onUpstreamLeasedAssetsChange={setUpstreamLeasedAssetsFactors}
-            onDownstreamLeasedAssetsChange={setDownstreamLeasedAssetsFactors}
-            onProcessingSoldProductsChange={setProcessingSoldProductsFactors}
-            onUseSoldProductsChange={setUseSoldProductsFactors}
-            onEndOfLifeTreatmentChange={setEndOfLifeTreatmentFactors}
-            onFranchisesChange={setFranchisesFactors}
-            onInvestmentsChange={setInvestmentsFactors}
-
+            allFactors={allFactors}
+            onScope2FactorChange={handleScope2FactorChange}
+            onGWPChange={handleGWPChange}
+            onRegionChange={handleRegionChange}
+            onAddFactor={handleAddFactor}
+            onEditFactor={handleEditFactor}
+            onDeleteFactor={handleDeleteFactor}
             enabledScope3Categories={scope3Settings.enabledCategories}
         />
       </div>

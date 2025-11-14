@@ -2,6 +2,7 @@
 // This resolves circular dependency and missing type export errors.
 
 export interface Refrigerant {
+  id?: string;
   name: string;
   translationKey?: string;
   gwp: number;
@@ -10,6 +11,7 @@ export interface Refrigerant {
 
 // Represents a simple CO2e factor, used for all combustion, process, waste, and Scope 2 sources.
 export interface CO2eFactorFuel {
+    id?: string;
     name: string;
     translationKey?: string;
     units: string[];

@@ -148,6 +148,7 @@ const en = {
   
   // Factor Manager
   manageFactors: 'Manage Emission Factors & GWPs',
+  manageFactorsSubtitle: 'Customize emission factors for fuels, materials, and refrigerants, or add your own.',
   gwpColumnHeader: 'Global Warming Potential (GWP)',
   factorColumnHeader: 'Emission Factor (kg CO₂e / unit)',
   co2Factor: 'CO₂ Factor',
@@ -166,10 +167,10 @@ const en = {
   viewSource: 'View Source',
   addNewSource: 'Add New Source',
   remove: 'Remove',
+  edit: 'Edit',
   confirmRemoveSource: 'Are you sure you want to remove this custom emission source? This cannot be undone.',
   sourceName: 'Source Name',
   unitsCommaSeparated: 'Units (comma-separated)',
-  factorForUnit: 'Factor for {unit}',
   gwp: 'GWP',
   add: 'Add',
   customSourceNote: 'Note: Custom sources will not be translated.',
@@ -511,6 +512,7 @@ const ko = {
 
   // Factor Manager
   manageFactors: '배출 계수 및 GWP 관리',
+  manageFactorsSubtitle: '연료, 원료, 냉매에 대한 배출계수를 맞춤 설정하거나 직접 추가할 수 있습니다.',
   gwpColumnHeader: '지구 온난화 지수 (GWP)',
   factorColumnHeader: '배출 계수 (kg CO₂e / 단위)',
   co2Factor: 'CO₂ 계수',
@@ -529,10 +531,10 @@ const ko = {
   viewSource: '출처 보기',
   addNewSource: '새 배출원 추가',
   remove: '삭제',
+  edit: '수정',
   confirmRemoveSource: '이 사용자 정의 배출원을 정말로 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.',
   sourceName: '배출원명',
   unitsCommaSeparated: '단위 (쉼표로 구분)',
-  factorForUnit: '{unit} 계수',
   gwp: 'GWP',
   add: '추가',
   customSourceNote: '참고: 사용자 정의 배출원은 번역되지 않습니다.',
