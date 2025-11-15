@@ -16,7 +16,7 @@ interface ReportGeneratorProps {
     scope2LocationTotal: number;
     scope2MarketTotal: number;
     scope3Total: number;
-    facilityBreakdown: { [facilityName: string]: { scope1: number; scope2Location: number, scope2Market: number, scope3: number } };
+    facilityBreakdown: { [facilityId: string]: { scope1: number; scope2Location: number, scope2Market: number, scope3: number } };
   };
   facilities: Facility[];
   boundaryApproach: BoundaryApproach;
@@ -124,13 +124,17 @@ export const ReportGenerator: React.FC<ReportGeneratorProps> = ({
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y">
-                            {Object.entries(results.facilityBreakdown).map(([facilityName, emissions]) => {
+                            {Object.entries(results.facilityBreakdown).map(([facilityId, emissions]) => {
                                 const typedEmissions = emissions as { scope1: number; scope2Location: number, scope2Market: number, scope3: number };
-                                const facility = facilities.find(f => f.name === facilityName);
+                                const facility = facilities.find(f => f.id === facilityId);
                                 const total = typedEmissions.scope1 + typedEmissions.scope2Market + typedEmissions.scope3;
+                                const displayName = facility?.isCorporate ? t('corporateLevelFacility') : facility?.name;
+                                
+                                if (!facility || (total === 0 && facility.isCorporate)) return null;
+
                                 return (
-                                    <tr key={facilityName}>
-                                        <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100 print-text-black">{facilityName}</td>
+                                    <tr key={facilityId}>
+                                        <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100 print-text-black">{displayName}</td>
                                         <td className="px-4 py-2 whitespace-nowrap text-sm text-left text-gray-600 dark:text-gray-300 print-text-black">{getFacilityBasisText(facility)}</td>
                                         <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-600 dark:text-gray-300 print-text-black">{formatNumber(typedEmissions.scope1)}</td>
                                         <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-600 dark:text-gray-300 print-text-black">{formatNumber(typedEmissions.scope2Market)}</td>

@@ -43,6 +43,7 @@ const FacilityRow: React.FC<FacilityRowProps> = React.memo(({
     onCancel
 }) => {
     const { t } = useTranslation();
+    const displayName = facility.isCorporate ? t('corporateLevelFacility') : facility.name;
     
     return (
         <div className="p-2 bg-gray-100 dark:bg-gray-800 rounded-md">
@@ -82,15 +83,17 @@ const FacilityRow: React.FC<FacilityRowProps> = React.memo(({
             ) : (
                 <div className="flex items-center justify-between">
                     <div>
-                        <span className="text-sm">{facility.name} {boundaryApproach === 'equity' ? `(${t('equityShare')}: ${facility.equityShare}%)` : ''}</span>
+                        <span className="text-sm">{displayName} {boundaryApproach === 'equity' && !facility.isCorporate ? `(${t('equityShare')}: ${facility.equityShare}%)` : ''}</span>
                         {facility.group && <span className="block text-xs text-gray-500 dark:text-gray-400">{facility.group}</span>}
                     </div>
                     <div className="flex items-center gap-2">
-                        <button onClick={() => onStartEditing(facility)} className="text-gray-500 hover:text-ghg-green dark:text-gray-400 dark:hover:text-ghg-light-green" aria-label="Edit"><IconPencil className="w-4 h-4" /></button>
+                        <button onClick={() => onStartEditing(facility)} className="text-gray-500 hover:text-ghg-green dark:text-gray-400 dark:hover:text-ghg-light-green disabled:opacity-50 disabled:cursor-not-allowed" aria-label="Edit" disabled={facility.isCorporate}>
+                            <IconPencil className="w-4 h-4" />
+                        </button>
                         <button
                             onClick={() => onRemove(facility.id)}
                             className="text-gray-400 hover:text-red-500 disabled:text-gray-300 disabled:cursor-not-allowed dark:disabled:text-gray-600"
-                            disabled={isRemoveDisabled}
+                            disabled={isRemoveDisabled || facility.isCorporate}
                             aria-label={t('removeSourceAria')}
                         >
                             <IconX className="w-4 h-4" />
@@ -170,8 +173,14 @@ export const BoundarySetupWizard: React.FC<BoundarySetupWizardProps> = ({ isOpen
   useEffect(() => {
       if(isOpen) {
         setStep(initialStep)
+        // Sync internal state with props when opening
+        setCompanyName(initialData.companyName);
+        setReportingYear(initialData.reportingYear);
+        setFacilities(initialData.facilities);
+        setBoundaryApproach(initialData.boundaryApproach);
+        setScope3Settings(initialData.scope3Settings);
       }
-  }, [isOpen, initialStep])
+  }, [isOpen, initialStep, initialData])
 
   const handleStartEditing = useCallback((facility: Facility) => {
     setEditingFacilityId(facility.id);
@@ -208,14 +217,10 @@ export const BoundarySetupWizard: React.FC<BoundarySetupWizardProps> = ({ isOpen
   
 
   const handleAddFacility = useCallback(() => {
-    if (newFacilityIdentifier.trim() && newFacilityType) {
-      const allFacilityTypes = Object.values(FACILITY_TYPES_BY_SCOPE).flat();
-      const selectedTypeObj = allFacilityTypes.find(f => f.name === newFacilityType);
-      const translatedType = selectedTypeObj ? t(selectedTypeObj.translationKey) : newFacilityType;
-
+    if (newFacilityIdentifier.trim()) {
       const newFacility: Facility = {
         id: `facility-${Date.now()}`,
-        name: `${newFacilityIdentifier.trim()}`,
+        name: newFacilityIdentifier.trim(),
         group: newFacilityGroup.trim() || undefined,
         equityShare: typeof newFacilityEquity === 'number' && newFacilityEquity >= 0 && newFacilityEquity <= 100 ? newFacilityEquity : 100,
       };
@@ -223,9 +228,8 @@ export const BoundarySetupWizard: React.FC<BoundarySetupWizardProps> = ({ isOpen
       setNewFacilityIdentifier('');
       setNewFacilityEquity('');
       setNewFacilityGroup('');
-      setNewFacilityType(FACILITY_TYPES_BY_SCOPE['Scope 1'][0].name);
     }
-  }, [newFacilityIdentifier, newFacilityType, newFacilityGroup, newFacilityEquity, t]);
+  }, [newFacilityIdentifier, newFacilityGroup, newFacilityEquity]);
 
 
   const handleRemoveFacility = useCallback((id: string) => {
@@ -251,6 +255,7 @@ export const BoundarySetupWizard: React.FC<BoundarySetupWizardProps> = ({ isOpen
     const ungrouped: Facility[] = [];
     
     facilities.forEach(f => {
+        if (f.isCorporate) return; // Don't show corporate facility in the user-editable list
         const groupKey = f.group || '';
         if (groupKey) {
             if (!groups[groupKey]) {
@@ -366,12 +371,6 @@ export const BoundarySetupWizard: React.FC<BoundarySetupWizardProps> = ({ isOpen
             ? 'border-ghg-green bg-green-50 dark:bg-green-900/50 ring-2 ring-ghg-green' 
             : 'border-gray-300 hover:border-gray-400 dark:border-gray-600 dark:hover:border-gray-500'}`;
             
-        const scopeGroupLabels: {[key: string]: string} = {
-            'Scope 1': t('scope1Direct'),
-            'Scope 2': t('scope2Indirect'),
-            'Scope 3': t('scope3OtherIndirect'),
-        };
-
         return (
           <div>
             {/* Consolidation Approach */}
@@ -415,7 +414,7 @@ export const BoundarySetupWizard: React.FC<BoundarySetupWizardProps> = ({ isOpen
                                     facility={f}
                                     isEditing={editingFacilityId === f.id}
                                     boundaryApproach={boundaryApproach}
-                                    isRemoveDisabled={facilities.length <= 1}
+                                    isRemoveDisabled={facilities.filter(fac => !fac.isCorporate).length <= 1}
                                     editingName={editingFacilityName}
                                     editingEquity={editingFacilityEquity}
                                     editingGroup={editingFacilityGroup}
@@ -442,7 +441,7 @@ export const BoundarySetupWizard: React.FC<BoundarySetupWizardProps> = ({ isOpen
                                     facility={f}
                                     isEditing={editingFacilityId === f.id}
                                     boundaryApproach={boundaryApproach}
-                                    isRemoveDisabled={facilities.length <= 1}
+                                    isRemoveDisabled={facilities.filter(fac => !fac.isCorporate).length <= 1}
                                     editingName={editingFacilityName}
                                     editingEquity={editingFacilityEquity}
                                     editingGroup={editingFacilityGroup}

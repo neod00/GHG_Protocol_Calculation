@@ -12,7 +12,7 @@ interface ResultsDisplayProps {
   scope2LocationTotal: number;
   scope2MarketTotal: number;
   scope3Total: number;
-  facilityBreakdown: { [facility: string]: { scope1: number, scope2Location: number, scope2Market: number, scope3: number } };
+  facilityBreakdown: { [facilityId: string]: { scope1: number, scope2Location: number, scope2Market: number, scope3: number } };
   scope3CategoryBreakdown: { [key: string]: number };
   facilities: Facility[];
   boundaryApproach: BoundaryApproach;
@@ -135,22 +135,48 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
   const groupedFacilityBreakdown = useMemo(() => {
     const grouped: { [groupName: string]: { name: string, emissions: any, facility?: Facility }[] } = {};
 
-    Object.entries(facilityBreakdown).forEach(([facilityName, emissions]) => {
-        const facility = facilities.find(f => f.name === facilityName);
-        const groupName = facility?.group || t('ungroupedFacilities');
+    Object.entries(facilityBreakdown).forEach(([facilityId, emissions]) => {
+        const facility = facilities.find(f => f.id === facilityId);
+        if (!facility) return;
+        
+        const groupName = facility.group || (facility.isCorporate ? '' : t('ungroupedFacilities'));
+        if (groupName === '' && facility.isCorporate) {
+            // Put corporate level at the top or handle separately
+        }
+
 
         if (!grouped[groupName]) {
             grouped[groupName] = [];
         }
 
         grouped[groupName].push({
-            name: facilityName,
+            name: facility.name,
             emissions: emissions,
             facility: facility
         });
     });
 
-    return grouped;
+    const corporate = facilities.find(f => f.isCorporate);
+    if(corporate && facilityBreakdown[corporate.id]) {
+      const corporateGroupName = t('corporateLevelFacility');
+      grouped[corporateGroupName] = [{
+        name: corporate.name,
+        emissions: facilityBreakdown[corporate.id],
+        facility: corporate
+      }];
+    }
+    
+    // Sort so that "Corporate Level" (if it exists as a group key) comes first.
+    return Object.entries(grouped)
+      .sort(([a], [b]) => {
+        if (a === t('corporateLevelFacility')) return -1;
+        if (b === t('corporateLevelFacility')) return 1;
+        if (a === t('ungroupedFacilities')) return 1;
+        if (b === t('ungroupedFacilities')) return -1;
+        return a.localeCompare(b);
+      })
+      .reduce((acc, [key, value]) => ({ ...acc, [key]: value }), {});
+
   }, [facilityBreakdown, facilities, t]);
 
 
@@ -322,9 +348,11 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
                                 {(facilitiesInGroup as any[]).map(({ name: facilityName, emissions, facility }) => {
                                     const typedEmissions = emissions as { scope1: number; scope2Location: number, scope2Market: number, scope3: number };
                                     const facilityTotal = typedEmissions.scope1 + typedEmissions.scope2Market + typedEmissions.scope3;
+                                    const displayName = facility.isCorporate ? t('corporateLevelFacility') : facilityName;
+                                    if (facilityTotal === 0 && facility.isCorporate) return null; // Don't show corporate row if it has no emissions
                                     return (
-                                        <tr key={facilityName}>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">{facilityName}</td>
+                                        <tr key={facility.id}>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">{displayName}</td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-left">{getFacilityBasisText(facility)}</td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-right">{formatNumber(typedEmissions.scope1)}</td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-right">{formatNumber(typedEmissions.scope2Market)}</td>
