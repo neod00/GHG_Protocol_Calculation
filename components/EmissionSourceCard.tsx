@@ -13,7 +13,7 @@ interface EmissionSourceCardProps {
   onRemoveSource: (id: string) => void;
   onFuelTypeChange: (id: string, newFuelType: string, category: EmissionCategory) => void;
   // Fix: Removed non-existent 'Fuel' type.
-  fuels: (Refrigerant | CO2eFactorFuel)[];
+  fuels: any;
   // Fix: Updated calculateEmissions prop type to align with implementation and remove unused 'biogenic' property.
   calculateEmissions: (source: EmissionSource) => { scope1: number, scope2Location: number, scope2Market: number, scope3: number };
   description: string;
@@ -97,7 +97,7 @@ export const EmissionSourceCard: React.FC<EmissionSourceCardProps> = ({
 
       {isOpen && !isDisabled && (
         <div className="px-6 pb-6 flex flex-col flex-grow">
-          {(category === EmissionCategory.ProcessEmissions || category === EmissionCategory.PurchasedEnergy || category === EmissionCategory.FuelAndEnergyRelatedActivities) && (
+          {(category === EmissionCategory.ProcessEmissions || category === EmissionCategory.PurchasedEnergy || category === EmissionCategory.FuelAndEnergyRelatedActivities || category === EmissionCategory.UpstreamTransportationAndDistribution) && (
             <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-800 dark:bg-blue-900/30 dark:border-blue-700/50 dark:text-blue-200 flex items-start gap-3">
               <IconInfo className="h-5 w-5 mt-0.5 flex-shrink-0" />
               <div>
@@ -112,6 +112,10 @@ export const EmissionSourceCard: React.FC<EmissionSourceCardProps> = ({
                 {category === EmissionCategory.FuelAndEnergyRelatedActivities && <>
                     <p className="font-semibold">{t('cat3GuidanceTitle')}</p>
                     <p className="text-sm">{t('cat3GuidanceText')}</p>
+                </>}
+                 {category === EmissionCategory.UpstreamTransportationAndDistribution && <>
+                    <p className="font-semibold">{t('cat4GuidanceTitle')}</p>
+                    <p className="text-sm" dangerouslySetInnerHTML={{ __html: t('cat4GuidanceText') }} />
                 </>}
               </div>
             </div>
