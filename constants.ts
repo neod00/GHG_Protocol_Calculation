@@ -1,4 +1,5 @@
-import { CO2eFactorFuel, Refrigerant, EmissionCategory } from './types';
+import { CO2eFactorFuel, Refrigerant, EmissionCategory, WasteType, TreatmentMethod } from './types';
+import { TranslationKey } from './translations';
 
 // Global Warming Potential (GWP) values from IPCC Fifth Assessment Report (AR5)
 export const GWP_VALUES = {
@@ -301,27 +302,48 @@ export const TRANSPORTATION_SPEND_FACTORS: CO2eFactorFuel[] = [
 ];
 
 
-// Category 5: Factors for waste generated in operations but treated OFF-SITE by third parties (Scope 3)
-export const SCOPE3_WASTE_FACTORS: CO2eFactorFuel[] = [
-  {
-    name: 'MSW sent to Landfill',
-    translationKey: 'mswLandfill',
-    units: ['tonnes'],
-    factors: { 'tonnes': 690 }, // Includes collection, transport, and landfill CH4 emissions.
+// Category 5: Factors for waste generated in operations (kg CO2e / tonne of waste)
+// Source: DEFRA 2023, EPA WARM v15.
+// These factors are for TREATMENT ONLY. Transport is calculated separately.
+export const WASTE_TREATMENT_FACTORS: Record<WasteType, Partial<Record<TreatmentMethod, { factor: number; translationKey: TranslationKey }>>> = {
+  MSW: {
+    Landfill: { factor: 650, translationKey: 'landfill' },
+    Incineration: { factor: 300, translationKey: 'incineration' },
+    Recycling: { factor: -200, translationKey: 'recycling' },
+    Composting: { factor: 20, translationKey: 'composting' },
+    AnaerobicDigestion: { factor: 10, translationKey: 'anaerobicDigestion' },
   },
-  {
-    name: 'MSW Incinerated (off-site)',
-    translationKey: 'mswIncinerationOffsite',
-    units: ['tonnes'],
-    factors: { 'tonnes': 320 }, // Lower than Scope 1 as it often involves energy recovery.
+  Paper: {
+    Landfill: { factor: 1200, translationKey: 'landfill' },
+    Incineration: { factor: 20, translationKey: 'incineration' },
+    Recycling: { factor: -800, translationKey: 'recycling' },
+    Composting: { factor: 40, translationKey: 'composting' },
   },
-  {
-    name: 'Mixed Recyclables',
-    translationKey: 'mixedRecyclables',
-    units: ['tonnes'],
-    factors: { 'tonnes': 25 }, // Emissions from collection and processing.
+  Plastics: {
+    Landfill: { factor: 45, translationKey: 'landfill' },
+    Incineration: { factor: 2700, translationKey: 'incineration' },
+    Recycling: { factor: -1500, translationKey: 'recycling' },
   },
+  Food: {
+    Landfill: { factor: 550, translationKey: 'landfill' },
+    Incineration: { factor: 15, translationKey: 'incineration' },
+    Composting: { factor: 20, translationKey: 'composting' },
+    AnaerobicDigestion: { factor: 10, translationKey: 'anaerobicDigestion' },
+  },
+  Metal: {
+    Landfill: { factor: 20, translationKey: 'landfill' },
+    Recycling: { factor: -5000, translationKey: 'recycling' },
+  },
+  Hazardous: {
+    Landfill: { factor: 200, translationKey: 'landfill' },
+    Incineration: { factor: 3000, translationKey: 'incineration' },
+  },
+};
+
+export const WASTE_SPEND_FACTORS: CO2eFactorFuel[] = [
+    { name: 'Waste Management Services (spend)', translationKey: 'wasteSpend', units: ['USD', 'KRW'], factors: { 'USD': 0.5, 'KRW': 0.0004 } },
 ];
+
 
 // Category 6
 export const BUSINESS_TRAVEL_FACTORS: CO2eFactorFuel[] = [

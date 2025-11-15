@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { EmissionSource, Facility, Refrigerant, CO2eFactorFuel, EmissionCategory, CalculationMethod, Cat4CalculationMethod, TransportMode } from '../types';
+import { EmissionSource, Facility, Refrigerant, CO2eFactorFuel, EmissionCategory, CalculationMethod, Cat4CalculationMethod, TransportMode, Cat5CalculationMethod, WasteType, TreatmentMethod } from '../types';
 import { useTranslation } from '../LanguageContext';
 import { TranslationKey } from '../translations';
 import { IconInfo, IconTrash, IconSparkles } from './IconComponents';
 import { GoogleGenAI, Type } from '@google/genai';
-import { MOBILE_FUELS, TRANSPORTATION_SPEND_FACTORS } from '../constants';
+import { MOBILE_FUELS, TRANSPORTATION_FACTORS_BY_MODE, TRANSPORTATION_SPEND_FACTORS, WASTE_SPEND_FACTORS, WASTE_TREATMENT_FACTORS } from '../constants';
 
 interface SourceInputRowProps {
   source: EmissionSource;
@@ -722,6 +722,207 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
             <div>
                 <label htmlFor={`supplier-co2e-${source.id}`} className={commonLabelClass}>{t('supplierProvidedCO2e')}</label>
                 <input id={`supplier-co2e-${source.id}`} type="number" step="any" value={source.supplierProvidedCO2e ?? ''} onChange={(e) => onUpdate({ supplierProvidedCO2e: parseFloat(e.target.value) || 0 })} className={commonSelectClass} placeholder="0" />
+            </div>
+        )}
+
+        {/* Total emissions display */}
+        <div className="mt-2 p-2 bg-gray-100 dark:bg-gray-700 rounded-md text-right">
+            <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{t('emissionsForSource')}: </span>
+            <span className="text-sm font-bold text-ghg-dark dark:text-gray-100">{(totalEmissions / 1000).toLocaleString('en-US', {minimumFractionDigits: 3})} t CO₂e</span>
+        </div>
+      </div>
+    );
+  }
+
+  // == Advanced UI for Category 5 ==
+  if (source.category === EmissionCategory.WasteGeneratedInOperations) {
+    const calculationMethod = (source.calculationMethod as Cat5CalculationMethod) || 'activity';
+
+    const handleMethodChange = (method: Cat5CalculationMethod) => {
+        let updates: Partial<EmissionSource> = { calculationMethod: method, monthlyQuantities: Array(12).fill(0) };
+        if (method === 'activity') {
+            updates = { ...updates, wasteType: 'MSW', treatmentMethod: 'Landfill', unit: 'tonnes' };
+        } else if (method === 'spend') {
+            updates = { ...updates, fuelType: WASTE_SPEND_FACTORS[0].name, unit: WASTE_SPEND_FACTORS[0].units[0] };
+        }
+        onUpdate(updates);
+    };
+
+    const handleWasteTypeChange = (wasteType: WasteType) => {
+        const firstValidTreatment = Object.keys(WASTE_TREATMENT_FACTORS[wasteType])[0] as TreatmentMethod;
+        onUpdate({ wasteType, treatmentMethod: firstValidTreatment });
+    };
+
+    const availableTreatmentMethods = source.wasteType ? Object.keys(WASTE_TREATMENT_FACTORS[source.wasteType]) as TreatmentMethod[] : [];
+    
+    return (
+      <div className="flex flex-col gap-3 p-3 bg-gray-50 rounded-lg border dark:bg-gray-800 dark:border-gray-600">
+        <div className="flex justify-between items-start">
+            <div className='flex-grow pr-4'>
+                <label className={commonLabelClass}>{t('calculationMethod')}</label>
+                <div className="flex gap-1 rounded-md bg-gray-200 dark:bg-gray-900 p-1 text-xs">
+                    {(['activity', 'supplier_specific', 'spend'] as Cat5CalculationMethod[]).map(method => (
+                        <button 
+                            key={method}
+                            onClick={() => handleMethodChange(method)}
+                            className={`flex-1 py-1 rounded-md transition-colors ${calculationMethod === method ? 'bg-white dark:bg-gray-700 shadow font-semibold' : 'hover:bg-gray-100 dark:hover:bg-gray-800'}`}>
+                            {t(`${method}Method` as TranslationKey)}
+                        </button>
+                    ))}
+                </div>
+            </div>
+            <button onClick={onRemove} className="text-gray-400 hover:text-red-600 p-1 dark:text-gray-500 dark:hover:text-red-500" aria-label={t('removeSourceAria')}>
+                <IconTrash className="h-5 w-5" />
+            </button>
+        </div>
+
+        <div>
+          <label htmlFor={`description-${source.id}`} className={commonLabelClass}>{t('emissionSourceDescription')}</label>
+          <input id={`description-${source.id}`} type="text" value={source.description || ''} onChange={(e) => onUpdate({ description: e.target.value })} className={commonSelectClass} placeholder={t(placeholderKey)} />
+        </div>
+        
+        {calculationMethod === 'activity' && (
+            <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-2">
+                     <div>
+                        <label className={commonLabelClass}>{t('wasteType')}</label>
+                        <select value={source.wasteType} onChange={(e) => handleWasteTypeChange(e.target.value as WasteType)} className={commonSelectClass}>
+                            {(Object.keys(WASTE_TREATMENT_FACTORS) as WasteType[]).map(type => <option key={type} value={type}>{t(`waste${type}` as TranslationKey) || type}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label className={commonLabelClass}>{t('treatmentMethod')}</label>
+                        <select value={source.treatmentMethod} onChange={(e) => onUpdate({ treatmentMethod: e.target.value as TreatmentMethod })} className={commonSelectClass}>
+                            {availableTreatmentMethods.map(method => <option key={method} value={method}>{t(WASTE_TREATMENT_FACTORS[source.wasteType!]![method]!.translationKey)}</option>)}
+                        </select>
+                    </div>
+                </div>
+
+                {/* Monthly Data */}
+                <div className="mt-2">
+                    <div className={`flex justify-between items-center bg-gray-100 dark:bg-gray-700 p-2 ${isEditing ? 'rounded-t-lg' : 'rounded-lg'}`}>
+                        <div>
+                            <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{t('totalYear')}: </span>
+                            <span className="text-sm font-bold text-ghg-dark dark:text-gray-100">{totalQuantity.toLocaleString()} {t(source.unit as TranslationKey) || source.unit}</span>
+                        </div>
+                        {!isEditing && (
+                        <button onClick={handleEdit} className="text-sm text-ghg-green font-semibold hover:underline">
+                            {t('editMonthly')}
+                        </button>
+                        )}
+                    </div>
+                     {isEditing && (
+                        <div className="p-3 bg-gray-100 dark:bg-gray-900/50 rounded-b-lg">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                                {monthKeys.map((monthKey, index) => (
+                                    <div key={monthKey}>
+                                        <label className={commonLabelClass} htmlFor={`quantity-${source.id}-${index}`}>{t(monthKey)}</label>
+                                        <div className={`flex items-center rounded-md shadow-sm border border-gray-300 dark:border-gray-500 bg-white dark:bg-gray-600 focus-within:ring-1 focus-within:ring-ghg-green focus-within:border-ghg-green overflow-hidden`}>
+                                            <input id={`quantity-${source.id}-${index}`} type="number" onKeyDown={preventNonNumericKeys} value={editedQuantities[index] === 0 ? '' : editedQuantities[index]} onChange={(e) => handleMonthlyChange(index, e.target.value)} className="flex-grow bg-transparent text-gray-900 dark:text-gray-200 py-1 px-2 text-sm text-right focus:outline-none" placeholder="0" />
+                                            <select value={source.unit} onChange={(e) => onUpdate({ unit: e.target.value })} className="bg-transparent text-xs text-gray-500 dark:text-gray-400 border-none focus:ring-0">
+                                                <option value="tonnes">{t('tonnes')}</option>
+                                                <option value="kg">kg</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="flex justify-end gap-2 mt-4">
+                                <button onClick={handleCancel} className="px-3 py-1 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 dark:bg-gray-600 dark:text-gray-200 dark:border-gray-500 dark:hover:bg-gray-500">{t('cancel')}</button>
+                                <button onClick={handleSave} className="px-3 py-1 text-sm font-medium text-white bg-ghg-green rounded-md shadow-sm hover:bg-ghg-dark">{t('save')}</button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Transport Section */}
+                 <div className="mt-2 space-y-2 p-3 bg-gray-100 dark:bg-gray-900/50 rounded-md">
+                    <label className="flex items-center space-x-2 text-sm font-medium">
+                        <input type="checkbox" checked={source.includeTransport || false} onChange={e => onUpdate({ includeTransport: e.target.checked })} className="rounded text-ghg-green focus:ring-ghg-green"/>
+                        <span>{t('includeTransportEmissions')}</span>
+                    </label>
+                    {source.includeTransport && (
+                        <div className="pt-3 border-t dark:border-gray-600 space-y-3">
+                            <h4 className="text-sm font-semibold">{t('transportDetails')}</h4>
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label className={commonLabelClass}>{t('transportMode')}</label>
+                                    <select value={source.transportMode} onChange={(e) => onUpdate({ transportMode: e.target.value as TransportMode, vehicleType: Object.keys(TRANSPORTATION_FACTORS_BY_MODE[e.target.value as TransportMode])[0] })} className={commonSelectClass}>
+                                        {(['Road', 'Rail'] as TransportMode[]).map(mode => <option key={mode} value={mode}>{t(mode as TranslationKey) || mode}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className={commonLabelClass}>{t('vehicleType')}</label>
+                                    <select value={source.vehicleType} onChange={(e) => onUpdate({ vehicleType: e.target.value })} className={commonSelectClass} disabled={!source.transportMode}>
+                                        {source.transportMode && Object.keys(TRANSPORTATION_FACTORS_BY_MODE[source.transportMode]).map(vType => <option key={vType} value={vType}>{t((TRANSPORTATION_FACTORS_BY_MODE[source.transportMode!][vType] as any).translationKey as TranslationKey) || vType}</option>)}
+                                    </select>
+                                </div>
+                            </div>
+                             <div>
+                                <label className={commonLabelClass}>{t('oneWayDistance')}</label>
+                                <input type="number" value={source.distanceKm || ''} onChange={e => onUpdate({ distanceKm: parseFloat(e.target.value) || 0 })} className={commonSelectClass} placeholder="0" />
+                            </div>
+                        </div>
+                    )}
+                 </div>
+            </div>
+        )}
+
+        {calculationMethod === 'supplier_specific' && (
+            <div>
+                <label htmlFor={`supplier-co2e-${source.id}`} className={commonLabelClass}>{t('supplierProvidedCO2e')}</label>
+                <input id={`supplier-co2e-${source.id}`} type="number" step="any" value={source.supplierProvidedCO2e ?? ''} onChange={(e) => onUpdate({ supplierProvidedCO2e: parseFloat(e.target.value) || 0 })} className={commonSelectClass} placeholder="0" />
+            </div>
+        )}
+
+        {calculationMethod === 'spend' && (
+             <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-2">
+                    <select value={source.fuelType} onChange={(e) => onUpdate({ fuelType: e.target.value })} className={commonSelectClass} aria-label={t('cat4ServiceType')}>
+                    {WASTE_SPEND_FACTORS.map((item: CO2eFactorFuel) => (
+                        <option key={item.name} value={item.name}>
+                        {language === 'ko' && item.translationKey ? t(item.translationKey as TranslationKey) : item.name}
+                        </option>
+                    ))}
+                    </select>
+                    <select value={source.unit} onChange={(e) => onUpdate({ unit: e.target.value })} className={commonSelectClass} aria-label="Unit">
+                    { (WASTE_SPEND_FACTORS.find((f: CO2eFactorFuel) => f.name === source.fuelType) as CO2eFactorFuel)?.units.map((unit) => (
+                        <option key={unit} value={unit}>{t(unit as TranslationKey) || unit}</option>
+                    ))}
+                    </select>
+                </div>
+                <div className="mt-2">
+                    <div className={`flex justify-between items-center bg-gray-100 dark:bg-gray-700 p-2 ${isEditing ? 'rounded-t-lg' : 'rounded-lg'}`}>
+                        <div>
+                            <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{t('totalYear')}: </span>
+                            <span className="text-sm font-bold text-ghg-dark dark:text-gray-100">{totalQuantity.toLocaleString()} {t(source.unit as TranslationKey) || source.unit}</span>
+                        </div>
+                        {!isEditing && (
+                        <button onClick={handleEdit} className="text-sm text-ghg-green font-semibold hover:underline">
+                            {t('editMonthly')}
+                        </button>
+                        )}
+                    </div>
+                     {isEditing && (
+                        <div className="p-3 bg-gray-100 dark:bg-gray-900/50 rounded-b-lg">
+                           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                                {monthKeys.map((monthKey, index) => (
+                                    <div key={monthKey}>
+                                        <label className={commonLabelClass} htmlFor={`quantity-${source.id}-${index}`}>{t(monthKey)}</label>
+                                        <div className={`flex items-center rounded-md shadow-sm border border-gray-300 dark:border-gray-500 bg-white dark:bg-gray-600 focus-within:ring-1 focus-within:ring-ghg-green focus-within:border-ghg-green overflow-hidden`}>
+                                            <input id={`quantity-${source.id}-${index}`} type="number" onKeyDown={preventNonNumericKeys} value={editedQuantities[index] === 0 ? '' : editedQuantities[index]} onChange={(e) => handleMonthlyChange(index, e.target.value)} className="flex-grow bg-transparent text-gray-900 dark:text-gray-200 py-1 px-2 text-sm text-right focus:outline-none" placeholder="0" />
+                                            <span className="pr-3 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{t(source.unit as TranslationKey) || source.unit}</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="flex justify-end gap-2 mt-4">
+                                <button onClick={handleCancel} className="px-3 py-1 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 dark:bg-gray-600 dark:text-gray-200 dark:border-gray-500 dark:hover:bg-gray-500">{t('cancel')}</button>
+                                <button onClick={handleSave} className="px-3 py-1 text-sm font-medium text-white bg-ghg-green rounded-md shadow-sm hover:bg-ghg-dark">{t('save')}</button>
+                            </div>
+                        </div>
+                    )}
+                </div>
             </div>
         )}
 

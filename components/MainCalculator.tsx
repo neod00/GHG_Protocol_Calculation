@@ -1,15 +1,16 @@
 // Fix: Corrected typo in React import
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 // Fix: Import 'EditableCO2eFactorFuel' to resolve type error.
-import { EmissionCategory, EmissionSource, Refrigerant, Facility, BoundaryApproach, EditableRefrigerant, EditableCO2eFactorFuel, CO2eFactorFuel, TransportMode } from '../types';
+import { EmissionCategory, EmissionSource, Refrigerant, Facility, BoundaryApproach, EditableRefrigerant, EditableCO2eFactorFuel, CO2eFactorFuel, TransportMode, Cat5CalculationMethod, WasteType, TreatmentMethod } from '../types';
 import { 
     STATIONARY_FUELS, MOBILE_FUELS, PROCESS_MATERIALS, FUGITIVE_GASES, SCOPE2_ENERGY_SOURCES, WASTE_SOURCES, 
-    BUSINESS_TRAVEL_FACTORS, EMPLOYEE_COMMUTING_FACTORS, SCOPE3_WASTE_FACTORS,
+    BUSINESS_TRAVEL_FACTORS, EMPLOYEE_COMMUTING_FACTORS,
     PURCHASED_GOODS_SERVICES_FACTORS, CAPITAL_GOODS_FACTORS, FUEL_ENERGY_ACTIVITIES_FACTORS,
     TRANSPORTATION_FACTORS_BY_MODE, TRANSPORTATION_SPEND_FACTORS, LEASED_ASSETS_FACTORS, PROCESSING_SOLD_PRODUCTS_FACTORS,
     USE_SOLD_PRODUCTS_FACTORS, END_OF_LIFE_TREATMENT_FACTORS, FRANCHISES_FACTORS, INVESTMENTS_FACTORS,
     SCOPE2_FACTORS_BY_REGION,
-    PURCHASED_ENERGY_UPSTREAM_FACTORS
+    PURCHASED_ENERGY_UPSTREAM_FACTORS,
+    WASTE_TREATMENT_FACTORS, WASTE_SPEND_FACTORS
 } from '../constants';
 import { ResultsDisplay } from './ResultsDisplay';
 import { useTranslation } from '../LanguageContext';
@@ -69,7 +70,7 @@ const factorConfig = {
     fuelEnergy: { key: 'ghg-calc-fuelEnergyActivitiesFactors', default: FUEL_ENERGY_ACTIVITIES_FACTORS },
     upstreamTransport: { key: 'ghg-calc-upstreamTransportationDistributionFactors', default: TRANSPORTATION_FACTORS_BY_MODE },
     downstreamTransport: { key: 'ghg-calc-downstreamTransportationDistributionFactors', default: TRANSPORTATION_FACTORS_BY_MODE },
-    scope3Waste: { key: 'ghg-calc-scope3WasteFactors', default: SCOPE3_WASTE_FACTORS },
+    scope3Waste: { key: 'ghg-calc-scope3WasteFactors', default: [] }, // This will be handled by the new constants
     businessTravel: { key: 'ghg-calc-businessTravelFactors', default: BUSINESS_TRAVEL_FACTORS },
     employeeCommuting: { key: 'ghg-calc-employeeCommutingFactors', default: EMPLOYEE_COMMUTING_FACTORS },
     upstreamLeased: { key: 'ghg-calc-upstreamLeasedAssetsFactors', default: LEASED_ASSETS_FACTORS },
@@ -253,7 +254,7 @@ export const MainCalculator: React.FC = () => {
     [EmissionCategory.CapitalGoods]: allFactors.capitalGoods,
     [EmissionCategory.FuelAndEnergyRelatedActivities]: allFactors.fuelEnergy,
     [EmissionCategory.UpstreamTransportationAndDistribution]: allFactors.upstreamTransport,
-    [EmissionCategory.WasteGeneratedInOperations]: allFactors.scope3Waste,
+    [EmissionCategory.WasteGeneratedInOperations]: { ...WASTE_TREATMENT_FACTORS, ...WASTE_SPEND_FACTORS },
     [EmissionCategory.BusinessTravel]: allFactors.businessTravel,
     [EmissionCategory.EmployeeCommuting]: allFactors.employeeCommuting,
     [EmissionCategory.UpstreamLeasedAssets]: allFactors.upstreamLeased,
@@ -376,6 +377,24 @@ export const MainCalculator: React.FC = () => {
         setSources(prev => ({...prev, [category]: [...prev[category], newSource]}));
         return;
     }
+
+    if (category === EmissionCategory.WasteGeneratedInOperations) {
+        const newSource: EmissionSource = {
+            id: `source-${Date.now()}`,
+            facilityId: CORPORATE_FACILITY_ID,
+            category,
+            description: '',
+            fuelType: '', // Not used in activity-based
+            monthlyQuantities: Array(12).fill(0),
+            unit: 'tonnes',
+            calculationMethod: 'activity',
+            wasteType: 'MSW',
+            treatmentMethod: 'Landfill',
+            includeTransport: false,
+        };
+        setSources(prev => ({...prev, [category]: [...prev[category], newSource]}));
+        return;
+    }
     
     if (!fuelsForCategory || fuelsForCategory.length === 0) return;
 
@@ -410,7 +429,7 @@ export const MainCalculator: React.FC = () => {
   }, []);
 
   const handleFuelTypeChange = useCallback((id: string, newFuelType: string, category: EmissionCategory) => {
-    if (category === EmissionCategory.PurchasedGoodsAndServices || category === EmissionCategory.CapitalGoods) return;
+    if (category === EmissionCategory.PurchasedGoodsAndServices || category === EmissionCategory.CapitalGoods || category === EmissionCategory.WasteGeneratedInOperations) return;
 
     const fuelsForCategory = FUELS_MAP[category];
     if (!fuelsForCategory) return;
@@ -477,6 +496,45 @@ export const MainCalculator: React.FC = () => {
             case 'supplier_specific':
                 return { scope1: 0, scope2Location: 0, scope2Market: 0, scope3: source.supplierProvidedCO2e || 0 };
         }
+    }
+
+    if (source.category === EmissionCategory.WasteGeneratedInOperations) {
+        let scope3 = 0;
+        const calcMethod = source.calculationMethod as Cat5CalculationMethod || 'activity';
+        switch (calcMethod) {
+            case 'supplier_specific':
+                scope3 = source.supplierProvidedCO2e || 0;
+                break;
+            case 'spend':
+                const totalSpend = source.monthlyQuantities.reduce((s, q) => s + q, 0);
+                const spendFactorData = WASTE_SPEND_FACTORS.find(f => f.name === source.fuelType);
+                const spendFactor = spendFactorData?.factors[source.unit] || 0;
+                scope3 = totalSpend * spendFactor;
+                break;
+            case 'activity':
+            default:
+                const totalWeightTonnes = source.monthlyQuantities.reduce((s, q) => s + q, 0) * (source.unit === 'kg' ? 0.001 : 1);
+                
+                // Treatment emissions
+                const wasteType = source.wasteType;
+                const treatmentMethod = source.treatmentMethod;
+                if (wasteType && treatmentMethod && WASTE_TREATMENT_FACTORS[wasteType] && WASTE_TREATMENT_FACTORS[wasteType]?.[treatmentMethod]) {
+                    const treatmentFactor = WASTE_TREATMENT_FACTORS[wasteType][treatmentMethod]!.factor;
+                    scope3 += totalWeightTonnes * treatmentFactor;
+                }
+
+                // Transport emissions
+                if (source.includeTransport && source.transportMode && source.vehicleType && source.distanceKm) {
+                    const transportFactorData = TRANSPORTATION_FACTORS_BY_MODE[source.transportMode]?.[source.vehicleType];
+                    if (transportFactorData) {
+                        const transportFactor = transportFactorData.factor;
+                        const tonneKm = totalWeightTonnes * source.distanceKm;
+                        scope3 += tonneKm * transportFactor;
+                    }
+                }
+                break;
+        }
+        return { scope1: 0, scope2Location: 0, scope2Market: 0, scope3 };
     }
 
     const totalQuantity = source.monthlyQuantities.reduce((sum, q) => sum + q, 0);

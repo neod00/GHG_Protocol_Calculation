@@ -73,6 +73,8 @@ const en = {
   cat3GuidanceText: 'This category is for emissions NOT included in Scope 1 (direct fuel burning) or Scope 2 (energy use). For fuels entered here, only the upstream "Well-to-Tank" (WTT) emissions are calculated. For energy, this captures upstream production and T&D losses.',
   cat4GuidanceTitle: 'Key Principles for Category 4 Accounting',
   cat4GuidanceText: 'This category covers third-party transport and distribution. Ensure you avoid double counting: <br> - <strong>Scope 1:</strong> Do not include fuel from your company-owned vehicles. <br> - <strong>Category 1:</strong> If transport is included in the price of purchased goods, it may belong in Cat 1. <br> - <strong>Category 3:</strong> Do not include well-to-tank (WTT) emissions of fuels here. <br> - <strong>Category 9:</strong> This category is for UPSTREAM. Downstream transport of sold goods belongs in Category 9.',
+  cat5GuidanceTitle: 'Key Principles for Category 5 Accounting',
+  cat5GuidanceText: 'This category covers third-party disposal and treatment of waste. <br> - <strong>Boundary:</strong> If waste treatment is done on-site by your company, report it under Scope 1. <br> - <strong>Transport:</strong> Emissions from transporting waste can be included here for convenience. The calculation uses Category 4 methodology. If your waste contractor provides a total CO2e value that includes transport, use the "Supplier-specific" method and do not add transport separately to avoid double counting.',
   comingSoon: 'Coming Soon',
 
 
@@ -203,6 +205,24 @@ const en = {
   cat4FuelType: 'Fuel Type',
   cat4ServiceType: 'Service Type',
 
+  // Category 5 Advanced UI
+  wasteType: 'Waste Type',
+  treatmentMethod: 'Treatment Method',
+  includeTransportEmissions: 'Include transportation emissions',
+  transportDetails: 'Transportation Details',
+  oneWayDistance: 'One-way Distance (km)',
+  wasteMSW: 'General MSW',
+  wastePaper: 'Paper & Cardboard',
+  wastePlastics: 'Plastics',
+  wasteFood: 'Food Waste',
+  wasteMetal: 'Metal',
+  wasteHazardous: 'Hazardous Waste',
+  landfill: 'Landfill',
+  incineration: 'Incineration',
+  recycling: 'Recycling',
+  composting: 'Composting',
+  anaerobicDigestion: 'Anaerobic Digestion',
+  wasteSpend: 'Waste Management Services (spend)',
 
   // Months
   jan: 'Jan', feb: 'Feb', mar: 'Mar', apr: 'Apr', may: 'May', jun: 'Jun',
@@ -434,9 +454,6 @@ const en = {
   personalCarDiesel: 'Personal Car (Diesel)',
   bus: 'Bus',
   subway: 'Subway / Metro',
-  mswLandfill: 'MSW sent to Landfill',
-  mswIncinerationOffsite: 'MSW Incinerated (off-site)',
-  mixedRecyclables: 'Mixed Recyclables',
   profServicesSpend: 'Professional Services (spend)',
   itServicesSpend: 'IT Services (spend)',
   computerHardwareSpend: 'Computer Hardware (spend)',
@@ -559,6 +576,8 @@ const ko = {
   cat3GuidanceText: '이 카테고리는 Scope 1(직접 연료 연소) 또는 Scope 2(에너지 사용)에 포함되지 않은 배출을 다룹니다. 여기에 입력된 연료에 대해서는 업스트림 "Well-to-Tank"(WTT) 배출량만 계산됩니다. 에너지의 경우, 업스트림 생산 및 송배전(T&D) 손실을 포함합니다.',
   cat4GuidanceTitle: '카테고리 4 산정 핵심 원칙',
   cat4GuidanceText: '이 카테고리는 제3자 운송 및 유통을 다룹니다. 중복 계산을 피하도록 주의하세요: <br> - <strong>Scope 1:</strong> 회사 소유 차량의 연료 사용은 여기에 포함하지 마십시오. <br> - <strong>카테고리 1:</strong> 구매한 제품 가격에 운송비가 포함된 경우, 카테고리 1에 해당될 수 있습니다. <br> - <strong>카테고리 3:</strong> 연료의 WTT(Well-to-Tank) 배출은 여기에 포함하지 마십시오. <br> - <strong>카테고리 9:</strong> 이 카테고리는 <strong>업스트림</strong>입니다. 판매된 제품의 다운스트림 운송은 카테고리 9에 해당합니다.',
+  cat5GuidanceTitle: '카테고리 5 산정 핵심 원칙',
+  cat5GuidanceText: '이 카테고리는 제3자에 의한 폐기물 처리 및 처분을 다룹니다. <br> - <strong>경계:</strong> 폐기물 처리가 귀사 사업장 내에서 직접 이루어지는 경우, Scope 1으로 보고해야 합니다. <br> - <strong>운송:</strong> 폐기물 운송 배출량은 편의를 위해 여기서 포함하여 산정할 수 있습니다. 계산은 카테고리 4 방법론을 따릅니다. 폐기물 처리업체가 운송을 포함한 총 CO2e 값을 제공하는 경우, "공급업체 특정" 방법을 사용하고 중복 계산을 피하기 위해 운송을 별도로 추가하지 마십시오.',
   comingSoon: '출시 예정',
   
   // Results Display
@@ -687,6 +706,25 @@ const ko = {
   adjustmentFactors: '조정 계수',
   cat4FuelType: '연료 유형',
   cat4ServiceType: '서비스 유형',
+
+  // Category 5 Advanced UI
+  wasteType: '폐기물 유형',
+  treatmentMethod: '처리 방법',
+  includeTransportEmissions: '운송 배출량 포함',
+  transportDetails: '운송 세부 정보',
+  oneWayDistance: '편도 거리 (km)',
+  wasteMSW: '일반 생활 폐기물',
+  wastePaper: '종이 및 판지',
+  wastePlastics: '플라스틱',
+  wasteFood: '음식물류 폐기물',
+  wasteMetal: '금속',
+  wasteHazardous: '지정 폐기물',
+  landfill: '매립',
+  incineration: '소각',
+  recycling: '재활용',
+  composting: '퇴비화',
+  anaerobicDigestion: '혐기성 소화',
+  wasteSpend: '폐기물 처리 서비스 (지출)',
 
   // Months
   jan: '1월', feb: '2월', mar: '3월', apr: '4월', may: '5월', jun: '6월',
@@ -918,9 +956,6 @@ const ko = {
   personalCarDiesel: '개인 차량 (경유)',
   bus: '버스',
   subway: '지하철 / 전철',
-  mswLandfill: '생활폐기물 매립',
-  mswIncinerationOffsite: '생활폐기물 소각 (외부)',
-  mixedRecyclables: '혼합 재활용품',
   profServicesSpend: '전문 서비스 (지출)',
   itServicesSpend: 'IT 서비스 (지출)',
   computerHardwareSpend: '컴퓨터 하드웨어 (지출)',
