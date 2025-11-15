@@ -88,6 +88,7 @@ export interface EmissionSource {
   }
   dataQualityRating?: 'high' | 'medium' | 'low' | 'estimated';
   assumptions?: string;
+  activityDataSource?: string; // e.g., "Monthly electricity bills", "Fuel purchase records"
   
   // New fields for advanced Scope 3 Category 3 calculation
   activityType?: 'fuel_wtt' | 'energy_upstream' | 'spend_based';

@@ -329,6 +329,7 @@ export const MainCalculator: React.FC = () => {
         factor: 0,
         factorUnit: 'kg CO₂e / KRW',
         factorSource: '',
+        activityDataSource: '',
       };
       setSources(prev => ({ ...prev, [category]: [...prev[category], newSource] }));
       return;
@@ -345,6 +346,7 @@ export const MainCalculator: React.FC = () => {
             monthlyQuantities: Array(12).fill(0),
             unit: defaultFuel?.units[0] || '',
             activityType: 'fuel_wtt',
+            activityDataSource: '',
         };
         setSources(prev => ({...prev, [category]: [...prev[category], newSource]}));
         return;
@@ -369,6 +371,7 @@ export const MainCalculator: React.FC = () => {
             refrigerated: false,
             loadFactor: 100,
             emptyBackhaul: false,
+            activityDataSource: '',
         };
         setSources(prev => ({...prev, [category]: [...prev[category], newSource]}));
         return;
@@ -387,6 +390,7 @@ export const MainCalculator: React.FC = () => {
       fuelType: defaultFuel.name,
       monthlyQuantities: Array(12).fill(0),
       unit: defaultUnit,
+      activityDataSource: '',
     };
     setSources(prev => ({ ...prev, [category]: [...prev[category], newSource] }));
   }, [facilities, FUELS_MAP, getScopeForCategory]);
@@ -569,7 +573,7 @@ export const MainCalculator: React.FC = () => {
   const boundaryApproachText = useMemo(() => ({
       operational: t('operationalControl'),
       financial: t('financialControl'),
-      equity: t('equityControlDescription'),
+      equity: t('equityShare'),
   }[boundaryApproach]), [boundaryApproach, t]);
   
   const handleWizardSave = useCallback((details: {
@@ -745,6 +749,9 @@ export const MainCalculator: React.FC = () => {
             results={results}
             facilities={facilities}
             boundaryApproach={boundaryApproach}
+            sources={sources}
+            allFactors={allFactors}
+            scope3Settings={scope3Settings}
         />
       )}
 

@@ -69,7 +69,6 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
         case EmissionCategory.DownstreamTransportationAndDistribution:
             return 'downstreamTransportPlaceholder';
         case EmissionCategory.ProcessingOfSoldProducts:
-            // FIX: Corrected typo in translation key. 'processingSoldProductsPlaceholder' should be 'processingOfSoldProductsPlaceholder'.
             return 'processingOfSoldProductsPlaceholder';
         case EmissionCategory.UseOfSoldProducts:
             return 'useOfSoldProductsPlaceholder';
@@ -343,6 +342,16 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
             </>)}
 
             {/* Data Quality & Assumptions */}
+             <div>
+                <label htmlFor={`activityDataSource-${source.id}`} className={commonLabelClass}>{t('activityDataSource')}</label>
+                <input
+                    id={`activityDataSource-${source.id}`}
+                    type="text"
+                    value={source.activityDataSource ?? ''}
+                    onChange={(e) => onUpdate({ activityDataSource: e.target.value })}
+                    className={commonSelectClass} placeholder={t('activityDataSourcePlaceholder')}
+                />
+            </div>
             <div>
                 <label htmlFor={`quality-${source.id}`} className={commonLabelClass}>{t('dataQuality')}</label>
                 <select
@@ -468,6 +477,10 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
                         <label htmlFor={`description-${source.id}`} className={commonLabelClass}>{t('emissionSourceDescription')}</label>
                         <input id={`description-${source.id}`} type="text" value={source.description || ''} onChange={(e) => onUpdate({ description: e.target.value })} className={commonSelectClass} placeholder={t(placeholderKey)} />
                     </div>
+                     <div>
+                        <label htmlFor={`activityDataSource-${source.id}`} className={commonLabelClass}>{t('activityDataSource')}</label>
+                        <input id={`activityDataSource-${source.id}`} type="text" value={source.activityDataSource ?? ''} onChange={(e) => onUpdate({ activityDataSource: e.target.value })} className={commonSelectClass} placeholder={t('activityDataSourcePlaceholder')} />
+                    </div>
                     <div className="grid grid-cols-2 gap-2">
                         <select value={source.fuelType} onChange={(e) => onFuelTypeChange(e.target.value)} className={commonSelectClass} aria-label="Fuel/Source">
                         {fuels.map((fuel: CO2eFactorFuel) => (
@@ -588,6 +601,10 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
         <div>
           <label htmlFor={`description-${source.id}`} className={commonLabelClass}>{t('emissionSourceDescription')}</label>
           <input id={`description-${source.id}`} type="text" value={source.description || ''} onChange={(e) => onUpdate({ description: e.target.value })} className={commonSelectClass} placeholder={t(placeholderKey)} />
+        </div>
+         <div>
+            <label htmlFor={`activityDataSource-${source.id}`} className={commonLabelClass}>{t('activityDataSource')}</label>
+            <input id={`activityDataSource-${source.id}`} type="text" value={source.activityDataSource ?? ''} onChange={(e) => onUpdate({ activityDataSource: e.target.value })} className={commonSelectClass} placeholder={t('activityDataSourcePlaceholder')} />
         </div>
 
         {/* Activity-based Form */}
@@ -806,6 +823,17 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
             placeholder={t(placeholderKey)}
         />
       </div>
+       <div>
+        <label htmlFor={`activityDataSource-${source.id}`} className={commonLabelClass}>{t('activityDataSource')}</label>
+        <input
+            id={`activityDataSource-${source.id}`}
+            type="text"
+            value={source.activityDataSource ?? ''}
+            onChange={(e) => onUpdate({ activityDataSource: e.target.value })}
+            className={commonSelectClass}
+            placeholder={t('activityDataSourcePlaceholder')}
+        />
+      </div>
       <div className="grid grid-cols-2 gap-2">
         <select value={source.fuelType} onChange={(e) => onFuelTypeChange(e.target.value)} className={commonSelectClass} aria-label="Fuel/Source">
           {fuels.map((fuel: any) => (
@@ -816,8 +844,6 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
         </select>
         <select value={source.unit} onChange={(e) => onUpdate({ unit: e.target.value })} className={commonSelectClass} aria-label="Unit" disabled={isFugitive}>
           {isFugitive ? (<option value="kg">kg</option>) : (
-            // FIX: The `units` property exists only on the `CO2eFactorFuel` type. The compiler needs
-            // an explicit cast to narrow the type of `selectedFuel` before accessing `units`.
             selectedFuel && 'units' in selectedFuel && (selectedFuel as CO2eFactorFuel).units.map((unit) => (
               <option key={unit} value={unit}>{t(unit as TranslationKey) || unit}</option>
             ))
