@@ -16,10 +16,12 @@ interface FacilityRowProps {
     isRemoveDisabled: boolean;
     editingName: string;
     editingEquity: number | '';
+    editingGroup: string;
     onStartEditing: (facility: Facility) => void;
     onRemove: (id: string) => void;
     onNameChange: (name: string) => void;
     onEquityChange: (equity: number | '') => void;
+    onGroupChange: (group: string) => void;
     onSave: () => void;
     onCancel: () => void;
 }
@@ -31,10 +33,12 @@ const FacilityRow: React.FC<FacilityRowProps> = React.memo(({
     isRemoveDisabled,
     editingName,
     editingEquity,
+    editingGroup,
     onStartEditing,
     onRemove,
     onNameChange,
     onEquityChange,
+    onGroupChange,
     onSave,
     onCancel
 }) => {
@@ -43,30 +47,44 @@ const FacilityRow: React.FC<FacilityRowProps> = React.memo(({
     return (
         <div className="p-2 bg-gray-100 dark:bg-gray-800 rounded-md">
             {isEditing ? (
-                <div className="flex items-center gap-2">
-                    <input
-                        type="text"
-                        value={editingName}
-                        onChange={e => onNameChange(e.target.value)}
-                        className="flex-grow rounded-md border-gray-300 shadow-sm focus:border-ghg-green focus:ring-ghg-green bg-white text-gray-900 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100 text-sm p-1"
-                    />
-                    {boundaryApproach === 'equity' && (
+                <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-2">
                         <input
-                            type="number"
-                            value={editingEquity}
-                            onChange={e => onEquityChange(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                            className="w-20 rounded-md border-gray-300 shadow-sm focus:border-ghg-green focus:ring-ghg-green bg-white text-gray-900 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100 text-sm p-1"
-                            placeholder="%"
-                            min="0"
-                            max="100"
+                            type="text"
+                            value={editingName}
+                            onChange={e => onNameChange(e.target.value)}
+                            className="flex-grow rounded-md border-gray-300 shadow-sm focus:border-ghg-green focus:ring-ghg-green bg-white text-gray-900 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100 text-sm p-1"
                         />
-                    )}
-                    <button onClick={onSave} className="text-green-600 hover:text-green-800 p-1" aria-label="Save"><IconCheck className="w-5 h-5" /></button>
-                    <button onClick={onCancel} className="text-gray-500 hover:text-gray-700 p-1" aria-label="Cancel"><IconX className="w-5 h-5" /></button>
+                        {boundaryApproach === 'equity' && (
+                            <input
+                                type="number"
+                                value={editingEquity}
+                                onChange={e => onEquityChange(e.target.value === '' ? '' : parseFloat(e.target.value))}
+                                className="w-20 rounded-md border-gray-300 shadow-sm focus:border-ghg-green focus:ring-ghg-green bg-white text-gray-900 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100 text-sm p-1"
+                                placeholder="%"
+                                min="0"
+                                max="100"
+                            />
+                        )}
+                    </div>
+                     <input
+                        type="text"
+                        placeholder={t('businessSitePlaceholder')}
+                        value={editingGroup}
+                        onChange={e => onGroupChange(e.target.value)}
+                        className="w-full rounded-md border-gray-300 shadow-sm focus:border-ghg-green focus:ring-ghg-green bg-white text-gray-900 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100 text-sm p-1"
+                    />
+                    <div className="flex justify-end gap-2">
+                        <button onClick={onCancel} className="text-gray-500 hover:text-gray-700 p-1" aria-label="Cancel"><IconX className="w-5 h-5" /></button>
+                        <button onClick={onSave} className="text-green-600 hover:text-green-800 p-1" aria-label="Save"><IconCheck className="w-5 h-5" /></button>
+                    </div>
                 </div>
             ) : (
                 <div className="flex items-center justify-between">
-                    <span className="text-sm">{facility.name} {boundaryApproach === 'equity' ? `(${t('equityShare')}: ${facility.equityShare}%)` : ''}</span>
+                    <div>
+                        <span className="text-sm">{facility.name} {boundaryApproach === 'equity' ? `(${t('equityShare')}: ${facility.equityShare}%)` : ''}</span>
+                        {facility.group && <span className="block text-xs text-gray-500 dark:text-gray-400">{facility.group}</span>}
+                    </div>
                     <div className="flex items-center gap-2">
                         <button onClick={() => onStartEditing(facility)} className="text-gray-500 hover:text-ghg-green dark:text-gray-400 dark:hover:text-ghg-light-green" aria-label="Edit"><IconPencil className="w-4 h-4" /></button>
                         <button
@@ -133,6 +151,7 @@ export const BoundarySetupWizard: React.FC<BoundarySetupWizardProps> = ({ isOpen
   const [editingFacilityId, setEditingFacilityId] = useState<string | null>(null);
   const [editingFacilityName, setEditingFacilityName] = useState('');
   const [editingFacilityEquity, setEditingFacilityEquity] = useState<number | ''>('');
+  const [editingFacilityGroup, setEditingFacilityGroup] = useState('');
 
 
   useEffect(() => {
@@ -158,6 +177,7 @@ export const BoundarySetupWizard: React.FC<BoundarySetupWizardProps> = ({ isOpen
     setEditingFacilityId(facility.id);
     setEditingFacilityName(facility.name);
     setEditingFacilityEquity(facility.equityShare);
+    setEditingFacilityGroup(facility.group || '');
   }, []);
 
   const handleCancelEditing = useCallback(() => {
@@ -172,13 +192,14 @@ export const BoundarySetupWizard: React.FC<BoundarySetupWizardProps> = ({ isOpen
             return {
                 ...f,
                 name: editingFacilityName.trim(),
+                group: editingFacilityGroup.trim() || undefined,
                 equityShare: typeof editingFacilityEquity === 'number' ? Math.max(0, Math.min(100, editingFacilityEquity)) : f.equityShare,
             };
         }
         return f;
     }));
     setEditingFacilityId(null);
-  }, [editingFacilityId, editingFacilityName, editingFacilityEquity]);
+  }, [editingFacilityId, editingFacilityName, editingFacilityEquity, editingFacilityGroup]);
 
 
   const handleSetAnswer = useCallback((question: AnswerKey, answer: string) => {
@@ -194,7 +215,7 @@ export const BoundarySetupWizard: React.FC<BoundarySetupWizardProps> = ({ isOpen
 
       const newFacility: Facility = {
         id: `facility-${Date.now()}`,
-        name: `[${translatedType}] - ${newFacilityIdentifier.trim()}`,
+        name: `${newFacilityIdentifier.trim()}`,
         group: newFacilityGroup.trim() || undefined,
         equityShare: typeof newFacilityEquity === 'number' && newFacilityEquity >= 0 && newFacilityEquity <= 100 ? newFacilityEquity : 100,
       };
@@ -397,10 +418,12 @@ export const BoundarySetupWizard: React.FC<BoundarySetupWizardProps> = ({ isOpen
                                     isRemoveDisabled={facilities.length <= 1}
                                     editingName={editingFacilityName}
                                     editingEquity={editingFacilityEquity}
+                                    editingGroup={editingFacilityGroup}
                                     onStartEditing={handleStartEditing}
                                     onRemove={handleRemoveFacility}
                                     onNameChange={setEditingFacilityName}
                                     onEquityChange={setEditingFacilityEquity}
+                                    onGroupChange={setEditingFacilityGroup}
                                     onSave={handleSaveEditing}
                                     onCancel={handleCancelEditing}
                                   />
@@ -422,10 +445,12 @@ export const BoundarySetupWizard: React.FC<BoundarySetupWizardProps> = ({ isOpen
                                     isRemoveDisabled={facilities.length <= 1}
                                     editingName={editingFacilityName}
                                     editingEquity={editingFacilityEquity}
+                                    editingGroup={editingFacilityGroup}
                                     onStartEditing={handleStartEditing}
                                     onRemove={handleRemoveFacility}
                                     onNameChange={setEditingFacilityName}
                                     onEquityChange={setEditingFacilityEquity}
+                                    onGroupChange={setEditingFacilityGroup}
                                     onSave={handleSaveEditing}
                                     onCancel={handleCancelEditing}
                                   />
@@ -443,26 +468,18 @@ export const BoundarySetupWizard: React.FC<BoundarySetupWizardProps> = ({ isOpen
                        </div>
                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                           <div>
-                            <label htmlFor="facility-type" className="block text-xs font-medium text-gray-500 dark:text-gray-400">{t('emissionFacilityType')}</label>
-                            <select id="facility-type" value={newFacilityType} onChange={e => setNewFacilityType(e.target.value)} className="block w-full rounded-md border-gray-300 shadow-sm focus:border-ghg-green focus:ring-ghg-green bg-white text-gray-900 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100 text-sm p-2">
-                               {Object.entries(FACILITY_TYPES_BY_SCOPE).map(([scope, types]) => (
-                                   <optgroup key={scope} label={scopeGroupLabels[scope] || scope}>
-                                       {types.map(f => <option key={f.name} value={f.name}>{t(f.translationKey)}</option>)}
-                                   </optgroup>
-                               ))}
-                            </select>
+                            <label htmlFor="facility-identifier" className="block text-xs font-medium text-gray-500 dark:text-gray-400">{t('facilityIdentifier')}</label>
+                            <input type="text" id="facility-identifier" placeholder={t('facilityIdentifierPlaceholder')} value={newFacilityIdentifier} onChange={e => setNewFacilityIdentifier(e.target.value)} className="block w-full rounded-md border-gray-300 shadow-sm focus:border-ghg-green focus:ring-ghg-green bg-white text-gray-900 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100 text-sm p-2"/>
                           </div>
                           <div>
-                              <label htmlFor="facility-identifier" className="block text-xs font-medium text-gray-500 dark:text-gray-400">{t('facilityIdentifier')}</label>
-                              <input type="text" id="facility-identifier" placeholder={t('facilityIdentifierPlaceholder')} value={newFacilityIdentifier} onChange={e => setNewFacilityIdentifier(e.target.value)} className="block w-full rounded-md border-gray-300 shadow-sm focus:border-ghg-green focus:ring-ghg-green bg-white text-gray-900 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100 text-sm p-2"/>
+                            <label htmlFor="equity-share" className="block text-xs font-medium text-gray-500 dark:text-gray-400">{t('equityShareOptional')}</label>
+                            <input id="equity-share" type="number" placeholder="e.g., 80" value={newFacilityEquity} onChange={e => setNewFacilityEquity(e.target.value === '' ? '' : parseFloat(e.target.value))} className={`block w-full rounded-md border-gray-300 shadow-sm focus:border-ghg-green focus:ring-ghg-green bg-white text-gray-900 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100 text-sm p-2 ${boundaryApproach !== 'equity' && 'bg-gray-100 dark:bg-gray-800 cursor-not-allowed'}`} disabled={boundaryApproach !== 'equity'} min="0" max="100"/>
                           </div>
                        </div>
                         <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-2 items-end">
                               <div>
-                                <label htmlFor="equity-share" className="block text-xs font-medium text-gray-500 dark:text-gray-400">{t('equityShareOptional')}</label>
-                                <input id="equity-share" type="number" placeholder="e.g., 80" value={newFacilityEquity} onChange={e => setNewFacilityEquity(e.target.value === '' ? '' : parseFloat(e.target.value))} className={`block w-full rounded-md border-gray-300 shadow-sm focus:border-ghg-green focus:ring-ghg-green bg-white text-gray-900 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100 text-sm p-2 ${boundaryApproach !== 'equity' && 'bg-gray-100 dark:bg-gray-800 cursor-not-allowed'}`} disabled={boundaryApproach !== 'equity'} min="0" max="100"/>
+                                <button onClick={handleAddFacility} className="bg-ghg-light-green text-white px-4 py-2 text-sm rounded-md hover:bg-ghg-green w-full h-9">{t('addFacility')}</button>
                               </div>
-                              <button onClick={handleAddFacility} className="bg-ghg-light-green text-white px-4 py-2 text-sm rounded-md hover:bg-ghg-green self-end h-9">{t('addFacility')}</button>
                         </div>
                     </div>
               </div>

@@ -270,6 +270,7 @@ const en = {
   // Report Generator
   close: 'Close',
   printReport: 'Print Report',
+  downloadPDF: 'Download PDF',
   ghgReportTitle: 'Greenhouse Gas Emissions Report',
   executiveSummary: 'Executive Summary',
   methodology: 'Methodology & Boundary',
@@ -636,6 +637,7 @@ const ko = {
   // Report Generator
   close: '닫기',
   printReport: '보고서 인쇄',
+  downloadPDF: 'PDF 다운로드',
   ghgReportTitle: '온실가스 배출량 보고서',
   executiveSummary: '종합 요약',
   methodology: '산정 방법론 및 경계',

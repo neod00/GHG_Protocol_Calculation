@@ -141,6 +141,12 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
     return { groups, ungrouped };
   }, [facilities]);
 
+  const preventNonNumericKeys = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (['e', 'E', '+', '-'].includes(e.key)) {
+      e.preventDefault();
+    }
+  };
+
 
   // == Category 1: Purchased Goods & Services (Hybrid Input UI) ==
   if (source.category === EmissionCategory.PurchasedGoodsAndServices) {
@@ -159,13 +165,23 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
 
     const getCat1CalculationDetails = () => {
       const factor = source.customFactor || 0;
+      const totalEmissionsInTonnes = (totalEmissions / 1000).toLocaleString('en-US', {minimumFractionDigits: 3});
       return (
-        <>
-          <span className="font-bold">{t('calculationLogic')}:</span><br/>
-          {totalQuantity.toLocaleString()} {t(source.unit as TranslationKey) || source.unit} ({t('activityData')})<br/>
-          &times; {factor.toLocaleString()} kg CO₂e / {t(source.unit as TranslationKey) || source.unit} ({t('emissionFactor')})<br/>
-          = {(totalEmissions).toLocaleString('en-US', {maximumFractionDigits: 2})} kg CO₂e
-        </>
+        <div className="p-1">
+          <p className="text-center font-bold mb-2 border-b border-gray-600 pb-1">{t('emissionsForSource')}</p>
+          <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-left items-center">
+              <span className="font-semibold">{t('activityData')}</span>
+              <span className="text-right">{totalQuantity.toLocaleString()} {t(source.unit as TranslationKey) || source.unit}</span>
+              
+              <span className="font-semibold">{t('emissionFactor')}</span>
+              <span className="text-right">&times; {factor.toLocaleString()} kg CO₂e</span>
+              
+              <div className="col-span-2 my-1 border-t border-gray-500"></div>
+
+              <span className="font-bold text-base">{t('total')}</span>
+              <span className="font-bold text-base text-right">= {totalEmissionsInTonnes} t CO₂e</span>
+          </div>
+        </div>
       );
     };
 
@@ -255,7 +271,7 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
                     <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{t('emissionsForSource')}: </span>
                     <span className="text-sm font-bold text-ghg-dark dark:text-gray-100">{(totalEmissions / 1000).toLocaleString('en-US', {minimumFractionDigits: 3})} t CO₂e</span>
                     <IconInfo className="w-4 h-4 text-gray-400 cursor-pointer" />
-                    <div className="absolute bottom-full mb-2 w-max max-w-sm bg-gray-800 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                    <div className="absolute bottom-full mb-2 w-max max-w-sm bg-gray-800 text-white text-xs rounded-lg shadow-lg py-2 px-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
                         {getCat1CalculationDetails()}
                     </div>
                 </div>
@@ -267,7 +283,20 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
                     {monthKeys.map((monthKey, index) => (
                         <div key={monthKey}>
                             <label className={commonLabelClass} htmlFor={`quantity-${source.id}-${index}`}>{t(monthKey)}</label>
-                            <input id={`quantity-${source.id}-${index}`} type="number" value={editedQuantities[index]} onChange={(e) => handleMonthlyChange(index, e.target.value)} className={commonInputClass} placeholder="0" />
+                            <div className={`flex items-center rounded-md shadow-sm border border-gray-300 dark:border-gray-500 bg-white dark:bg-gray-600 focus-within:ring-1 focus-within:ring-ghg-green focus-within:border-ghg-green overflow-hidden`}>
+                                <input
+                                    id={`quantity-${source.id}-${index}`}
+                                    type="number"
+                                    onKeyDown={preventNonNumericKeys}
+                                    value={editedQuantities[index] === 0 ? '' : editedQuantities[index]}
+                                    onChange={(e) => handleMonthlyChange(index, e.target.value)}
+                                    className="flex-grow bg-transparent text-gray-900 dark:text-gray-200 py-1 px-2 text-sm text-right focus:outline-none"
+                                    placeholder="0"
+                                />
+                                <span className="pr-3 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                                    {t(source.unit as TranslationKey) || source.unit}
+                                </span>
+                            </div>
                         </div>
                     ))}
                 </div>
@@ -287,26 +316,45 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
   const isFugitive = selectedFuel && 'gwp' in selectedFuel;
   
   const getCalculationDetails = () => {
+      const totalEmissionsInTonnes = (totalEmissions / 1000).toLocaleString('en-US', {minimumFractionDigits: 3, maximumFractionDigits: 3});
       if (isFugitive) {
         const gwp = (selectedFuel as Refrigerant).gwp;
         return (
-          <>
-            <span className="font-bold">{t('calculationLogic')}:</span><br/>
-            {totalQuantity.toLocaleString()} kg ({t('activityData')})<br/>
-            &times; {gwp.toLocaleString()} (GWP)<br/>
-            = {(totalEmissions).toLocaleString('en-US', {maximumFractionDigits: 2})} kg CO₂e
-          </>
+          <div className="p-1">
+            <p className="text-center font-bold mb-2 border-b border-gray-600 pb-1">{t('emissionsForSource')}</p>
+            <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-left items-center">
+                <span className="font-semibold">{t('activityData')}</span>
+                <span className="text-right">{totalQuantity.toLocaleString()} kg</span>
+                
+                <span className="font-semibold">GWP</span>
+                <span className="text-right">&times; {gwp.toLocaleString()}</span>
+                
+                <div className="col-span-2 my-1 border-t border-gray-500"></div>
+
+                <span className="font-bold text-base">{t('total')}</span>
+                <span className="font-bold text-base text-right">= {totalEmissionsInTonnes} t CO₂e</span>
+            </div>
+          </div>
         );
       }
 
       const factor = selectedFuel && 'factors' in selectedFuel ? selectedFuel.factors[source.unit] || 0 : 0;
       return (
-          <>
-            <span className="font-bold">{t('calculationLogic')}:</span><br/>
-            {totalQuantity.toLocaleString()} {t(source.unit as TranslationKey) || source.unit} ({t('activityData')})<br/>
-            &times; {typeof factor === 'number' ? factor.toLocaleString() : 'N/A'} kg CO₂e / {t(source.unit as TranslationKey) || source.unit} ({t('emissionFactor')})<br/>
-            = {(totalEmissions).toLocaleString('en-US', {maximumFractionDigits: 2})} kg CO₂e
-          </>
+          <div className="p-1">
+            <p className="text-center font-bold mb-2 border-b border-gray-600 pb-1">{t('emissionsForSource')}</p>
+            <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-left items-center">
+                <span className="font-semibold">{t('activityData')}</span>
+                <span className="text-right">{totalQuantity.toLocaleString()} {t(source.unit as TranslationKey) || source.unit}</span>
+                
+                <span className="font-semibold">{t('emissionFactor')}</span>
+                <span className="text-right">&times; {factor.toLocaleString()} kg CO₂e</span>
+                
+                <div className="col-span-2 my-1 border-t border-gray-500"></div>
+
+                <span className="font-bold text-base">{t('total')}</span>
+                <span className="font-bold text-base text-right">= {totalEmissionsInTonnes} t CO₂e</span>
+            </div>
+          </div>
       )
   };
 
@@ -400,7 +448,7 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
                 <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{t('emissionsForSource')}: </span>
                 <span className="text-sm font-bold text-ghg-dark dark:text-gray-100">{(totalEmissions / 1000).toLocaleString('en-US', {minimumFractionDigits: 3})} t CO₂e</span>
                 <IconInfo className="w-4 h-4 text-gray-400 cursor-pointer" />
-                <div className="absolute bottom-full mb-2 w-max max-w-sm bg-gray-800 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                <div className="absolute bottom-full mb-2 w-max max-w-sm bg-gray-800 text-white text-xs rounded-lg shadow-lg py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
                     {getCalculationDetails()}
                 </div>
             </div>
@@ -412,7 +460,20 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
                     {monthKeys.map((monthKey, index) => (
                         <div key={monthKey}>
                             <label className={commonLabelClass} htmlFor={`quantity-${source.id}-${index}`}>{t(monthKey)}</label>
-                            <input id={`quantity-${source.id}-${index}`} type="number" value={editedQuantities[index]} onChange={(e) => handleMonthlyChange(index, e.target.value)} className={commonInputClass} placeholder="0"/>
+                             <div className={`flex items-center rounded-md shadow-sm border border-gray-300 dark:border-gray-500 bg-white dark:bg-gray-600 focus-within:ring-1 focus-within:ring-ghg-green focus-within:border-ghg-green overflow-hidden`}>
+                                <input
+                                    id={`quantity-${source.id}-${index}`}
+                                    type="number"
+                                    onKeyDown={preventNonNumericKeys}
+                                    value={editedQuantities[index] === 0 ? '' : editedQuantities[index]}
+                                    onChange={(e) => handleMonthlyChange(index, e.target.value)}
+                                    className="flex-grow bg-transparent text-gray-900 dark:text-gray-200 py-1 px-2 text-sm text-right focus:outline-none"
+                                    placeholder="0"
+                                />
+                                <span className="pr-3 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                                    {t(source.unit as TranslationKey) || source.unit}
+                                </span>
+                            </div>
                         </div>
                     ))}
                 </div>
