@@ -235,6 +235,31 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
                 promptText = `As a GHG Protocol expert for Scope 3 Leased Assets, analyze: "${source.description}". Suggest an asset type and, if it is a building, a building type. Valid Asset Types: Building, Vehicle, Equipment. Valid Building Types: ${buildingTypes}. Provide a structured JSON response.`;
                 responseSchema = { type: Type.OBJECT, properties: { suggested_asset_type: { type: Type.STRING }, suggested_building_type: { type: Type.STRING, nullable: true }, justification: { type: Type.STRING }}};
                 break;
+            case EmissionCategory.FuelAndEnergyRelatedActivities:
+                const fuelNames = (fuels as any[]).map(f => f.name).join(', ');
+                promptText = `As a GHG Protocol expert for Scope 3, Category 3 (Fuel- and Energy-Related Activities), analyze the following description: "${source.description}". Determine if this is a 'fuel_wtt' (upstream emissions of a specific fuel) or a 'spend_based' activity. If it is 'fuel_wtt', suggest the most likely fuel type. Available fuel types are: ${fuelNames}. Provide a structured JSON response.`;
+                responseSchema = {
+                    type: Type.OBJECT,
+                    properties: {
+                        suggested_activity_type: { type: Type.STRING, description: "One of: 'fuel_wtt', 'spend_based'." },
+                        suggested_fuel_name: { type: Type.STRING, description: `If 'fuel_wtt', the name of the fuel. Otherwise, null.` },
+                        justification: { type: Type.STRING, description: "A brief explanation for your choices." },
+                    }
+                };
+                break;
+            case EmissionCategory.EmployeeCommuting:
+                const commutingOptions = JSON.stringify(fuels.activity, (k,v) => k === 'translationKey' ? undefined : v, 2);
+                promptText = `As a GHG Protocol expert for Scope 3, Category 7 (Employee Commuting), analyze the following commuting description: "${source.description}". Suggest the most appropriate commuting mode. If the mode is 'PersonalCar' or 'Carpool', suggest a vehicle type. If 'PublicTransport', suggest a transport type. Available modes and types are: ${commutingOptions}. Provide a structured JSON response.`;
+                responseSchema = {
+                    type: Type.OBJECT,
+                    properties: {
+                        suggested_commuting_mode: { type: Type.STRING, description: "One of 'PersonalCar', 'Carpool', 'PublicTransport', 'Motorbike', 'BicycleWalking'." },
+                        suggested_personal_car_type: { type: Type.STRING, description: "If mode is PersonalCar/Carpool, one of 'Gasoline', 'Diesel', 'Hybrid', 'Electric', 'LPG'.", nullable: true },
+                        suggested_public_transport_type: { type: Type.STRING, description: "If mode is PublicTransport, one of 'Bus', 'Subway'.", nullable: true },
+                        justification: { type: Type.STRING, description: "A brief explanation for your choices." },
+                    }
+                };
+                break;
             default:
                 return;
         }
@@ -320,6 +345,35 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
             }
             if (suggested_asset_type === 'Building' && Object.keys(fuels.area_based).includes(suggested_building_type)) {
                 updates.buildingType = suggested_building_type;
+            }
+            break;
+        }
+        case EmissionCategory.FuelAndEnergyRelatedActivities: {
+            const { suggested_activity_type, suggested_fuel_name } = aiAnalysisResult;
+            updates.activityType = suggested_activity_type;
+            if (suggested_activity_type === 'fuel_wtt' && suggested_fuel_name) {
+                const fuelData = (fuels as any[]).find(f => f.name === suggested_fuel_name);
+                if (fuelData) {
+                    updates.fuelType = fuelData.name;
+                    updates.unit = fuelData.units[0];
+                }
+            } else if (suggested_activity_type === 'spend_based') {
+                updates.calculationMethod = 'spend';
+            }
+            break;
+        }
+        case EmissionCategory.EmployeeCommuting: {
+            const { suggested_commuting_mode, suggested_personal_car_type, suggested_public_transport_type } = aiAnalysisResult;
+
+            if (Object.keys(fuels.activity).includes(suggested_commuting_mode)) {
+                updates.commutingMode = suggested_commuting_mode;
+            }
+
+            if ((suggested_commuting_mode === 'PersonalCar' || suggested_commuting_mode === 'Carpool') && suggested_personal_car_type && Object.keys(fuels.activity.PersonalCar).includes(suggested_personal_car_type)) {
+                updates.personalCarType = suggested_personal_car_type;
+            }
+            if (suggested_commuting_mode === 'PublicTransport' && suggested_public_transport_type && Object.keys(fuels.activity.PublicTransport).includes(suggested_public_transport_type)) {
+                updates.publicTransportType = suggested_public_transport_type;
             }
             break;
         }
@@ -614,8 +668,26 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
                 <>
                     <div>
                         <label htmlFor={`description-${source.id}`} className={commonLabelClass}>{t('emissionSourceDescription')}</label>
-                        <input id={`description-${source.id}`} type="text" value={source.description || ''} onChange={(e) => onUpdate({ description: e.target.value })} className={commonSelectClass} placeholder={t(placeholderKey)} />
+                         <div className="flex gap-2">
+                            <input id={`description-${source.id}`} type="text" value={source.description || ''} onChange={(e) => onUpdate({ description: e.target.value })} className={commonSelectClass} placeholder={t(placeholderKey)} />
+                             <button onClick={handleAnalyze} disabled={isLoadingAI || !source.description} className="px-3 py-2 bg-ghg-light-green text-white rounded-md hover:bg-ghg-green disabled:bg-gray-400 flex items-center gap-2">
+                                <IconSparkles className="w-4 h-4" />
+                                <span className="text-sm font-semibold">{isLoadingAI ? '...' : t('analyzeWithAI')}</span>
+                            </button>
+                        </div>
                     </div>
+                     {aiAnalysisResult && !aiAnalysisResult.error && (
+                        <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-800 dark:bg-blue-900/30 dark:border-blue-700/50 text-xs space-y-2">
+                            <h4 className="font-semibold text-sm mb-1">{t('aiAnalysis')}</h4>
+                            <p><span className="font-semibold">{t('suggestedActivityType')}:</span> {t(aiAnalysisResult.suggested_activity_type as TranslationKey)}</p>
+                            {aiAnalysisResult.suggested_fuel_name && <p><span className="font-semibold">{t('suggestedFuelName')}:</span> {t((fuels.find((f:any) => f.name === aiAnalysisResult.suggested_fuel_name)?.translationKey) as TranslationKey)}</p>}
+                            <p><span className="font-semibold">{t('justification')}:</span> {aiAnalysisResult.justification}</p>
+                            <div className="flex justify-between items-center mt-2 pt-2 border-t dark:border-blue-700/50">
+                                <p className="text-blue-600 dark:text-blue-300">{t('aiDisclaimer')}</p>
+                                <button onClick={handleApplyAISuggestion} className="bg-blue-500 text-white font-semibold py-1 px-3 rounded-md hover:bg-blue-600 text-xs">{t('applySuggestion')}</button>
+                            </div>
+                        </div>
+                    )}
                      <div>
                         <label htmlFor={`activityDataSource-${source.id}`} className={commonLabelClass}>{t('activityDataSource')}</label>
                         <input id={`activityDataSource-${source.id}`} type="text" value={source.activityDataSource ?? ''} onChange={(e) => onUpdate({ activityDataSource: e.target.value })} className={commonSelectClass} placeholder={t('activityDataSourcePlaceholder')} />
@@ -1380,8 +1452,27 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
 
         <div>
           <label htmlFor={`description-${source.id}`} className={commonLabelClass}>{t('emissionSourceDescription')}</label>
-          <input id={`description-${source.id}`} type="text" value={source.description || ''} onChange={(e) => onUpdate({ description: e.target.value })} className={commonSelectClass} placeholder={t(placeholderKey)} />
+          <div className="flex gap-2">
+            <input id={`description-${source.id}`} type="text" value={source.description || ''} onChange={(e) => onUpdate({ description: e.target.value })} className={commonSelectClass} placeholder={t(placeholderKey)} />
+             <button onClick={handleAnalyze} disabled={isLoadingAI || !source.description} className="px-3 py-2 bg-ghg-light-green text-white rounded-md hover:bg-ghg-green disabled:bg-gray-400 flex items-center gap-2">
+                <IconSparkles className="w-4 h-4" />
+                <span className="text-sm font-semibold">{isLoadingAI ? '...' : t('analyzeWithAI')}</span>
+            </button>
+          </div>
         </div>
+        {aiAnalysisResult && !aiAnalysisResult.error && (
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-800 dark:bg-blue-900/30 dark:border-blue-700/50 text-xs space-y-2">
+                <h4 className="font-semibold text-sm mb-1">{t('aiAnalysis')}</h4>
+                <p><span className="font-semibold">{t('suggestedCommutingMode')}:</span> {t(aiAnalysisResult.suggested_commuting_mode as TranslationKey)}</p>
+                {aiAnalysisResult.suggested_personal_car_type && <p><span className="font-semibold">{t('suggestedPersonalCarType')}:</span> {t(fuels.activity.PersonalCar[aiAnalysisResult.suggested_personal_car_type]?.translationKey as TranslationKey)}</p>}
+                {aiAnalysisResult.suggested_public_transport_type && <p><span className="font-semibold">{t('suggestedPublicTransportType')}:</span> {t(fuels.activity.PublicTransport[aiAnalysisResult.suggested_public_transport_type]?.translationKey as TranslationKey)}</p>}
+                <p><span className="font-semibold">{t('justification')}:</span> {aiAnalysisResult.justification}</p>
+                <div className="flex justify-between items-center mt-2 pt-2 border-t dark:border-blue-700/50">
+                    <p className="text-blue-600 dark:text-blue-300">{t('aiDisclaimer')}</p>
+                    <button onClick={handleApplyAISuggestion} className="bg-blue-500 text-white font-semibold py-1 px-3 rounded-md hover:bg-blue-600 text-xs">{t('applySuggestion')}</button>
+                </div>
+            </div>
+        )}
          <div>
             <label htmlFor={`activityDataSource-${source.id}`} className={commonLabelClass}>{t('activityDataSource')}</label>
             <input id={`activityDataSource-${source.id}`} type="text" value={source.activityDataSource ?? ''} onChange={(e) => onUpdate({ activityDataSource: e.target.value })} className={commonSelectClass} placeholder={t('activityDataSourcePlaceholder')} />
@@ -2155,106 +2246,4 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
             type="text"
             value={source.description || ''}
             onChange={(e) => onUpdate({ description: e.target.value })}
-            className={commonSelectClass}
-            placeholder={t(placeholderKey)}
-        />
-      </div>
-       <div>
-        <label htmlFor={`activityDataSource-${source.id}`} className={commonLabelClass}>{t('activityDataSource')}</label>
-        <input
-            id={`activityDataSource-${source.id}`}
-            type="text"
-            value={source.activityDataSource ?? ''}
-            onChange={(e) => onUpdate({ activityDataSource: e.target.value })}
-            className={commonSelectClass}
-            placeholder={t('activityDataSourcePlaceholder')}
-        />
-      </div>
-      <div className="grid grid-cols-2 gap-2">
-        <select value={source.fuelType} onChange={(e) => onFuelTypeChange(e.target.value)} className={commonSelectClass} aria-label="Fuel/Source">
-          {Array.isArray(fuels) && fuels.map((fuel: any) => (
-            <option key={fuel.name} value={fuel.name}>
-              {language === 'ko' && fuel.translationKey ? `${t(fuel.translationKey as TranslationKey)}` : fuel.name}
-            </option>
-          ))}
-        </select>
-        <select value={source.unit} onChange={(e) => onUpdate({ unit: e.target.value })} className={commonSelectClass} aria-label="Unit" disabled={isFugitive}>
-          {isFugitive ? (<option value="kg">kg</option>) : (
-            selectedFuel && 'units' in selectedFuel && (selectedFuel as CO2eFactorFuel).units.map((unit) => (
-              <option key={unit} value={unit}>{t(unit as TranslationKey) || unit}</option>
-            ))
-          )}
-        </select>
-      </div>
-      
-      {source.category === EmissionCategory.PurchasedEnergy && source.fuelType === 'Grid Electricity' && (
-        <div className="mt-2 p-2 bg-gray-100 dark:bg-gray-900/50 rounded-md">
-            <label className="flex items-center space-x-2 text-sm text-gray-700 dark:text-gray-300">
-                <input type="checkbox" checked={provideMarketData} onChange={toggleMarketData} className="rounded text-ghg-green focus:ring-ghg-green"/>
-                <span>{t('provideMarketData')}</span>
-            </label>
-            {provideMarketData && (
-                <div className="mt-2">
-                    <label htmlFor={`market-factor-${source.id}`} className={commonLabelClass}>{t('marketFactor')}</label>
-                    <input id={`market-factor-${source.id}`} type="number" step="any" value={source.marketBasedFactor ?? ''} onChange={(e) => handleMarketFactorChange(e.target.value)} className="w-full mt-1 bg-white text-gray-900 border border-gray-300 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-200 rounded-md shadow-sm py-1 px-2 text-sm focus:outline-none focus:ring-ghg-green focus:border-ghg-green" placeholder="0"/>
-                </div>
-            )}
-        </div>
-      )}
-
-      <div className="mt-2">
-        <div className="flex justify-between items-center bg-gray-100 dark:bg-gray-700 p-2 rounded-t-md">
-            <div>
-                <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{t('totalYear')}: </span>
-                <span className="text-sm font-bold text-ghg-dark dark:text-gray-100">{totalQuantity.toLocaleString()}&nbsp;{renderUnit(source.unit)}</span>
-            </div>
-            {!isEditing && (
-              <button onClick={handleEdit} className="text-sm text-ghg-green font-semibold hover:underline">
-                  {t('editMonthly')}
-              </button>
-            )}
-        </div>
-        <div className="flex justify-between items-center bg-gray-100 dark:bg-gray-700 p-2 rounded-b-md border-t border-gray-200 dark:border-gray-600">
-            <div className="flex items-center gap-1 group relative">
-                <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{t('emissionsForSource')}: </span>
-                <span className="text-sm font-bold text-ghg-dark dark:text-gray-100">{(totalEmissions / 1000).toLocaleString('en-US', {minimumFractionDigits: 3})} t CO₂e</span>
-                <IconInfo className="w-4 h-4 text-gray-400 cursor-pointer" />
-                <div className="absolute bottom-full mb-2 w-max max-w-sm bg-gray-800 text-white text-xs rounded-lg shadow-lg py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-                    {getCalculationDetails()}
-                </div>
-            </div>
-        </div>
-
-        {isEditing && (
-            <div className="p-3 bg-gray-100 dark:bg-gray-900/50 rounded-b-lg">
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                    {monthKeys.map((monthKey, index) => (
-                        <div key={monthKey}>
-                            <label className={commonLabelClass} htmlFor={`quantity-${source.id}-${index}`}>{t(monthKey)}</label>
-                             <div className={`flex items-center rounded-md shadow-sm border border-gray-300 dark:border-gray-500 bg-white dark:bg-gray-600 focus-within:ring-1 focus-within:ring-ghg-green focus-within:border-ghg-green overflow-hidden`}>
-                                <input
-                                    id={`quantity-${source.id}-${index}`}
-                                    type="number"
-                                    onKeyDown={preventNonNumericKeys}
-                                    value={editedQuantities[index] === 0 ? '' : editedQuantities[index]}
-                                    onChange={(e) => handleMonthlyChange(index, e.target.value)}
-                                    className="w-0 flex-grow bg-transparent text-gray-900 dark:text-gray-200 py-1 px-2 text-sm text-right focus:outline-none"
-                                    placeholder="0"
-                                />
-                                <span className="pr-3 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                                    {renderUnit(source.unit)}
-                                </span>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-                <div className="flex justify-end gap-2 mt-4">
-                    <button onClick={handleCancel} className="px-3 py-1 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 dark:bg-gray-600 dark:text-gray-200 dark:border-gray-500 dark:hover:bg-gray-500">{t('cancel')}</button>
-                    <button onClick={handleSave} className="px-3 py-1 text-sm font-medium text-white bg-ghg-green rounded-md shadow-sm hover:bg-ghg-dark">{t('save')}</button>
-                </div>
-            </div>
-        )}
-      </div>
-    </div>
-  );
-};
+            className={commonSelectClass}--- END OF FILE components/SourceInputRow.tsx ---

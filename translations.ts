@@ -294,7 +294,7 @@ const en = {
   addMode: 'Add Mode',
   totalDistribution: 'Total Distribution',
 
-  // Category 8 & 9 Advanced UI
+  // Category 8 & 13 Advanced UI
   assetSpecificMethod: 'Asset-specific',
   areaBasedMethod: 'Area-based',
   supplierSpecificMethod: 'Supplier-specific',
@@ -335,6 +335,11 @@ const en = {
   suggestedProcess: 'Suggested Process',
   suggestedSpendCategory: 'Suggested Service Category',
   suggestedFactor: 'Suggested Emission Factor',
+  suggestedActivityType: 'Suggested Activity Type',
+  suggestedFuelName: 'Suggested Fuel Name',
+  suggestedCommutingMode: 'Suggested Commuting Mode',
+  suggestedPersonalCarType: 'Suggested Car Type',
+  suggestedPublicTransportType: 'Suggested Public Transport',
 
 
   // Months
@@ -1000,6 +1005,11 @@ const ko = {
   suggestedProcess: '추천 공정',
   suggestedSpendCategory: '추천 서비스 카테고리',
   suggestedFactor: '추천 배출계수',
+  suggestedActivityType: '추천 활동 유형',
+  suggestedFuelName: '추천 연료명',
+  suggestedCommutingMode: '추천 통근 수단',
+  suggestedPersonalCarType: '추천 차량 종류',
+  suggestedPublicTransportType: '추천 대중교통',
 
   // Months
   jan: '1월', feb: '2월', mar: '3월', apr: '4월', may: '5월', jun: '6월',
