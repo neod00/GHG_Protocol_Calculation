@@ -65,6 +65,10 @@ export interface Facility {
 export type CalculationMethod = 'supplier_co2e' | 'activity' | 'spend';
 export type Cat4CalculationMethod = 'activity' | 'fuel' | 'spend' | 'supplier_specific';
 export type Cat5CalculationMethod = 'activity' | 'supplier_specific' | 'spend';
+export type Cat6CalculationMethod = 'activity' | 'spend' | 'supplier_specific';
+export type BusinessTravelMode = 'Air' | 'Rail' | 'Bus' | 'RentalCar' | 'PersonalCar' | 'Hotel';
+export type FlightClass = 'Economy' | 'Business' | 'First';
+export type TripType = 'one-way' | 'round-trip';
 export type TransportMode = 'Road' | 'Sea' | 'Air' | 'Rail';
 export type WasteType = 'MSW' | 'Paper' | 'Plastics' | 'Food' | 'Metal' | 'Hazardous';
 export type TreatmentMethod = 'Landfill' | 'Incineration' | 'Recycling' | 'Composting' | 'AnaerobicDigestion';
@@ -80,7 +84,7 @@ export interface EmissionSource {
   marketBasedFactor?: number;
   
   // New fields for advanced Scope 3 calculation
-  calculationMethod?: CalculationMethod | Cat4CalculationMethod | Cat5CalculationMethod;
+  calculationMethod?: CalculationMethod | Cat4CalculationMethod | Cat5CalculationMethod | Cat6CalculationMethod;
   supplierProvidedCO2e?: number; // Total annual kg CO2e from supplier
   factor?: number; // kg CO2e per unit
   factorUnit?: string; // e.g., kg CO2e / KRW, kg CO2e / tonne
@@ -110,4 +114,11 @@ export interface EmissionSource {
   wasteType?: WasteType;
   treatmentMethod?: TreatmentMethod;
   includeTransport?: boolean;
+
+  // New fields for advanced Scope 3 Category 6 calculation
+  businessTravelMode?: BusinessTravelMode;
+  flightClass?: FlightClass;
+  tripType?: TripType;
+  passengers?: number;
+  nights?: number; // for hotels
 }

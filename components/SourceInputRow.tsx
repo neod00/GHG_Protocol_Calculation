@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { EmissionSource, Facility, Refrigerant, CO2eFactorFuel, EmissionCategory, CalculationMethod, Cat4CalculationMethod, TransportMode, Cat5CalculationMethod, WasteType, TreatmentMethod } from '../types';
+import { EmissionSource, Facility, Refrigerant, CO2eFactorFuel, EmissionCategory, CalculationMethod, Cat4CalculationMethod, TransportMode, Cat5CalculationMethod, WasteType, TreatmentMethod, Cat6CalculationMethod, BusinessTravelMode } from '../types';
 import { useTranslation } from '../LanguageContext';
 import { TranslationKey } from '../translations';
 import { IconInfo, IconTrash, IconSparkles } from './IconComponents';
 import { GoogleGenAI, Type } from '@google/genai';
-import { MOBILE_FUELS, TRANSPORTATION_FACTORS_BY_MODE, TRANSPORTATION_SPEND_FACTORS, WASTE_SPEND_FACTORS, WASTE_TREATMENT_FACTORS } from '../constants';
+import { BUSINESS_TRAVEL_FACTORS_DETAILED, MOBILE_FUELS, TRANSPORTATION_FACTORS_BY_MODE, TRANSPORTATION_SPEND_FACTORS, WASTE_SPEND_FACTORS, WASTE_TREATMENT_FACTORS } from '../constants';
 
 interface SourceInputRowProps {
   source: EmissionSource;
@@ -555,8 +555,8 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
     );
   }
 
-  // == Advanced UI for Category 4 ==
-  if (source.category === EmissionCategory.UpstreamTransportationAndDistribution) {
+  // == Advanced UI for Category 4 & 9 ==
+  if (source.category === EmissionCategory.UpstreamTransportationAndDistribution || source.category === EmissionCategory.DownstreamTransportationAndDistribution) {
     const calculationMethod = source.calculationMethod || 'activity';
 
     const handleMethodChange = (method: Cat4CalculationMethod) => {
@@ -935,8 +935,194 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
     );
   }
 
+  // == Advanced UI for Category 6 ==
+  if (source.category === EmissionCategory.BusinessTravel) {
+    const calculationMethod = (source.calculationMethod as Cat6CalculationMethod) || 'activity';
+
+    const handleMethodChange = (method: Cat6CalculationMethod) => {
+        let updates: Partial<EmissionSource> = { calculationMethod: method, monthlyQuantities: Array(12).fill(0) };
+        if (method === 'activity') {
+            updates = { ...updates, businessTravelMode: 'Air', flightClass: 'Economy', tripType: 'round-trip', fuelType: 'Long-haul (>1108 km)' };
+        } else if (method === 'spend') {
+            updates = { ...updates, fuelType: BUSINESS_TRAVEL_FACTORS_DETAILED.spend[0].name, unit: BUSINESS_TRAVEL_FACTORS_DETAILED.spend[0].units[0] };
+        }
+        onUpdate(updates);
+    };
+
+    const travelMode = source.businessTravelMode || 'Air';
+    const activityFactors = BUSINESS_TRAVEL_FACTORS_DETAILED.activity;
+
+    return (
+      <div className="flex flex-col gap-3 p-3 bg-gray-50 rounded-lg border dark:bg-gray-800 dark:border-gray-600">
+        <div className="flex justify-between items-start">
+            <div className='flex-grow pr-4'>
+                <label className={commonLabelClass}>{t('calculationMethod')}</label>
+                <div className="flex gap-1 rounded-md bg-gray-200 dark:bg-gray-900 p-1 text-xs">
+                    {(['activity', 'spend', 'supplier_specific'] as Cat6CalculationMethod[]).map(method => (
+                        <button 
+                            key={method}
+                            onClick={() => handleMethodChange(method)}
+                            className={`flex-1 py-1 rounded-md transition-colors ${calculationMethod === method ? 'bg-white dark:bg-gray-700 shadow font-semibold' : 'hover:bg-gray-100 dark:hover:bg-gray-800'}`}>
+                            {t(`${method}Method` as TranslationKey)}
+                        </button>
+                    ))}
+                </div>
+            </div>
+            <button onClick={onRemove} className="text-gray-400 hover:text-red-600 p-1 dark:text-gray-500 dark:hover:text-red-500" aria-label={t('removeSourceAria')}>
+                <IconTrash className="h-5 w-5" />
+            </button>
+        </div>
+
+        <div>
+          <label htmlFor={`description-${source.id}`} className={commonLabelClass}>{t('emissionSourceDescription')}</label>
+          <input id={`description-${source.id}`} type="text" value={source.description || ''} onChange={(e) => onUpdate({ description: e.target.value })} className={commonSelectClass} placeholder={t(placeholderKey)} />
+        </div>
+
+        {calculationMethod === 'activity' && (
+            <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-2">
+                    <div>
+                        <label className={commonLabelClass}>{t('businessTravelMode')}</label>
+                        <select value={travelMode} onChange={(e) => onUpdate({ businessTravelMode: e.target.value as BusinessTravelMode })} className={commonSelectClass}>
+                            {Object.keys(activityFactors).map(mode => <option key={mode} value={mode}>{t(mode as TranslationKey)}</option>)}
+                        </select>
+                    </div>
+                </div>
+
+                {travelMode === 'Air' && (
+                    <div className="grid grid-cols-2 gap-2">
+                        <div>
+                            <label className={commonLabelClass}>{t('distance')} (km)</label>
+                            <input type="number" value={source.distanceKm || ''} onChange={e => onUpdate({ distanceKm: parseFloat(e.target.value) || 0 })} className={commonSelectClass} placeholder="0" />
+                        </div>
+                         <div>
+                            <label className={commonLabelClass}>{t('flightClass')}</label>
+                            <select value={source.flightClass || 'Economy'} onChange={e => onUpdate({ flightClass: e.target.value as any })} className={commonSelectClass}>
+                                <option value="Economy">{t('Economy')}</option>
+                                <option value="Business">{t('Business')}</option>
+                                <option value="First">{t('First')}</option>
+                            </select>
+                        </div>
+                         <div>
+                            <label className={commonLabelClass}>{t('tripType')}</label>
+                            <select value={source.tripType || 'round-trip'} onChange={e => onUpdate({ tripType: e.target.value as any })} className={commonSelectClass}>
+                                <option value="round-trip">{t('roundTrip')}</option>
+                                <option value="one-way">{t('oneWay')}</option>
+                            </select>
+                        </div>
+                         <div>
+                            <label className={commonLabelClass}>{t('passengers')}</label>
+                            <input type="number" value={source.passengers || ''} onChange={e => onUpdate({ passengers: parseInt(e.target.value) || 0 })} className={commonSelectClass} placeholder="1" />
+                        </div>
+                    </div>
+                )}
+                {(travelMode === 'Rail' || travelMode === 'Bus' || travelMode === 'RentalCar' || travelMode === 'PersonalCar') && (
+                    <div className="grid grid-cols-2 gap-2">
+                        <div>
+                            <label className={commonLabelClass}>{t('vehicle')}</label>
+                            <select value={source.fuelType || ''} onChange={e => onUpdate({ fuelType: e.target.value })} className={commonSelectClass}>
+                                {Object.keys(activityFactors[travelMode]).map(v => <option key={v} value={v}>{t((activityFactors[travelMode] as any)[v].translationKey)}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label className={commonLabelClass}>{t('distance')} (km)</label>
+                            <input type="number" value={source.distanceKm || ''} onChange={e => onUpdate({ distanceKm: parseFloat(e.target.value) || 0 })} className={commonSelectClass} placeholder="0" />
+                        </div>
+                         {(travelMode === 'Rail' || travelMode === 'Bus') && <div>
+                            <label className={commonLabelClass}>{t('passengers')}</label>
+                            <input type="number" value={source.passengers || ''} onChange={e => onUpdate({ passengers: parseInt(e.target.value) || 0 })} className={commonSelectClass} placeholder="1" />
+                        </div>}
+                    </div>
+                )}
+                {travelMode === 'Hotel' && (
+                    <div className="grid grid-cols-2 gap-2">
+                        <div>
+                            <label className={commonLabelClass}>{t('Hotel')}</label>
+                             <select value={source.fuelType || ''} onChange={e => onUpdate({ fuelType: e.target.value })} className={commonSelectClass}>
+                                {Object.keys(activityFactors.Hotel).map(v => <option key={v} value={v}>{t((activityFactors.Hotel as any)[v].translationKey)}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label className={commonLabelClass}>{t('nights')}</label>
+                            <input type="number" value={source.nights || ''} onChange={e => onUpdate({ nights: parseInt(e.target.value) || 0 })} className={commonSelectClass} placeholder="0" />
+                        </div>
+                        <div>
+                            <label className={commonLabelClass}>{t('passengers')}</label>
+                            <input type="number" value={source.passengers || ''} onChange={e => onUpdate({ passengers: parseInt(e.target.value) || 0 })} className={commonSelectClass} placeholder="1" />
+                        </div>
+                    </div>
+                )}
+            </div>
+        )}
+
+        {calculationMethod === 'spend' && (
+            <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-2">
+                    <select value={source.fuelType} onChange={(e) => onFuelTypeChange(e.target.value)} className={commonSelectClass} aria-label={t('serviceType')}>
+                    {BUSINESS_TRAVEL_FACTORS_DETAILED.spend.map((item: any) => (
+                        <option key={item.name} value={item.name}>
+                        {language === 'ko' && item.translationKey ? t(item.translationKey as TranslationKey) : item.name}
+                        </option>
+                    ))}
+                    </select>
+                    <select value={source.unit} onChange={(e) => onUpdate({ unit: e.target.value })} className={commonSelectClass} aria-label="Unit">
+                    { (BUSINESS_TRAVEL_FACTORS_DETAILED.spend.find((f: any) => f.name === source.fuelType) as any)?.units.map((unit: string) => (
+                        <option key={unit} value={unit}>{t(unit as TranslationKey) || unit}</option>
+                    ))}
+                    </select>
+                </div>
+                 <div className="mt-2">
+                    <div className={`flex justify-between items-center bg-gray-100 dark:bg-gray-700 p-2 ${isEditing ? 'rounded-t-lg' : 'rounded-lg'}`}>
+                        <div>
+                            <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{t('totalYear')}: </span>
+                            <span className="text-sm font-bold text-ghg-dark dark:text-gray-100">{totalQuantity.toLocaleString()} {t(source.unit as TranslationKey) || source.unit}</span>
+                        </div>
+                        {!isEditing && (
+                        <button onClick={handleEdit} className="text-sm text-ghg-green font-semibold hover:underline">
+                            {t('editMonthly')}
+                        </button>
+                        )}
+                    </div>
+                    {isEditing && (
+                        <div className="p-3 bg-gray-100 dark:bg-gray-900/50 rounded-b-lg">
+                           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                                {monthKeys.map((monthKey, index) => (
+                                    <div key={monthKey}>
+                                        <label className={commonLabelClass} htmlFor={`quantity-${source.id}-${index}`}>{t(monthKey)}</label>
+                                        <div className={`flex items-center rounded-md shadow-sm border border-gray-300 dark:border-gray-500 bg-white dark:bg-gray-600 focus-within:ring-1 focus-within:ring-ghg-green focus-within:border-ghg-green overflow-hidden`}>
+                                            <input id={`quantity-${source.id}-${index}`} type="number" onKeyDown={preventNonNumericKeys} value={editedQuantities[index] === 0 ? '' : editedQuantities[index]} onChange={(e) => handleMonthlyChange(index, e.target.value)} className="flex-grow bg-transparent text-gray-900 dark:text-gray-200 py-1 px-2 text-sm text-right focus:outline-none" placeholder="0" />
+                                            <span className="pr-3 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{t(source.unit as TranslationKey) || source.unit}</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="flex justify-end gap-2 mt-4">
+                                <button onClick={handleCancel} className="px-3 py-1 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 dark:bg-gray-600 dark:text-gray-200 dark:border-gray-500 dark:hover:bg-gray-500">{t('cancel')}</button>
+                                <button onClick={handleSave} className="px-3 py-1 text-sm font-medium text-white bg-ghg-green rounded-md shadow-sm hover:bg-ghg-dark">{t('save')}</button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+        )}
+
+        {calculationMethod === 'supplier_specific' && (
+            <div>
+                <label htmlFor={`supplier-co2e-${source.id}`} className={commonLabelClass}>{t('supplierProvidedCO2e')}</label>
+                <input id={`supplier-co2e-${source.id}`} type="number" step="any" value={source.supplierProvidedCO2e ?? ''} onChange={(e) => onUpdate({ supplierProvidedCO2e: parseFloat(e.target.value) || 0 })} className={commonSelectClass} placeholder="0" />
+            </div>
+        )}
+
+        <div className="mt-2 p-2 bg-gray-100 dark:bg-gray-700 rounded-md text-right">
+            <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{t('emissionsForSource')}: </span>
+            <span className="text-sm font-bold text-ghg-dark dark:text-gray-100">{(totalEmissions / 1000).toLocaleString('en-US', {minimumFractionDigits: 3})} t CO₂e</span>
+        </div>
+      </div>
+    );
+  }
+
   // == Default UI for all other categories ==
-  const selectedFuel = fuels.find((f: any) => f.name === source.fuelType);
+  const selectedFuel = Array.isArray(fuels) ? fuels.find((f: any) => f.name === source.fuelType) : null;
   const isFugitive = selectedFuel && 'gwp' in selectedFuel;
   
   const getCalculationDetails = () => {
@@ -1037,7 +1223,7 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
       </div>
       <div className="grid grid-cols-2 gap-2">
         <select value={source.fuelType} onChange={(e) => onFuelTypeChange(e.target.value)} className={commonSelectClass} aria-label="Fuel/Source">
-          {fuels.map((fuel: any) => (
+          {Array.isArray(fuels) && fuels.map((fuel: any) => (
             <option key={fuel.name} value={fuel.name}>
               {language === 'ko' && fuel.translationKey ? `${t(fuel.translationKey as TranslationKey)}` : fuel.name}
             </option>

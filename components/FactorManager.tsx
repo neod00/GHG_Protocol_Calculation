@@ -115,8 +115,9 @@ const AddEditForm: React.FC<{
 };
 
 interface FactorManagerProps {
-    allFactors: { [key in FactorCategoryKey]?: (EditableCO2eFactorFuel | EditableRefrigerant)[] };
-    onScope2FactorChange: (categoryKey: FactorCategoryKey, itemIndex: number, unit: string, value: string) => void;
+    allFactors: { [key in FactorCategoryKey]?: any };
+    onProportionalFactorChange: (categoryKey: FactorCategoryKey, itemIndex: number, unit: string, value: string) => void;
+    onFactorValueChange: (categoryKey: FactorCategoryKey, path: (string | number)[], value: string) => void;
     onGWPChange: (itemIndex: number, value: string) => void;
     onRegionChange: (region: string) => void;
     onAddFactor: (categoryKey: FactorCategoryKey, itemData: any) => void;
@@ -127,9 +128,193 @@ interface FactorManagerProps {
 
 type ActiveTab = 'Scope 1 - Stationary' | 'Scope 1 - Mobile' | 'Scope 1 - Process' | 'Scope 1 - Fugitive' | 'Scope 1 - Waste' | 'Scope 2' | 'Scope 3';
 
+const commonInputClass = "w-full bg-white text-gray-900 border border-gray-300 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100 rounded-md shadow-sm py-1 px-2 text-sm";
+const commonLabelClass = (isSub: boolean = false) => `block text-xs font-medium text-gray-500 dark:text-gray-400 ${isSub ? 'mt-2' : ''}`;
+
+// Component to edit transportation factors (Category 4 & 9)
+const TransportationFactors: React.FC<{
+    data: any,
+    categoryKey: FactorCategoryKey,
+    onFactorChange: (categoryKey: FactorCategoryKey, path: string[], value: string) => void
+}> = ({ data, categoryKey, onFactorChange }) => {
+    const { t } = useTranslation();
+    return (
+        <div className="space-y-4">
+            {Object.entries(data).map(([mode, vehicles]) => (
+                <div key={mode} className="p-3 bg-gray-50 rounded-lg border dark:bg-gray-800 dark:border-gray-600">
+                    <h3 className="font-semibold text-ghg-dark dark:text-gray-100">{t(mode as TranslationKey)}</h3>
+                    <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
+                        {Object.entries(vehicles as object).map(([vehicle, details]) => (
+                            <div key={vehicle}>
+                                <label className={commonLabelClass()}>{t(details.translationKey)}</label>
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="number"
+                                        step="any"
+                                        value={details.factor}
+                                        onChange={(e) => onFactorChange(categoryKey, [mode, vehicle, 'factor'], e.target.value)}
+                                        className={commonInputClass}
+                                    />
+                                     <span className="mt-1 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                                        kg CO₂e / {t('tonne-km')}
+                                    </span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+};
+
+// Component to edit business travel factors (Category 6)
+const BusinessTravelFactors: React.FC<{
+    data: any,
+    categoryKey: FactorCategoryKey,
+    onFactorChange: (categoryKey: FactorCategoryKey, path: (string|number)[], value: string) => void
+}> = ({ data, categoryKey, onFactorChange }) => {
+    const { t } = useTranslation();
+    return (
+      <div className="space-y-6">
+        {/* Activity Based Factors */}
+        <div>
+          <h3 className="text-lg font-semibold text-ghg-dark dark:text-gray-100 border-b pb-2 mb-3">{t('activityBasedFactors')}</h3>
+          <div className="space-y-4">
+            {Object.entries(data.activity).map(([mode, modeData]) => (
+              <div key={mode} className="p-3 bg-gray-50 rounded-lg border dark:bg-gray-800 dark:border-gray-600">
+                <h4 className="font-semibold text-ghg-dark dark:text-gray-100">{t(mode as TranslationKey)}</h4>
+                {mode === 'Air' ? (
+                  Object.entries(modeData as object).map(([haul, classes]) => (
+                    <div key={haul} className="mt-2 pl-2 border-l-2 dark:border-gray-600">
+                      <p className="font-medium text-sm text-gray-600 dark:text-gray-300">{haul}</p>
+                       <div className="mt-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-2 pl-2">
+                          {Object.entries(classes as object).map(([flightClass, details]) => (
+                            <div key={flightClass}>
+                                <label className={commonLabelClass()}>{t(details.translationKey)}</label>
+                                <div className="flex items-center gap-2">
+                                    <input type="number" step="any" value={details.factor} onChange={(e) => onFactorChange(categoryKey, ['activity', mode, haul, flightClass, 'factor'], e.target.value)} className={commonInputClass}/>
+                                    <span className="mt-1 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">kg CO₂e / {t(details.unit as TranslationKey)}</span>
+                                </div>
+                            </div>
+                          ))}
+                       </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
+                    {Object.entries(modeData as object).map(([vehicle, details]) => (
+                       <div key={vehicle}>
+                            <label className={commonLabelClass()}>{t(details.translationKey)}</label>
+                            <div className="flex items-center gap-2">
+                                <input type="number" step="any" value={details.factor} onChange={(e) => onFactorChange(categoryKey, ['activity', mode, vehicle, 'factor'], e.target.value)} className={commonInputClass}/>
+                                <span className="mt-1 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">kg CO₂e / {t(details.unit as TranslationKey)}</span>
+                            </div>
+                        </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+        {/* Spend Based Factors */}
+        <div>
+          <h3 className="text-lg font-semibold text-ghg-dark dark:text-gray-100 border-b pb-2 mb-3">{t('spendBasedFactors')}</h3>
+           <div className="p-3 bg-gray-50 rounded-lg border dark:bg-gray-800 dark:border-gray-600 space-y-3">
+             {data.spend.map((item: any, index: number) => (
+               <div key={item.name} className="border-b pb-2 last:border-b-0 last:pb-0 dark:border-gray-600">
+                 <p className="font-semibold text-sm text-ghg-dark dark:text-gray-100">{t(item.translationKey)}</p>
+                 <div className="mt-1 grid grid-cols-2 gap-x-4">
+                    {Object.entries(item.factors).map(([unit, factor]) => (
+                        <div key={unit}>
+                            <label className={commonLabelClass()}>{unit}</label>
+                            <div className="flex items-center gap-2">
+                                <input type="number" step="any" value={factor as number} onChange={(e) => onFactorChange(categoryKey, ['spend', index, 'factors', unit], e.target.value)} className={commonInputClass}/>
+                                <span className="mt-1 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">kg CO₂e / {t(unit as TranslationKey)}</span>
+                            </div>
+                        </div>
+                    ))}
+                 </div>
+               </div>
+             ))}
+           </div>
+        </div>
+      </div>
+    );
+};
+
+// Component to edit waste factors (Category 5)
+const WasteFactors: React.FC<{
+    data: any,
+    categoryKey: FactorCategoryKey,
+    onFactorChange: (categoryKey: FactorCategoryKey, path: (string|number)[], value: string) => void
+}> = ({ data, categoryKey, onFactorChange }) => {
+    const { t } = useTranslation();
+
+    return (
+        <div className="space-y-6">
+            {/* Activity Based Factors */}
+            <div>
+                <h3 className="text-lg font-semibold text-ghg-dark dark:text-gray-100 border-b pb-2 mb-3">{t('activityBasedFactors')}</h3>
+                <div className="space-y-4">
+                    {Object.entries(data.activity).map(([wasteType, treatments]) => (
+                        <div key={wasteType} className="p-3 bg-gray-50 rounded-lg border dark:bg-gray-800 dark:border-gray-600">
+                            <h4 className="font-semibold text-ghg-dark dark:text-gray-100">{t(`waste${wasteType}` as TranslationKey)}</h4>
+                            <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
+                                {Object.entries(treatments as object).map(([treatment, details]) => (
+                                    <div key={treatment}>
+                                        <label className={commonLabelClass()}>{t(details.translationKey)}</label>
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="number"
+                                                step="any"
+                                                value={details.factor}
+                                                onChange={(e) => onFactorChange(categoryKey, ['activity', wasteType, treatment, 'factor'], e.target.value)}
+                                                className={commonInputClass}
+                                            />
+                                            <span className="mt-1 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                                                kg CO₂e / {t('tonnes')}
+                                            </span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+            {/* Spend Based Factors */}
+            <div>
+              <h3 className="text-lg font-semibold text-ghg-dark dark:text-gray-100 border-b pb-2 mb-3">{t('spendBasedFactors')}</h3>
+               <div className="p-3 bg-gray-50 rounded-lg border dark:bg-gray-800 dark:border-gray-600 space-y-3">
+                 {data.spend.map((item: any, index: number) => (
+                   <div key={item.name} className="border-b pb-2 last:border-b-0 last:pb-0 dark:border-gray-600">
+                     <p className="font-semibold text-sm text-ghg-dark dark:text-gray-100">{t(item.translationKey)}</p>
+                     <div className="mt-1 grid grid-cols-2 gap-x-4">
+                        {Object.entries(item.factors).map(([unit, factor]) => (
+                            <div key={unit}>
+                                <label className={commonLabelClass()}>{unit}</label>
+                                <div className="flex items-center gap-2">
+                                    <input type="number" step="any" value={factor as number} onChange={(e) => onFactorChange(categoryKey, ['spend', index, 'factors', unit], e.target.value)} className={commonInputClass}/>
+                                    <span className="mt-1 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">kg CO₂e / {t(unit as TranslationKey)}</span>
+                                </div>
+                            </div>
+                        ))}
+                     </div>
+                   </div>
+                 ))}
+               </div>
+            </div>
+        </div>
+    );
+};
+
+
 export const FactorManager: React.FC<FactorManagerProps> = ({ 
     allFactors, 
-    onScope2FactorChange,
+    onProportionalFactorChange,
+    onFactorValueChange,
     onGWPChange,
     onRegionChange,
     onAddFactor,
@@ -145,7 +330,7 @@ export const FactorManager: React.FC<FactorManagerProps> = ({
     const [formState, setFormState] = useState<{ mode: 'hidden' | 'add' | 'edit', item?: any, categoryKey?: FactorCategoryKey }>({ mode: 'hidden' });
 
     const [selectedRegion, setSelectedRegion] = useState<string>(() => {
-        const electricitySource = allFactors.scope2?.find(s => s.name === 'Grid Electricity');
+        const electricitySource = allFactors.scope2?.find((s:any) => s.name === 'Grid Electricity');
         if (electricitySource && 'factors' in electricitySource) {
             const currentFactors = electricitySource.factors;
             for (const [region, data] of Object.entries(SCOPE2_FACTORS_BY_REGION)) {
@@ -182,8 +367,29 @@ export const FactorManager: React.FC<FactorManagerProps> = ({
         }`;
 
     const renderFactorList = (categoryKey: FactorCategoryKey) => {
-        const data = allFactors[categoryKey] || [];
+        const data = allFactors[categoryKey];
         const isFugitive = categoryKey === 'fugitive';
+
+        if (!data) return null; // Return null if data is not available
+
+        if (categoryKey === 'upstreamTransport' || categoryKey === 'downstreamTransport') {
+            return <TransportationFactors data={data} categoryKey={categoryKey} onFactorChange={onFactorValueChange as any} />;
+        }
+        if (categoryKey === 'businessTravel') {
+            return <BusinessTravelFactors data={data} categoryKey={categoryKey} onFactorChange={onFactorValueChange} />;
+        }
+        if (categoryKey === 'scope3Waste') {
+            return <WasteFactors data={data} categoryKey={categoryKey} onFactorChange={onFactorValueChange} />;
+        }
+
+        if (!Array.isArray(data)) {
+            return (
+                <div className="p-4 text-center text-gray-500 bg-gray-50 dark:bg-gray-800 dark:border-gray-600 rounded-lg">
+                    <p className="font-semibold text-ghg-dark dark:text-gray-200">{t('complexFactorsNotEditableTitle')}</p>
+                    <p className="text-sm mt-1">{t('complexFactorsNotEditableBody')}</p>
+                </div>
+            );
+        }
 
         return (
             <div className="space-y-4">
@@ -227,7 +433,7 @@ export const FactorManager: React.FC<FactorManagerProps> = ({
                                     <div key={unit}>
                                         <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">{t(unit as TranslationKey) || unit}</label>
                                         <div className="flex items-center gap-2">
-                                            <input type="number" step="any" value={factor as number} onChange={(e) => onScope2FactorChange(categoryKey, index, unit, e.target.value)} className="w-full mt-1 bg-white text-gray-900 border border-gray-300 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100 rounded-md shadow-sm py-1 px-2 text-sm" />
+                                            <input type="number" step="any" value={factor as number} onChange={(e) => onProportionalFactorChange(categoryKey, index, unit, e.target.value)} className="w-full mt-1 bg-white text-gray-900 border border-gray-300 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100 rounded-md shadow-sm py-1 px-2 text-sm" />
                                             <span className="mt-1 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
                                                 kg CO₂e / {t(unit as TranslationKey) || unit}
                                             </span>
