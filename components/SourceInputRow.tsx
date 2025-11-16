@@ -27,6 +27,7 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
   const [isLoadingAI, setIsLoadingAI] = useState(false);
   const [aiAnalysisResult, setAiAnalysisResult] = useState<any>(null);
 
+
   useEffect(() => {
     if ((source.category === EmissionCategory.PurchasedGoodsAndServices || source.category === EmissionCategory.CapitalGoods) && !source.calculationMethod) {
       onUpdate({
@@ -37,6 +38,24 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
       });
     }
   }, [source.category, source.calculationMethod, source.factor, onUpdate]);
+
+  // This effect synchronizes the local editing state with the props from the parent.
+  // It runs when the source data changes externally OR when editing is cancelled.
+  // It specifically avoids running while the user is actively editing,
+  // preventing their input from being overwritten by prop updates.
+  useEffect(() => {
+    if (!isEditing) {
+      setEditedQuantities([...source.monthlyQuantities]);
+    }
+  }, [source.monthlyQuantities, isEditing]);
+
+  const renderUnit = (unit: string) => {
+    if (unit === 'cubic meters') {
+      return <span>m<sup>3</sup></span>;
+    }
+    return t(unit as TranslationKey) || unit;
+  };
+
 
   const getPlaceholderKey = (category: EmissionCategory): TranslationKey => {
     switch (category) {
@@ -93,11 +112,13 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
   };
   
   const handleEdit = () => {
-    setEditedQuantities([...source.monthlyQuantities]);
+    // State is already synced by the useEffect, so we just need to enable the editing UI.
     setIsEditing(true);
   };
 
   const handleCancel = () => {
+    // Just disable editing. The useEffect will handle resetting the state
+    // to match the latest props on the subsequent render.
     setIsEditing(false);
   };
 
@@ -215,7 +236,7 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
         ? (source.supplierProvidedCO2e ?? 0)
         : source.monthlyQuantities.reduce((sum, q) => sum + q, 0);
 
-    const activityUnit = source.calculationMethod === 'supplier_co2e' ? 'kg CO₂e' : (t(source.unit as TranslationKey) || source.unit);
+    const activityUnit = source.calculationMethod === 'supplier_co2e' ? 'kg CO₂e' : source.unit;
 
     return (
       <div className="flex flex-col gap-2 p-3 bg-gray-50 rounded-lg border dark:bg-gray-800 dark:border-gray-600">
@@ -224,7 +245,8 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
             <div className='truncate pr-2'>
                 <p className="text-sm font-medium text-ghg-dark dark:text-gray-100 truncate">{source.fuelType || placeholderText}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {t('total')}: {activityTotal.toLocaleString()} {activityUnit} • {(totalEmissions / 1000).toLocaleString('en-US', {minimumFractionDigits: 3})} t CO₂e
+                    {t('total')}: {activityTotal.toLocaleString()}&nbsp;
+                    {renderUnit(activityUnit)} • {(totalEmissions / 1000).toLocaleString('en-US', {minimumFractionDigits: 3})} t CO₂e
                 </p>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
@@ -386,7 +408,7 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
                 <div className="flex justify-between items-center bg-gray-100 dark:bg-gray-700 p-2 rounded-md">
                     <div>
                         <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{t('totalYear')}: </span>
-                        <span className="text-sm font-bold text-ghg-dark dark:text-gray-100">{totalQuantity.toLocaleString()} {t(source.unit as TranslationKey) || source.unit}</span>
+                        <span className="text-sm font-bold text-ghg-dark dark:text-gray-100">{totalQuantity.toLocaleString()}&nbsp;{renderUnit(source.unit)}</span>
                     </div>
                     {!isEditing && (
                     <button onClick={handleEdit} disabled={source.calculationMethod === 'supplier_co2e'} className="text-sm text-ghg-green font-semibold hover:underline disabled:text-gray-400 disabled:no-underline disabled:cursor-not-allowed">
@@ -407,11 +429,11 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
                                         onKeyDown={preventNonNumericKeys}
                                         value={editedQuantities[index] === 0 ? '' : editedQuantities[index]}
                                         onChange={(e) => handleMonthlyChange(index, e.target.value)}
-                                        className="flex-grow bg-transparent text-gray-900 dark:text-gray-200 py-1 px-2 text-sm text-right focus:outline-none"
+                                        className="w-0 flex-grow bg-transparent text-gray-900 dark:text-gray-200 py-1 px-2 text-sm text-right focus:outline-none"
                                         placeholder="0"
                                     />
                                     <span className="pr-3 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                                        {t(source.unit as TranslationKey) || source.unit}
+                                        {renderUnit(source.unit)}
                                     </span>
                                 </div>
                             </div>
@@ -500,7 +522,7 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
                          <div className={`flex justify-between items-center bg-gray-100 dark:bg-gray-700 p-2 ${isEditing ? 'rounded-t-lg' : 'rounded-lg'}`}>
                             <div>
                                 <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{t('totalYear')}: </span>
-                                <span className="text-sm font-bold text-ghg-dark dark:text-gray-100">{totalQuantity.toLocaleString()} {t(source.unit as TranslationKey) || source.unit}</span>
+                                <span className="text-sm font-bold text-ghg-dark dark:text-gray-100">{totalQuantity.toLocaleString()}&nbsp;{renderUnit(source.unit)}</span>
                             </div>
                             <div className='flex items-center gap-4'>
                                 <span className="text-sm font-bold text-ghg-dark dark:text-gray-100">{(totalEmissions / 1000).toLocaleString('en-US', {minimumFractionDigits: 3})} t CO₂e</span>
@@ -526,11 +548,11 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
                                                     onKeyDown={preventNonNumericKeys}
                                                     value={editedQuantities[index] === 0 ? '' : editedQuantities[index]}
                                                     onChange={(e) => handleMonthlyChange(index, e.target.value)}
-                                                    className="flex-grow bg-transparent text-gray-900 dark:text-gray-200 py-1 px-2 text-sm text-right focus:outline-none"
+                                                    className="w-0 flex-grow bg-transparent text-gray-900 dark:text-gray-200 py-1 px-2 text-sm text-right focus:outline-none"
                                                     placeholder="0"
                                                 />
                                                 <span className="pr-3 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                                                    {t(source.unit as TranslationKey) || source.unit}
+                                                    {renderUnit(source.unit)}
                                                 </span>
                                             </div>
                                         </div>
@@ -675,7 +697,7 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
                     <div className={`flex justify-between items-center bg-gray-100 dark:bg-gray-700 p-2 ${isEditing ? 'rounded-t-lg' : 'rounded-lg'}`}>
                         <div>
                             <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{t('totalYear')}: </span>
-                            <span className="text-sm font-bold text-ghg-dark dark:text-gray-100">{totalQuantity.toLocaleString()} {t(source.unit as TranslationKey) || source.unit}</span>
+                            <span className="text-sm font-bold text-ghg-dark dark:text-gray-100">{totalQuantity.toLocaleString()}&nbsp;{renderUnit(source.unit)}</span>
                         </div>
                         {!isEditing && (
                         <button onClick={handleEdit} className="text-sm text-ghg-green font-semibold hover:underline">
@@ -697,11 +719,11 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
                                                 onKeyDown={preventNonNumericKeys}
                                                 value={editedQuantities[index] === 0 ? '' : editedQuantities[index]}
                                                 onChange={(e) => handleMonthlyChange(index, e.target.value)}
-                                                className="flex-grow bg-transparent text-gray-900 dark:text-gray-200 py-1 px-2 text-sm text-right focus:outline-none"
+                                                className="w-0 flex-grow bg-transparent text-gray-900 dark:text-gray-200 py-1 px-2 text-sm text-right focus:outline-none"
                                                 placeholder="0"
                                             />
                                             <span className="pr-3 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                                                {t(source.unit as TranslationKey) || source.unit}
+                                                {renderUnit(source.unit)}
                                             </span>
                                         </div>
                                     </div>
@@ -803,7 +825,7 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
                     <div className={`flex justify-between items-center bg-gray-100 dark:bg-gray-700 p-2 ${isEditing ? 'rounded-t-lg' : 'rounded-lg'}`}>
                         <div>
                             <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{t('totalYear')}: </span>
-                            <span className="text-sm font-bold text-ghg-dark dark:text-gray-100">{totalQuantity.toLocaleString()} {t(source.unit as TranslationKey) || source.unit}</span>
+                            <span className="text-sm font-bold text-ghg-dark dark:text-gray-100">{totalQuantity.toLocaleString()}&nbsp;{renderUnit(source.unit)}</span>
                         </div>
                         {!isEditing && (
                         <button onClick={handleEdit} className="text-sm text-ghg-green font-semibold hover:underline">
@@ -818,7 +840,7 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
                                     <div key={monthKey}>
                                         <label className={commonLabelClass} htmlFor={`quantity-${source.id}-${index}`}>{t(monthKey)}</label>
                                         <div className={`flex items-center rounded-md shadow-sm border border-gray-300 dark:border-gray-500 bg-white dark:bg-gray-600 focus-within:ring-1 focus-within:ring-ghg-green focus-within:border-ghg-green overflow-hidden`}>
-                                            <input id={`quantity-${source.id}-${index}`} type="number" onKeyDown={preventNonNumericKeys} value={editedQuantities[index] === 0 ? '' : editedQuantities[index]} onChange={(e) => handleMonthlyChange(index, e.target.value)} className="flex-grow bg-transparent text-gray-900 dark:text-gray-200 py-1 px-2 text-sm text-right focus:outline-none" placeholder="0" />
+                                            <input id={`quantity-${source.id}-${index}`} type="number" onKeyDown={preventNonNumericKeys} value={editedQuantities[index] === 0 ? '' : editedQuantities[index]} onChange={(e) => handleMonthlyChange(index, e.target.value)} className="w-0 flex-grow bg-transparent text-gray-900 dark:text-gray-200 py-1 px-2 text-sm text-right focus:outline-none" placeholder="0" />
                                             <select value={source.unit} onChange={(e) => onUpdate({ unit: e.target.value })} className="bg-transparent text-xs text-gray-500 dark:text-gray-400 border-none focus:ring-0">
                                                 <option value="tonnes">{t('tonnes')}</option>
                                                 <option value="kg">kg</option>
@@ -895,7 +917,7 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
                     <div className={`flex justify-between items-center bg-gray-100 dark:bg-gray-700 p-2 ${isEditing ? 'rounded-t-lg' : 'rounded-lg'}`}>
                         <div>
                             <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{t('totalYear')}: </span>
-                            <span className="text-sm font-bold text-ghg-dark dark:text-gray-100">{totalQuantity.toLocaleString()} {t(source.unit as TranslationKey) || source.unit}</span>
+                            <span className="text-sm font-bold text-ghg-dark dark:text-gray-100">{totalQuantity.toLocaleString()}&nbsp;{renderUnit(source.unit)}</span>
                         </div>
                         {!isEditing && (
                         <button onClick={handleEdit} className="text-sm text-ghg-green font-semibold hover:underline">
@@ -910,8 +932,8 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
                                     <div key={monthKey}>
                                         <label className={commonLabelClass} htmlFor={`quantity-${source.id}-${index}`}>{t(monthKey)}</label>
                                         <div className={`flex items-center rounded-md shadow-sm border border-gray-300 dark:border-gray-500 bg-white dark:bg-gray-600 focus-within:ring-1 focus-within:ring-ghg-green focus-within:border-ghg-green overflow-hidden`}>
-                                            <input id={`quantity-${source.id}-${index}`} type="number" onKeyDown={preventNonNumericKeys} value={editedQuantities[index] === 0 ? '' : editedQuantities[index]} onChange={(e) => handleMonthlyChange(index, e.target.value)} className="flex-grow bg-transparent text-gray-900 dark:text-gray-200 py-1 px-2 text-sm text-right focus:outline-none" placeholder="0" />
-                                            <span className="pr-3 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{t(source.unit as TranslationKey) || source.unit}</span>
+                                            <input id={`quantity-${source.id}-${index}`} type="number" onKeyDown={preventNonNumericKeys} value={editedQuantities[index] === 0 ? '' : editedQuantities[index]} onChange={(e) => handleMonthlyChange(index, e.target.value)} className="w-0 flex-grow bg-transparent text-gray-900 dark:text-gray-200 py-1 px-2 text-sm text-right focus:outline-none" placeholder="0" />
+                                            <span className="pr-3 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{renderUnit(source.unit)}</span>
                                         </div>
                                     </div>
                                 ))}
@@ -1075,7 +1097,7 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
                     <div className={`flex justify-between items-center bg-gray-100 dark:bg-gray-700 p-2 ${isEditing ? 'rounded-t-lg' : 'rounded-lg'}`}>
                         <div>
                             <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{t('totalYear')}: </span>
-                            <span className="text-sm font-bold text-ghg-dark dark:text-gray-100">{totalQuantity.toLocaleString()} {t(source.unit as TranslationKey) || source.unit}</span>
+                            <span className="text-sm font-bold text-ghg-dark dark:text-gray-100">{totalQuantity.toLocaleString()}&nbsp;{renderUnit(source.unit)}</span>
                         </div>
                         {!isEditing && (
                         <button onClick={handleEdit} className="text-sm text-ghg-green font-semibold hover:underline">
@@ -1090,8 +1112,8 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
                                     <div key={monthKey}>
                                         <label className={commonLabelClass} htmlFor={`quantity-${source.id}-${index}`}>{t(monthKey)}</label>
                                         <div className={`flex items-center rounded-md shadow-sm border border-gray-300 dark:border-gray-500 bg-white dark:bg-gray-600 focus-within:ring-1 focus-within:ring-ghg-green focus-within:border-ghg-green overflow-hidden`}>
-                                            <input id={`quantity-${source.id}-${index}`} type="number" onKeyDown={preventNonNumericKeys} value={editedQuantities[index] === 0 ? '' : editedQuantities[index]} onChange={(e) => handleMonthlyChange(index, e.target.value)} className="flex-grow bg-transparent text-gray-900 dark:text-gray-200 py-1 px-2 text-sm text-right focus:outline-none" placeholder="0" />
-                                            <span className="pr-3 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{t(source.unit as TranslationKey) || source.unit}</span>
+                                            <input id={`quantity-${source.id}-${index}`} type="number" onKeyDown={preventNonNumericKeys} value={editedQuantities[index] === 0 ? '' : editedQuantities[index]} onChange={(e) => handleMonthlyChange(index, e.target.value)} className="w-0 flex-grow bg-transparent text-gray-900 dark:text-gray-200 py-1 px-2 text-sm text-right focus:outline-none" placeholder="0" />
+                                            <span className="pr-3 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{renderUnit(source.unit)}</span>
                                         </div>
                                     </div>
                                 ))}
@@ -1306,7 +1328,7 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
                     <div className={`flex justify-between items-center bg-gray-100 dark:bg-gray-700 p-2 ${isEditing ? 'rounded-t-lg' : 'rounded-lg'}`}>
                         <div>
                             <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{t('totalYear')}: </span>
-                            <span className="text-sm font-bold text-ghg-dark dark:text-gray-100">{totalQuantity.toLocaleString()} {t(source.unit as TranslationKey) || source.unit}</span>
+                            <span className="text-sm font-bold text-ghg-dark dark:text-gray-100">{totalQuantity.toLocaleString()}&nbsp;{renderUnit(source.unit)}</span>
                         </div>
                         {!isEditing && (
                         <button onClick={handleEdit} className="text-sm text-ghg-green font-semibold hover:underline">
@@ -1321,8 +1343,8 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
                                     <div key={monthKey}>
                                         <label className={commonLabelClass} htmlFor={`quantity-${source.id}-${index}`}>{t(monthKey)}</label>
                                         <div className={`flex items-center rounded-md shadow-sm border border-gray-300 dark:border-gray-500 bg-white dark:bg-gray-600 focus-within:ring-1 focus-within:ring-ghg-green focus-within:border-ghg-green overflow-hidden`}>
-                                            <input id={`quantity-${source.id}-${index}`} type="number" onKeyDown={preventNonNumericKeys} value={editedQuantities[index] === 0 ? '' : editedQuantities[index]} onChange={(e) => handleMonthlyChange(index, e.target.value)} className="flex-grow bg-transparent text-gray-900 dark:text-gray-200 py-1 px-2 text-sm text-right focus:outline-none" placeholder="0" />
-                                            <span className="pr-3 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{t(source.unit as TranslationKey) || source.unit}</span>
+                                            <input id={`quantity-${source.id}-${index}`} type="number" onKeyDown={preventNonNumericKeys} value={editedQuantities[index] === 0 ? '' : editedQuantities[index]} onChange={(e) => handleMonthlyChange(index, e.target.value)} className="w-0 flex-grow bg-transparent text-gray-900 dark:text-gray-200 py-1 px-2 text-sm text-right focus:outline-none" placeholder="0" />
+                                            <span className="pr-3 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{renderUnit(source.unit)}</span>
                                         </div>
                                     </div>
                                 ))}
@@ -1517,7 +1539,7 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
                     <div className={`flex justify-between items-center bg-gray-100 dark:bg-gray-700 p-2 ${isEditing ? 'rounded-t-lg' : 'rounded-lg'}`}>
                         <div>
                             <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{t('totalYear')}: </span>
-                            <span className="text-sm font-bold text-ghg-dark dark:text-gray-100">{totalQuantity.toLocaleString()} {t(source.unit as TranslationKey) || source.unit}</span>
+                            <span className="text-sm font-bold text-ghg-dark dark:text-gray-100">{totalQuantity.toLocaleString()}&nbsp;{renderUnit(source.unit)}</span>
                         </div>
                         {!isEditing && (
                         <button onClick={handleEdit} className="text-sm text-ghg-green font-semibold hover:underline">
@@ -1532,8 +1554,8 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
                                     <div key={monthKey}>
                                         <label className={commonLabelClass} htmlFor={`quantity-${source.id}-${index}`}>{t(monthKey)}</label>
                                         <div className={`flex items-center rounded-md shadow-sm border border-gray-300 dark:border-gray-500 bg-white dark:bg-gray-600 focus-within:ring-1 focus-within:ring-ghg-green focus-within:border-ghg-green overflow-hidden`}>
-                                            <input id={`quantity-${source.id}-${index}`} type="number" onKeyDown={preventNonNumericKeys} value={editedQuantities[index] === 0 ? '' : editedQuantities[index]} onChange={(e) => handleMonthlyChange(index, e.target.value)} className="flex-grow bg-transparent text-gray-900 dark:text-gray-200 py-1 px-2 text-sm text-right focus:outline-none" placeholder="0" />
-                                            <span className="pr-3 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{t(source.unit as TranslationKey) || source.unit}</span>
+                                            <input id={`quantity-${source.id}-${index}`} type="number" onKeyDown={preventNonNumericKeys} value={editedQuantities[index] === 0 ? '' : editedQuantities[index]} onChange={(e) => handleMonthlyChange(index, e.target.value)} className="w-0 flex-grow bg-transparent text-gray-900 dark:text-gray-200 py-1 px-2 text-sm text-right focus:outline-none" placeholder="0" />
+                                            <span className="pr-3 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{renderUnit(source.unit)}</span>
                                         </div>
                                     </div>
                                 ))}
@@ -1598,7 +1620,7 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
             <p className="text-center font-bold mb-2 border-b border-gray-600 pb-1">{t('emissionsForSource')}</p>
             <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-left items-center">
                 <span className="font-semibold">{t('activityData')}</span>
-                <span className="text-right">{totalQuantity.toLocaleString()} {t(source.unit as TranslationKey) || source.unit}</span>
+                <span className="text-right">{totalQuantity.toLocaleString()}&nbsp;{renderUnit(source.unit)}</span>
                 
                 <span className="font-semibold">{t('emissionFactor')}</span>
                 <span className="text-right">&times; {factor.toLocaleString()} kg CO₂e</span>
@@ -1701,7 +1723,7 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
         <div className="flex justify-between items-center bg-gray-100 dark:bg-gray-700 p-2 rounded-t-md">
             <div>
                 <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{t('totalYear')}: </span>
-                <span className="text-sm font-bold text-ghg-dark dark:text-gray-100">{totalQuantity.toLocaleString()} {t(source.unit as TranslationKey) || source.unit}</span>
+                <span className="text-sm font-bold text-ghg-dark dark:text-gray-100">{totalQuantity.toLocaleString()}&nbsp;{renderUnit(source.unit)}</span>
             </div>
             {!isEditing && (
               <button onClick={handleEdit} className="text-sm text-ghg-green font-semibold hover:underline">
@@ -1733,11 +1755,11 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
                                     onKeyDown={preventNonNumericKeys}
                                     value={editedQuantities[index] === 0 ? '' : editedQuantities[index]}
                                     onChange={(e) => handleMonthlyChange(index, e.target.value)}
-                                    className="flex-grow bg-transparent text-gray-900 dark:text-gray-200 py-1 px-2 text-sm text-right focus:outline-none"
+                                    className="w-0 flex-grow bg-transparent text-gray-900 dark:text-gray-200 py-1 px-2 text-sm text-right focus:outline-none"
                                     placeholder="0"
                                 />
                                 <span className="pr-3 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                                    {t(source.unit as TranslationKey) || source.unit}
+                                    {renderUnit(source.unit)}
                                 </span>
                             </div>
                         </div>

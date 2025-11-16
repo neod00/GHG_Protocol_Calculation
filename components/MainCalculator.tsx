@@ -100,8 +100,20 @@ export const MainCalculator: React.FC = () => {
   // State for data, initialized from localStorage or defaults
   const [sources, setSources] = useState<{ [key in EmissionCategory]: EmissionSource[] }>(() => {
       const saved = localStorage.getItem('ghg-calc-sources');
-      // Ensure all categories exist in the loaded data
       const loadedSources = saved ? JSON.parse(saved) : {};
+      
+      // Sanitize loaded data to prevent crashes from malformed legacy data
+      for (const category in loadedSources) {
+          if (Object.prototype.hasOwnProperty.call(loadedSources, category) && Array.isArray(loadedSources[category])) {
+              loadedSources[category] = loadedSources[category].map((source: any) => ({
+                  ...source,
+                  // Ensure monthlyQuantities is always an array to prevent crashes.
+                  monthlyQuantities: Array.isArray(source.monthlyQuantities) ? source.monthlyQuantities : [],
+              }));
+          }
+      }
+
+      // Ensure all categories exist in the loaded data
       const fullSources = { ...initialSources, ...loadedSources };
       return fullSources;
   });
