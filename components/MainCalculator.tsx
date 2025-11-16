@@ -1,12 +1,12 @@
 // Fix: Corrected typo in React import
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 // Fix: Import 'EditableCO2eFactorFuel' to resolve type error.
-import { EmissionCategory, EmissionSource, Refrigerant, Facility, BoundaryApproach, EditableRefrigerant, EditableCO2eFactorFuel, CO2eFactorFuel, TransportMode, Cat5CalculationMethod, WasteType, TreatmentMethod, Cat6CalculationMethod, BusinessTravelMode, EmployeeCommutingMode, PersonalCarType, PublicTransportType, Cat7CalculationMethod } from '../types';
+import { EmissionCategory, EmissionSource, Refrigerant, Facility, BoundaryApproach, EditableRefrigerant, EditableCO2eFactorFuel, CO2eFactorFuel, TransportMode, Cat5CalculationMethod, WasteType, TreatmentMethod, Cat6CalculationMethod, BusinessTravelMode, EmployeeCommutingMode, PersonalCarType, PublicTransportType, Cat7CalculationMethod, Cat8CalculationMethod, BuildingType, LeasedAssetType } from '../types';
 import { 
     STATIONARY_FUELS, MOBILE_FUELS, PROCESS_MATERIALS, FUGITIVE_GASES, SCOPE2_ENERGY_SOURCES, WASTE_SOURCES, 
     EMPLOYEE_COMMUTING_FACTORS_DETAILED,
     PURCHASED_GOODS_SERVICES_FACTORS, CAPITAL_GOODS_FACTORS, FUEL_ENERGY_ACTIVITIES_FACTORS,
-    TRANSPORTATION_FACTORS_BY_MODE, TRANSPORTATION_SPEND_FACTORS, LEASED_ASSETS_FACTORS, PROCESSING_SOLD_PRODUCTS_FACTORS,
+    TRANSPORTATION_FACTORS_BY_MODE, TRANSPORTATION_SPEND_FACTORS, LEASED_ASSETS_FACTORS_DETAILED, PROCESSING_SOLD_PRODUCTS_FACTORS,
     USE_SOLD_PRODUCTS_FACTORS, END_OF_LIFE_TREATMENT_FACTORS, FRANCHISES_FACTORS, INVESTMENTS_FACTORS,
     SCOPE2_FACTORS_BY_REGION,
     PURCHASED_ENERGY_UPSTREAM_FACTORS,
@@ -75,8 +75,8 @@ const factorConfig = {
     scope3Waste: { key: 'ghg-calc-scope3WasteFactors', default: WASTE_FACTORS_DETAILED },
     businessTravel: { key: 'ghg-calc-businessTravelFactors', default: BUSINESS_TRAVEL_FACTORS_DETAILED },
     employeeCommuting: { key: 'ghg-calc-employeeCommutingFactors', default: EMPLOYEE_COMMUTING_FACTORS_DETAILED },
-    upstreamLeased: { key: 'ghg-calc-upstreamLeasedAssetsFactors', default: LEASED_ASSETS_FACTORS },
-    downstreamLeased: { key: 'ghg-calc-downstreamLeasedAssetsFactors', default: LEASED_ASSETS_FACTORS },
+    upstreamLeased: { key: 'ghg-calc-upstreamLeasedAssetsFactors', default: LEASED_ASSETS_FACTORS_DETAILED },
+    downstreamLeased: { key: 'ghg-calc-downstreamLeasedAssetsFactors', default: LEASED_ASSETS_FACTORS_DETAILED },
     processingSold: { key: 'ghg-calc-processingSoldProductsFactors', default: PROCESSING_SOLD_PRODUCTS_FACTORS },
     useSold: { key: 'ghg-calc-useSoldProductsFactors', default: USE_SOLD_PRODUCTS_FACTORS },
     endOfLife: { key: 'ghg-calc-endOfLifeTreatmentFactors', default: END_OF_LIFE_TREATMENT_FACTORS },
@@ -149,7 +149,7 @@ export const MainCalculator: React.FC = () => {
   useEffect(() => {
     let needsMigration = false;
     for (const key of Object.keys(factorConfig)) {
-        if (key === 'upstreamTransport' || key === 'downstreamTransport' || key === 'businessTravel' || key === 'scope3Waste' || key === 'employeeCommuting') continue; // Skip nested objects
+        if (['upstreamTransport', 'downstreamTransport', 'businessTravel', 'scope3Waste', 'employeeCommuting', 'upstreamLeased', 'downstreamLeased'].includes(key)) continue; // Skip nested objects
         const factors = allFactors[key as FactorCategoryKey];
         if (factors && Array.isArray(factors) && factors.some((f: any) => f.isCustom && !f.id)) {
             needsMigration = true;
@@ -161,7 +161,7 @@ export const MainCalculator: React.FC = () => {
         setAllFactors(currentFactors => {
             const migratedFactors = { ...currentFactors };
             for (const key of Object.keys(factorConfig)) {
-                 if (key === 'upstreamTransport' || key === 'downstreamTransport' || key === 'businessTravel' || key === 'scope3Waste' || key === 'employeeCommuting') continue;
+                 if (['upstreamTransport', 'downstreamTransport', 'businessTravel', 'scope3Waste', 'employeeCommuting', 'upstreamLeased', 'downstreamLeased'].includes(key)) continue;
                 const categoryKey = key as FactorCategoryKey;
                 migratedFactors[categoryKey] = ensureIdsForCustomFactors(currentFactors[categoryKey] as any[]);
             }
@@ -260,11 +260,10 @@ export const MainCalculator: React.FC = () => {
     [EmissionCategory.BusinessTravel]: allFactors.businessTravel,
     [EmissionCategory.EmployeeCommuting]: allFactors.employeeCommuting,
     [EmissionCategory.UpstreamLeasedAssets]: allFactors.upstreamLeased,
-    [EmissionCategory.DownstreamTransportationAndDistribution]: allFactors.downstreamTransport,
+    [EmissionCategory.DownstreamLeasedAssets]: allFactors.downstreamLeased,
     [EmissionCategory.ProcessingOfSoldProducts]: allFactors.processingSold,
     [EmissionCategory.UseOfSoldProducts]: allFactors.useSold,
     [EmissionCategory.EndOfLifeTreatmentOfSoldProducts]: allFactors.endOfLife,
-    [EmissionCategory.DownstreamLeasedAssets]: allFactors.downstreamLeased,
     [EmissionCategory.Franchises]: allFactors.franchises,
     [EmissionCategory.Investments]: allFactors.investments,
   }), [allFactors]);
@@ -439,6 +438,27 @@ export const MainCalculator: React.FC = () => {
         return;
     }
 
+    if (category === EmissionCategory.UpstreamLeasedAssets || category === EmissionCategory.DownstreamLeasedAssets) {
+        const newSource: EmissionSource = {
+            id: `source-${Date.now()}`,
+            facilityId: CORPORATE_FACILITY_ID,
+            category,
+            description: '',
+            fuelType: '',
+            monthlyQuantities: [],
+            unit: '',
+            calculationMethod: 'asset_specific',
+            leasedAssetType: 'Building',
+            buildingType: 'Office',
+            areaSqm: 0,
+            leaseDurationMonths: 12,
+            energyInputs: [],
+        };
+         setSources(prev => ({...prev, [category]: [...prev[category], newSource]}));
+        return;
+    }
+
+
     if (!fuelsForCategory || fuelsForCategory.length === 0) return;
 
     const defaultFuel = fuelsForCategory[0];
@@ -477,8 +497,8 @@ export const MainCalculator: React.FC = () => {
 
     // Find the new fuel/service item from the constants
     let newFuel: any;
-    if (category === EmissionCategory.BusinessTravel || category === EmissionCategory.EmployeeCommuting) {
-        newFuel = (fuelsForCategory as any)?.spend?.find((f: any) => f.name === newFuelType);
+    if (category === EmissionCategory.BusinessTravel || category === EmissionCategory.EmployeeCommuting || category === EmissionCategory.UpstreamLeasedAssets || category === EmissionCategory.DownstreamLeasedAssets) {
+        newFuel = (fuelsForCategory as any)?.spend_based?.find((f: any) => f.name === newFuelType);
     } else if (category === EmissionCategory.UpstreamTransportationAndDistribution || category === EmissionCategory.DownstreamTransportationAndDistribution) {
         newFuel = [...MOBILE_FUELS, ...TRANSPORTATION_SPEND_FACTORS].find(f => f.name === newFuelType);
     } else if (Array.isArray(fuelsForCategory)) {
@@ -686,6 +706,45 @@ export const MainCalculator: React.FC = () => {
                 const totalAnnualKm = (source.distanceKm || 0) * 2 * (source.daysPerYear || 0);
                 const occupancy = (commutingMode === 'Carpool' && (source.carpoolOccupancy || 1) > 1) ? (source.carpoolOccupancy || 1) : 1;
                 scope3 = (totalAnnualKm * factor) / occupancy;
+                break;
+        }
+        return { scope1: 0, scope2Location: 0, scope2Market: 0, scope3 };
+    }
+
+    if (source.category === EmissionCategory.UpstreamLeasedAssets || source.category === EmissionCategory.DownstreamLeasedAssets) {
+        let scope3 = 0;
+        const calcMethod = (source.calculationMethod as Cat8CalculationMethod) || 'asset_specific';
+        const leaseDurationFactor = (source.leaseDurationMonths || 12) / 12;
+
+        switch(calcMethod) {
+            case 'supplier_specific':
+                scope3 = (source.supplierProvidedCO2e || 0) * leaseDurationFactor;
+                break;
+            case 'spend_based':
+                const totalSpend = source.monthlyQuantities.reduce((s, q) => s + q, 0);
+                const spendFactorData = allFactors.upstreamLeased.spend_based.find((f:any) => f.name === source.fuelType);
+                const spendFactor = spendFactorData?.factors[source.unit] || 0;
+                scope3 = totalSpend * spendFactor; // Assuming spend data is already for the reporting period
+                break;
+            case 'area_based':
+                const buildingType = source.buildingType || 'Office';
+                const energyIntensityFactor = allFactors.upstreamLeased.area_based[buildingType]?.factor || 0; // kWh/m2/year
+                const area = source.areaSqm || 0;
+                const totalKwh = area * energyIntensityFactor * leaseDurationFactor;
+                const gridFactor = (allFactors.scope2.find((f: any) => f.name === 'Grid Electricity') as CO2eFactorFuel)?.factors['kWh'] || 0;
+                scope3 = totalKwh * gridFactor;
+                break;
+            case 'asset_specific':
+                let totalEmissions = 0;
+                for (const input of source.energyInputs || []) {
+                    const allEnergyAndFuelFactors = [...allFactors.stationary, ...allFactors.mobile, ...allFactors.scope2];
+                    const factorData = allEnergyAndFuelFactors.find((f: any) => f.name === input.type) as CO2eFactorFuel | undefined;
+                    if (factorData) {
+                        const factor = factorData.factors[input.unit] || 0;
+                        totalEmissions += input.value * factor;
+                    }
+                }
+                scope3 = totalEmissions * leaseDurationFactor;
                 break;
         }
         return { scope1: 0, scope2Location: 0, scope2Market: 0, scope3 };

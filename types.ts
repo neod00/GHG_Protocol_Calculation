@@ -67,6 +67,9 @@ export type Cat4CalculationMethod = 'activity' | 'fuel' | 'spend' | 'supplier_sp
 export type Cat5CalculationMethod = 'activity' | 'supplier_specific' | 'spend';
 export type Cat6CalculationMethod = 'activity' | 'spend' | 'supplier_specific';
 export type Cat7CalculationMethod = 'activity' | 'average' | 'spend';
+export type Cat8CalculationMethod = 'asset_specific' | 'area_based' | 'spend_based' | 'supplier_specific';
+export type LeasedAssetType = 'Building' | 'Vehicle' | 'Equipment';
+export type BuildingType = 'Office' | 'Warehouse' | 'Factory' | 'Retail' | 'DataCenter';
 export type BusinessTravelMode = 'Air' | 'Rail' | 'Bus' | 'RentalCar' | 'PersonalCar' | 'Hotel';
 export type FlightClass = 'Economy' | 'Business' | 'First';
 export type TripType = 'one-way' | 'round-trip';
@@ -89,7 +92,7 @@ export interface EmissionSource {
   marketBasedFactor?: number;
   
   // New fields for advanced Scope 3 calculation
-  calculationMethod?: CalculationMethod | Cat4CalculationMethod | Cat5CalculationMethod | Cat6CalculationMethod | Cat7CalculationMethod;
+  calculationMethod?: CalculationMethod | Cat4CalculationMethod | Cat5CalculationMethod | Cat6CalculationMethod | Cat7CalculationMethod | Cat8CalculationMethod;
   supplierProvidedCO2e?: number; // Total annual kg CO2e from supplier
   factor?: number; // kg CO2e per unit
   factorUnit?: string; // e.g., kg CO2e / KRW, kg CO2e / tonne
@@ -137,4 +140,12 @@ export interface EmissionSource {
   totalEmployees?: number;
   percentTeleworking?: number;
   modeDistribution?: { [key: string]: number };
+
+  // New fields for advanced Scope 3 Category 8 calculation
+  leasedAssetType?: LeasedAssetType;
+  buildingType?: BuildingType;
+  areaSqm?: number;
+  leaseDurationMonths?: number;
+  // For asset_specific method, array of { type: string (fuel/energy name), value: number, unit: string }
+  energyInputs?: { id: string; type: string; value: number; unit: string }[];
 }

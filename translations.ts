@@ -79,6 +79,8 @@ const en = {
   cat6GuidanceText: 'This category covers emissions from employee travel for business purposes. <br> - <strong>Boundary with Scope 1:</strong> Do not include fuel from vehicles owned or controlled by your company. That is Scope 1. <br> - <strong>Boundary with Category 7:</strong> Do not include employee commuting. That is Category 7. <br> - <strong>Data Hierarchy:</strong> Activity-based data (distance) is preferred over spend-based data for accuracy.',
   cat7GuidanceTitle: 'Key Principles for Employee Commuting',
   cat7GuidanceText: 'This category covers emissions from employee commutes between their homes and worksites. <br> - <strong>Boundary with Scope 1:</strong> Commutes in company-owned vehicles where the company pays for fuel should be in Scope 1. <br> - <strong>Boundary with Category 6:</strong> Do not include travel for business purposes (e.g., to a client meeting). That is Business Travel. <br> - <strong>Teleworking:</strong> Emissions from teleworking are considered outside of Scope 3, Category 7.',
+  cat8GuidanceTitle: 'Key Principles for Upstream Leased Assets',
+  cat8GuidanceText: 'This category includes emissions from assets leased by your company (lessee) that are not included in Scope 1 or 2. <br> - <strong>Control Boundary:</strong> If your company has <strong>operational control</strong> over the leased asset, its emissions must be reported in Scope 1 and 2, not here. <br> - <strong>Data Hierarchy:</strong> Prefer asset-specific energy data over area-based or spend-based methods for accuracy.',
   comingSoon: 'Coming Soon',
 
 
@@ -280,6 +282,31 @@ const en = {
   publicTransportSpend: 'Public Transport Spend',
   addMode: 'Add Mode',
   totalDistribution: 'Total Distribution',
+
+  // Category 8 Advanced UI
+  assetSpecificMethod: 'Asset-specific',
+  areaBasedMethod: 'Area-based',
+  supplierSpecificMethod: 'Supplier-specific',
+  leasedAssetType: 'Leased Asset Type',
+  Building: 'Building',
+  Vehicle: 'Vehicle',
+  Equipment: 'Equipment',
+  buildingType: 'Building Type',
+  buildingTypeOffice: 'Office',
+  buildingTypeWarehouse: 'Warehouse',
+  buildingTypeFactory: 'Factory',
+  buildingTypeRetail: 'Retail',
+  buildingTypeDataCenter: 'Data Center',
+  leaseDurationMonths: 'Lease Duration (months in reporting year)',
+  areaSqm: 'Area (m²)',
+  energyInputs: 'Energy/Fuel Consumption',
+  addEnergyInput: 'Add Energy/Fuel Input',
+  energyType: 'Energy/Fuel Type',
+  annualConsumption: 'Annual Consumption',
+  cat8AreaGuidance: 'This method uses average energy intensity data for the selected building type. For higher accuracy, use the "Asset-specific" method if you have actual energy consumption data.',
+  cat8VehicleGuidance: 'Warning: Emissions from leased vehicles may belong in Category 4 (transport services) or 6 (business travel). Report here only if the asset itself is leased and operated by your company, but not under your operational control boundary for Scope 1/2.',
+  buildingLeaseSpend: 'Building/Office Lease (spend)',
+  vehicleLeaseSpend: 'Vehicle/Equipment Lease (spend)',
 
   // Months
   jan: 'Jan', feb: 'Feb', mar: 'Mar', apr: 'Apr', may: 'May', jun: 'Jun',
@@ -678,6 +705,8 @@ const ko = {
   cat6GuidanceText: '이 카테고리는 임직원의 업무 목적 출장에서 발생하는 배출을 다룹니다. <br> - <strong>Scope 1과의 경계:</strong> 회사 소유 또는 통제 차량의 연료 사용은 Scope 1이므로 여기에 포함하지 마십시오. <br> - <strong>Category 7과의 경계:</strong> 임직원 출퇴근은 Category 7이므로 여기에 포함하지 마십시오. <br> - <strong>데이터 정확도:</strong> 활동량 기반(거리) 데이터가 지출 기반 데이터보다 선호됩니다.',
   cat7GuidanceTitle: '임직원 출퇴근(Category 7) 산정 핵심 원칙',
   cat7GuidanceText: '이 카테고리는 임직원의 자택과 사업장 간 출퇴근에서 발생하는 배출을 다룹니다. <br> - <strong>Scope 1과의 경계:</strong> 회사가 연료비를 지급하는 회사 소유 차량을 이용한 출퇴근은 Scope 1에 해당합니다. <br> - <strong>Category 6과의 경계:</strong> 업무 목적의 이동(예: 고객사 미팅)은 출장(Category 6)에 해당하므로 여기에 포함하지 마십시오. <br> - <strong>재택근무:</strong> 재택근무로 인한 배출은 Scope 3, Category 7의 범위를 벗어나는 것으로 간주됩니다.',
+  cat8GuidanceTitle: '업스트림 임대자산(Category 8) 산정 핵심 원칙',
+  cat8GuidanceText: '이 카테고리는 회사가 임차한 자산 중 Scope 1, 2에 포함되지 않은 배출량을 산정합니다.<br> - <strong>통제권 경계:</strong> 만약 회사가 임차 자산에 대한 <strong>운영 통제권</strong>을 가지고 있다면, 관련 배출은 Scope 1과 2로 보고해야 합니다.<br> - <strong>데이터 정확도:</strong> 면적 또는 지출 기반 방식보다 자산별 실제 에너지 사용량 데이터 방식이 더 정확합니다.',
   comingSoon: '출시 예정',
   
   // Results Display
@@ -878,6 +907,31 @@ const ko = {
   publicTransportSpend: '대중교통비 지출',
   addMode: '수단 추가',
   totalDistribution: '분포 합계',
+  
+  // Category 8 Advanced UI
+  assetSpecificMethod: '자산별 특정 데이터',
+  areaBasedMethod: '면적 기반',
+  supplierSpecificMethod: '공급업체 제공 데이터',
+  leasedAssetType: '임대 자산 유형',
+  Building: '건물',
+  Vehicle: '차량',
+  Equipment: '장비',
+  buildingType: '건물 유형',
+  buildingTypeOffice: '사무실',
+  buildingTypeWarehouse: '창고',
+  buildingTypeFactory: '공장',
+  buildingTypeRetail: '소매점',
+  buildingTypeDataCenter: '데이터 센터',
+  leaseDurationMonths: '임대 기간 (보고연도 내 개월 수)',
+  areaSqm: '면적 (m²)',
+  energyInputs: '에너지/연료 소비량',
+  addEnergyInput: '에너지/연료 항목 추가',
+  energyType: '에너지/연료 종류',
+  annualConsumption: '연간 소비량',
+  cat8AreaGuidance: '이 방식은 선택한 건물 유형의 평균 에너지 집약도 데이터를 사용합니다. 더 정확한 산정을 위해 실제 에너지 소비량 데이터가 있다면 "자산별 특정 데이터" 방식을 사용하세요.',
+  cat8VehicleGuidance: '경고: 임차 차량의 배출은 Category 4(운송 서비스) 또는 6(출장)에 해당할 수 있습니다. Scope 1/2의 운영 통제권 경계에 포함되지 않으면서, 자산을 직접 임차하여 운영하는 경우에만 여기에 보고하십시오.',
+  buildingLeaseSpend: '건물/사무실 임대 (지출)',
+  vehicleLeaseSpend: '차량/장비 임대 (지출)',
 
   // Months
   jan: '1월', feb: '2월', mar: '3월', apr: '4월', may: '5월', jun: '6월',

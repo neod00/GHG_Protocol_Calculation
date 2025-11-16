@@ -376,6 +376,74 @@ const EmployeeCommutingFactors: React.FC<{
     );
 };
 
+// Component to edit leased assets factors (Category 8 & 13)
+const LeasedAssetsFactors: React.FC<{
+    data: any,
+    categoryKey: FactorCategoryKey,
+    onFactorChange: (categoryKey: FactorCategoryKey, path: (string|number)[], value: string) => void
+}> = ({ data, categoryKey, onFactorChange }) => {
+    const { t } = useTranslation();
+
+    return (
+        <div className="space-y-6">
+            {/* Area Based Factors (using 'activity-based' title for consistency) */}
+            <div>
+                <h3 className="text-lg font-semibold text-ghg-dark dark:text-gray-100 border-b pb-2 mb-3">{t('activityBasedFactors')}</h3>
+                <div className="p-3 bg-gray-50 rounded-lg border dark:bg-gray-800 dark:border-gray-600 space-y-3">
+                    {Object.entries(data.area_based).map(([buildingType, details]: [string, any]) => (
+                        <div key={buildingType}>
+                            <label className={commonLabelClass()}>{t(details.translationKey)}</label>
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="number"
+                                    step="any"
+                                    value={details.factor}
+                                    onChange={(e) => onFactorChange(categoryKey, ['area_based', buildingType, 'factor'], e.target.value)}
+                                    className={commonInputClass}
+                                />
+                                <span className="mt-1 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                                    kWh / m² / year
+                                </span>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            {/* Spend Based Factors */}
+            <div>
+                <h3 className="text-lg font-semibold text-ghg-dark dark:text-gray-100 border-b pb-2 mb-3">{t('spendBasedFactors')}</h3>
+                <div className="p-3 bg-gray-50 rounded-lg border dark:bg-gray-800 dark:border-gray-600 space-y-3">
+                    {data.spend_based.map((item: any, index: number) => (
+                        <div key={item.name} className="border-b pb-2 last:border-b-0 last:pb-0 dark:border-gray-600">
+                            <p className="font-semibold text-sm text-ghg-dark dark:text-gray-100">{t(item.translationKey)}</p>
+                            <div className="mt-1 grid grid-cols-2 gap-x-4">
+                                {Object.entries(item.factors).map(([unit, factor]) => (
+                                    <div key={unit}>
+                                        <label className={commonLabelClass()}>{unit}</label>
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="number"
+                                                step="any"
+                                                value={factor as number}
+                                                onChange={(e) => onFactorChange(categoryKey, ['spend_based', index, 'factors', unit], e.target.value)}
+                                                className={commonInputClass}
+                                            />
+                                            <span className="mt-1 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                                                kg CO₂e / {t(unit as TranslationKey)}
+                                            </span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+};
+
 
 export const FactorManager: React.FC<FactorManagerProps> = ({ 
     allFactors, 
@@ -449,6 +517,9 @@ export const FactorManager: React.FC<FactorManagerProps> = ({
         }
         if (categoryKey === 'employeeCommuting') {
             return <EmployeeCommutingFactors data={data} categoryKey={categoryKey} onFactorChange={onFactorValueChange} />;
+        }
+        if (categoryKey === 'upstreamLeased' || categoryKey === 'downstreamLeased') {
+            return <LeasedAssetsFactors data={data} categoryKey={categoryKey} onFactorChange={onFactorValueChange} />;
         }
 
 
