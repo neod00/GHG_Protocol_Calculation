@@ -1180,7 +1180,8 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
         { group: t('BicycleWalking'), key: 'BicycleWalking', types: Object.entries(activityFactors.BicycleWalking).map(([type, data]: [string, any]) => ({ key: type, translationKey: data.translationKey })) },
     ], [t, activityFactors]);
 
-    // FIX: The `val` from `Object.values` may be inferred as `unknown` by TypeScript, causing a type error.
+    // Fix: Operator '+' cannot be applied to types 'unknown' and 'number'.
+    // The `val` from `Object.values` may be inferred as `unknown` by TypeScript, causing a type error.
     // Casting `val` to `number` ensures type safety for the addition operation.
     const totalDistribution = useMemo(() => Object.values(source.modeDistribution || {}).reduce((sum, val) => sum + (val as number), 0), [source.modeDistribution]);
 
@@ -1656,6 +1657,72 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
         onUpdate({ energyInputs: newInputs });
     };
 
+    const handleAnalyzeCat10 = async () => {
+        if (!source.description) return;
+        setIsLoadingAI(true);
+        setAiAnalysisResult(null);
+        const knownProcesses = (fuels.activity as any[]).map(f => f.name).join(', ');
+
+        try {
+            const ai = new GoogleGenAI({apiKey: process.env.API_KEY as string});
+            const promptText = `As a GHG Protocol expert for Scope 3 Category 10 (Processing of Sold Products), analyze the following downstream processing description. Determine the most appropriate calculation method ('process_specific', 'customer_specific', 'spend') and suggest a specific process type if applicable.
+
+Description: "${source.description}"
+
+Available 'process_specific' types: ${knownProcesses}.
+Available 'spend' type: 'Downstream Processing Services (spend)'.
+
+Provide a structured JSON response.`;
+
+            const response = await ai.models.generateContent({
+                model: 'gemini-2.5-flash',
+                contents: promptText,
+                config: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: Type.OBJECT,
+                        properties: {
+                            suggested_calculation_method: { type: Type.STRING, description: "One of: 'process_specific', 'customer_specific', 'spend'." },
+                            suggested_process_name: { type: Type.STRING, description: `If method is 'process_specific', suggest one of the known process names. Otherwise, null.` },
+                            justification: { type: Type.STRING, description: "A brief explanation for your choices." },
+                        }
+                    },
+                }
+            });
+            const result = JSON.parse(response.text);
+            setAiAnalysisResult(result);
+        } catch (error) {
+            console.error("AI analysis failed:", error);
+            setAiAnalysisResult({ error: "Failed to analyze." });
+        } finally {
+            setIsLoadingAI(false);
+        }
+    };
+    
+    const handleApplyAISuggestion = () => {
+        if (!aiAnalysisResult) return;
+        const { suggested_calculation_method, suggested_process_name } = aiAnalysisResult;
+
+        const updates: Partial<EmissionSource> = {
+            calculationMethod: suggested_calculation_method,
+        };
+
+        if (suggested_calculation_method === 'process_specific' && suggested_process_name) {
+            const processData = fuels.activity.find((p: any) => p.name === suggested_process_name);
+            if (processData) {
+                updates.processingMethod = processData.name;
+                updates.unit = processData.units[0];
+            }
+        } else if (suggested_calculation_method === 'spend') {
+            const spendData = fuels.spend[0];
+            updates.fuelType = spendData.name;
+            updates.unit = spendData.units[0];
+        }
+
+        onUpdate(updates);
+        setAiAnalysisResult(null);
+    };
+
     return (
       <div className="flex flex-col gap-3 p-3 bg-gray-50 rounded-lg border dark:bg-gray-800 dark:border-gray-600">
         {/* Method Switcher & Remove Button */}
@@ -1681,8 +1748,26 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
         {/* Common Inputs */}
         <div>
             <label htmlFor={`description-${source.id}`} className={commonLabelClass}>{t('emissionSourceDescription')}</label>
-            <input id={`description-${source.id}`} type="text" value={source.description || ''} onChange={(e) => onUpdate({ description: e.target.value })} className={commonSelectClass} placeholder={t(placeholderKey)} />
+            <div className="flex gap-2">
+                <input id={`description-${source.id}`} type="text" value={source.description || ''} onChange={(e) => onUpdate({ description: e.target.value })} className={commonSelectClass} placeholder={t(placeholderKey)} />
+                <button onClick={handleAnalyzeCat10} disabled={isLoadingAI || !source.description} className="px-3 py-2 bg-ghg-light-green text-white rounded-md hover:bg-ghg-green disabled:bg-gray-400 flex items-center gap-2">
+                    <IconSparkles className="w-4 h-4" />
+                    <span className="text-sm font-semibold">{isLoadingAI ? '...' : t('analyzeWithAI')}</span>
+                </button>
+            </div>
         </div>
+         {aiAnalysisResult && (
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-800 dark:bg-blue-900/30 dark:border-blue-700/50 text-xs space-y-2">
+                <h4 className="font-semibold text-sm mb-1">{t('aiAnalysis')}</h4>
+                <p><span className="font-semibold">{t('suggestedMethod')}:</span> {t(methodTranslationMap[aiAnalysisResult.suggested_calculation_method as Cat10CalculationMethod])}</p>
+                {aiAnalysisResult.suggested_process_name && <p><span className="font-semibold">{t('suggestedProcess')}:</span> {t((fuels.activity.find((f:any) => f.name === aiAnalysisResult.suggested_process_name)?.translationKey) as TranslationKey)}</p>}
+                <p><span className="font-semibold">{t('justification')}:</span> {aiAnalysisResult.justification}</p>
+                <div className="flex justify-between items-center mt-2 pt-2 border-t dark:border-blue-700/50">
+                    <p className="text-blue-600 dark:text-blue-300">{t('aiDisclaimer')}</p>
+                    <button onClick={handleApplyAISuggestion} className="bg-blue-500 text-white font-semibold py-1 px-3 rounded-md hover:bg-blue-600 text-xs">{t('applySuggestion')}</button>
+                </div>
+            </div>
+        )}
          <div>
             <label htmlFor={`activityDataSource-${source.id}`} className={commonLabelClass}>{t('activityDataSource')}</label>
             <input id={`activityDataSource-${source.id}`} type="text" value={source.activityDataSource ?? ''} onChange={(e) => onUpdate({ activityDataSource: e.target.value })} className={commonSelectClass} placeholder={t('activityDataSourcePlaceholder')} />

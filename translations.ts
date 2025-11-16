@@ -181,6 +181,7 @@ const en = {
   suggestedCategory: 'Suggested Category',
   justification: 'Justification',
   confirm: 'Confirm',
+  applySuggestion: 'Apply Suggestion',
   aiDisclaimer: 'AI suggestions are for reference. Please verify for accuracy.',
   capitalGoodsInfoTitle: 'Key Principles for Capital Goods Accounting',
   capitalGoodsInfoDepreciation: '<strong>Full Upfront Accounting:</strong> Emissions from capital goods are reported in the year of acquisition. Do not use depreciation methods.',
@@ -322,6 +323,10 @@ const en = {
   energyConsumptionData: 'Energy Consumption Data',
   processingMethod: 'Processing Method',
   totalProcessed: 'Total Quantity Processed',
+  suggestedMethod: 'Suggested Method',
+  suggestedProcess: 'Suggested Process',
+  suggestedSpendCategory: 'Suggested Service Category',
+  suggestedFactor: 'Suggested Emission Factor',
 
 
   // Months
@@ -833,6 +838,7 @@ const ko = {
   suggestedCategory: '추천 카테고리',
   justification: '근거',
   confirm: '확인',
+  applySuggestion: '제안 적용',
   aiDisclaimer: 'AI 제안은 참고용입니다. 정확성을 확인해주세요.',
   capitalGoodsInfoTitle: '자본재 산정 핵심 원칙',
   capitalGoodsInfoDepreciation: '<strong>전체 선행 회계 처리:</strong> 자본재로 인한 배출은 취득 연도에 보고됩니다. 감가상각 방법을 사용하지 마십시오.',
@@ -974,6 +980,10 @@ const ko = {
   energyConsumptionData: '에너지 소비 데이터',
   processingMethod: '가공 공정',
   totalProcessed: '총 가공량',
+  suggestedMethod: '추천 산정 방식',
+  suggestedProcess: '추천 공정',
+  suggestedSpendCategory: '추천 서비스 카테고리',
+  suggestedFactor: '추천 배출계수',
 
   // Months
   jan: '1월', feb: '2월', mar: '3월', apr: '4월', may: '5월', jun: '6월',
