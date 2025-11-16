@@ -50,7 +50,7 @@ const en = {
   businessTravelDescription: 'Emissions from employee business travel (e.g., flights, hotels, rental cars).',
   employeeCommutingDescription: 'Emissions from employees commuting to and from work.',
   upstreamLeasedAssetsDescription: 'Emissions from assets your company leases from other entities (not included in Scope 1 or 2).',
-  downstreamTransportationAndDistributionDescription: 'Emissions from transportation and distribution of your sold products.',
+  downstreamTransportationAndDistributionDescription: 'Emissions from transportation and distribution of your sold products in vehicles not owned or controlled by your company.',
   processingOfSoldProductsDescription: 'Emissions from the processing of your sold intermediate products by third parties.',
   useOfSoldProductsDescription: 'Emissions from the end use of your sold products.',
   endOfLifeTreatmentOfSoldProductsDescription: 'Emissions from the disposal and treatment of your sold products at the end of their life.',
@@ -81,6 +81,10 @@ const en = {
   cat7GuidanceText: 'This category covers emissions from employee commutes between their homes and worksites. <br> - <strong>Boundary with Scope 1:</strong> Commutes in company-owned vehicles where the company pays for fuel should be in Scope 1. <br> - <strong>Boundary with Category 6:</strong> Do not include travel for business purposes (e.g., to a client meeting). That is Business Travel. <br> - <strong>Teleworking:</strong> Emissions from teleworking are considered outside of Scope 3, Category 7.',
   cat8GuidanceTitle: 'Key Principles for Upstream Leased Assets',
   cat8GuidanceText: 'This category includes emissions from assets leased by your company (lessee) that are not included in Scope 1 or 2. <br> - <strong>Control Boundary:</strong> If your company has <strong>operational control</strong> over the leased asset, its emissions must be reported in Scope 1 and 2, not here. <br> - <strong>Data Hierarchy:</strong> Prefer asset-specific energy data over area-based or spend-based methods for accuracy.',
+  cat9GuidanceTitle: 'Key Principles for Category 9 Accounting',
+  cat9GuidanceText: 'This category covers emissions from transport and warehousing of sold products in vehicles not owned by your company. <br> - <strong>Boundary:</strong> Do not include transport in your own vehicles (Scope 1) or transport of raw materials (Cat 4). <br> - <strong>Incoterms:</strong> Responsibility is key. If the customer arranges and pays for transport (e.g., EXW - Ex Works), those emissions are not yours. If you pay (e.g., DDP - Delivered Duty Paid), they are. <br> - <strong>Warehousing:</strong> Includes third-party warehouses and distribution centers. <br> - <strong>Multimodal:</strong> For journeys with multiple legs (e.g., truck to ship), create a separate entry for each leg.',
+  cat10GuidanceTitle: 'Key Principles for Category 10 Accounting',
+  cat10GuidanceText: 'This category covers emissions from the processing of intermediate products sold by your company to downstream customers (B2B). <br>- <strong>Boundary:</strong> Only include processing that happens *after* your company sells the product. Your own manufacturing emissions are Scope 1 & 2. <br>- <strong>Intermediate Products:</strong> This applies to products that require further processing, transformation, or inclusion into another product before end use (e.g., selling aluminum sheets that are then stamped into car parts). <br>- <strong>Avoid Double Counting:</strong> Do not include emissions from product *use* (Category 11) or *disposal* (Category 12). If a customer processes your product and then uses it, only the processing emissions belong here.',
   comingSoon: 'Coming Soon',
 
 
@@ -134,7 +138,7 @@ const en = {
   employeeCommutingPlaceholder: 'e.g., Annual employee commuting survey, Shuttle bus operation',
   upstreamLeasedAssetsPlaceholder: 'e.g., Leased office space in Seoul, Rented warehouse',
   downstreamTransportPlaceholder: 'e.g., Delivery of sold products to customers, Third-party retail logistics',
-  processingOfSoldProductsPlaceholder: 'e.g., Outsourced manufacturing of components from our materials',
+  processingOfSoldProductsPlaceholder: 'e.g., Processing of sold plastic resin by customer',
   useOfSoldProductsPlaceholder: 'e.g., Lifetime electricity consumption of sold electronics',
   endOfLifePlaceholder: 'e.g., Disposal of sold batteries, Landfilling of sold packaging',
   downstreamLeasedAssetsPlaceholder: 'e.g., Office building owned by us, leased to Tenant Corp.',
@@ -283,7 +287,7 @@ const en = {
   addMode: 'Add Mode',
   totalDistribution: 'Total Distribution',
 
-  // Category 8 Advanced UI
+  // Category 8 & 9 Advanced UI
   assetSpecificMethod: 'Asset-specific',
   areaBasedMethod: 'Area-based',
   supplierSpecificMethod: 'Supplier-specific',
@@ -307,6 +311,18 @@ const en = {
   cat8VehicleGuidance: 'Warning: Emissions from leased vehicles may belong in Category 4 (transport services) or 6 (business travel). Report here only if the asset itself is leased and operated by your company, but not under your operational control boundary for Scope 1/2.',
   buildingLeaseSpend: 'Building/Office Lease (spend)',
   vehicleLeaseSpend: 'Vehicle/Equipment Lease (spend)',
+  downstreamActivityType: 'Downstream Activity Type',
+  transportation: 'Transportation & Distribution',
+  warehousing: 'Warehousing & Storage',
+
+  // Category 10 Advanced UI
+  processSpecificMethod: 'Process-specific',
+  customerSpecificMethod: 'Customer-specific',
+  totalCO2e: 'Total CO2e',
+  energyConsumptionData: 'Energy Consumption Data',
+  processingMethod: 'Processing Method',
+  totalProcessed: 'Total Quantity Processed',
+
 
   // Months
   jan: 'Jan', feb: 'Feb', mar: 'Mar', apr: 'Apr', may: 'May', jun: 'Jun',
@@ -562,6 +578,8 @@ const en = {
   'km': 'km',
   'night': 'night',
   'tonnes': 'tonnes',
+  'cubic meters': 'm³',
+  'unit': 'unit',
   'USD': 'USD',
   'KRW': 'KRW',
   'tonne-km': 'tonne-km',
@@ -574,6 +592,8 @@ const en = {
   roadLightTruck: 'Light-duty Truck',
   roadMediumTruck: 'Medium-duty Truck',
   roadHeavyTruck: 'Heavy-duty Truck',
+  roadDeliveryVan: 'Delivery Van',
+  roadMotorcycleDelivery: 'Motorcycle (for delivery)',
   seaContainerShip: 'Container Ship',
   seaBulkCarrier: 'Bulk Carrier',
   seaOilTanker: 'Oil Tanker',
@@ -625,6 +645,13 @@ const en = {
   hfoMarine: 'Heavy Fuel Oil (HFO, Marine)',
   lngMarine: 'LNG (Marine)',
   lpgMarine: 'LPG (Marine)',
+  // Cat 10
+  rolling: 'Rolling',
+  moldingForming: 'Molding/Forming',
+  welding: 'Welding',
+  heatTreatment: 'Heat Treatment',
+  assembly: 'Assembly',
+  downstreamProcessingSpend: 'Downstream Processing Services (spend)',
 };
 
 const ko = {
@@ -676,7 +703,7 @@ const ko = {
   businessTravelDescription: '직원 출장(예: 항공, 호텔, 렌터카)으로 인해 발생하는 배출.',
   employeeCommutingDescription: '임직원의 출퇴근 과정에서 발생하는 배출.',
   upstreamLeasedAssetsDescription: '회사가 다른 주체로부터 임차한 자산에서 발생하는 배출 (Scope 1, 2 제외).',
-  downstreamTransportationAndDistributionDescription: '판매된 제품의 운송 및 유통 과정에서 발생하는 배출.',
+  downstreamTransportationAndDistributionDescription: '회사가 소유 또는 통제하지 않는 차량을 이용한 판매 제품 운송 및 유통에서 발생하는 배출.',
   processingOfSoldProductsDescription: '판매된 중간재를 제3자가 가공하며 발생하는 배출.',
   useOfSoldProductsDescription: '판매된 제품을 최종 사용자가 사용하며 발생하는 배출.',
   endOfLifeTreatmentOfSoldProductsDescription: '판매된 제품이 수명이 다하여 폐기/처리될 때 발생하는 배출.',
@@ -707,6 +734,10 @@ const ko = {
   cat7GuidanceText: '이 카테고리는 임직원의 자택과 사업장 간 출퇴근에서 발생하는 배출을 다룹니다. <br> - <strong>Scope 1과의 경계:</strong> 회사가 연료비를 지급하는 회사 소유 차량을 이용한 출퇴근은 Scope 1에 해당합니다. <br> - <strong>Category 6과의 경계:</strong> 업무 목적의 이동(예: 고객사 미팅)은 출장(Category 6)에 해당하므로 여기에 포함하지 마십시오. <br> - <strong>재택근무:</strong> 재택근무로 인한 배출은 Scope 3, Category 7의 범위를 벗어나는 것으로 간주됩니다.',
   cat8GuidanceTitle: '업스트림 임대자산(Category 8) 산정 핵심 원칙',
   cat8GuidanceText: '이 카테고리는 회사가 임차한 자산 중 Scope 1, 2에 포함되지 않은 배출량을 산정합니다.<br> - <strong>통제권 경계:</strong> 만약 회사가 임차 자산에 대한 <strong>운영 통제권</strong>을 가지고 있다면, 관련 배출은 Scope 1과 2로 보고해야 합니다.<br> - <strong>데이터 정확도:</strong> 면적 또는 지출 기반 방식보다 자산별 실제 에너지 사용량 데이터 방식이 더 정확합니다.',
+  cat9GuidanceTitle: '카테고리 9 산정 핵심 원칙',
+  cat9GuidanceText: '이 카테고리는 회사 소유가 아닌 차량에서의 판매 제품 운송 및 창고 보관과 관련된 배출량을 다룹니다.<br> - <strong>경계:</strong> 자체 차량 운송(Scope 1) 또는 원자재 운송(Cat 4)은 포함하지 마십시오.<br> - <strong>인코텀즈:</strong> 책임 소재가 중요합니다. 고객이 운송을 준비하고 비용을 지불하는 경우(예: EXW), 배출량은 귀사의 책임이 아닙니다. 귀사가 지불하는 경우(예: DDP)에는 책임이 있습니다.<br> - <strong>창고:</strong> 제3자 창고 및 유통 센터를 포함합니다.<br> - <strong>복합 운송:</strong> 여러 운송 구간(예: 트럭 → 선박)의 경우, 각 구간을 별도의 항목으로 생성하십시오.',
+  cat10GuidanceTitle: '카테고리 10 산정 핵심 원칙',
+  cat10GuidanceText: '이 카테고리는 회사가 판매한 중간재를 다운스트림 고객(B2B)이 가공하면서 발생하는 배출량을 다룹니다.<br>- <strong>경계:</strong> 회사가 제품을 판매한 *이후*에 발생하는 가공 공정만 포함합니다. 자체 제조 배출량은 Scope 1 & 2입니다.<br>- <strong>중간재:</strong> 최종 사용 전에 추가 가공, 변형 또는 다른 제품에 통합되어야 하는 제품에 적용됩니다(예: 자동차 부품으로 스탬핑되는 알루미늄 판재 판매).<br>- <strong>중복 계산 방지:</strong> 제품 *사용*(카테고리 11) 또는 *폐기*(카테고리 12) 단계의 배출량은 포함하지 마십시오. 만약 고객이 제품을 가공한 후 사용하는 경우, 가공 단계 배출량만 여기에 해당됩니다.',
   comingSoon: '출시 예정',
   
   // Results Display
@@ -758,8 +789,8 @@ const ko = {
   businessTravelPlaceholder: '예: 1분기 영업팀 미국 출장 항공편, 연례 컨퍼런스 호텔 숙박',
   employeeCommutingPlaceholder: '예: 연간 임직원 출퇴근 설문조사, 셔틀버스 운행',
   upstreamLeasedAssetsPlaceholder: '예: 서울 임차 사무공간, 임대 창고',
-  downstreamTransportPlaceholder: '예: 고객에게 판매된 제품 배송, 제3자 소매 물류',
-  processingOfSoldProductsPlaceholder: '예: 당사 원자재를 사용한 부품의 외주 제조',
+  downstreamTransportPlaceholder: '예: 판매 제품 고객 배송, 제3자 소매 물류',
+  processingOfSoldProductsPlaceholder: '예: 고객사에 의한 판매 플라스틱 수지 가공',
   useOfSoldProductsPlaceholder: '예: 판매된 전자제품의 수명 주기 동안의 전력 소비',
   endOfLifePlaceholder: '예: 판매된 배터리 폐기, 판매된 포장재 매립',
   downstreamLeasedAssetsPlaceholder: '예: 당사 소유 건물을 임차인에게 임대',
@@ -908,7 +939,7 @@ const ko = {
   addMode: '수단 추가',
   totalDistribution: '분포 합계',
   
-  // Category 8 Advanced UI
+  // Category 8 & 9 Advanced UI
   assetSpecificMethod: '자산별 특정 데이터',
   areaBasedMethod: '면적 기반',
   supplierSpecificMethod: '공급업체 제공 데이터',
@@ -932,6 +963,17 @@ const ko = {
   cat8VehicleGuidance: '경고: 임차 차량의 배출은 Category 4(운송 서비스) 또는 6(출장)에 해당할 수 있습니다. Scope 1/2의 운영 통제권 경계에 포함되지 않으면서, 자산을 직접 임차하여 운영하는 경우에만 여기에 보고하십시오.',
   buildingLeaseSpend: '건물/사무실 임대 (지출)',
   vehicleLeaseSpend: '차량/장비 임대 (지출)',
+  downstreamActivityType: '다운스트림 활동 유형',
+  transportation: '운송 및 유통',
+  warehousing: '창고 보관',
+
+  // Category 10 Advanced UI
+  processSpecificMethod: '공정별 산정',
+  customerSpecificMethod: '고객사 데이터',
+  totalCO2e: '총 CO₂e',
+  energyConsumptionData: '에너지 소비 데이터',
+  processingMethod: '가공 공정',
+  totalProcessed: '총 가공량',
 
   // Months
   jan: '1월', feb: '2월', mar: '3월', apr: '4월', may: '5월', jun: '6월',
@@ -1187,6 +1229,8 @@ const ko = {
   'km': 'km',
   'night': '박',
   'tonnes': '톤',
+  'cubic meters': 'm³',
+  'unit': '개',
   'USD': '달러',
   'KRW': '원',
   'tonne-km': '톤-km',
@@ -1199,6 +1243,8 @@ const ko = {
   roadLightTruck: '소형 트럭',
   roadMediumTruck: '중형 트럭',
   roadHeavyTruck: '대형 트럭',
+  roadDeliveryVan: '배송 밴',
+  roadMotorcycleDelivery: '배달용 오토바이',
   seaContainerShip: '컨테이너선',
   seaBulkCarrier: '벌크선',
   seaOilTanker: '유조선',
@@ -1250,6 +1296,13 @@ const ko = {
   hfoMarine: '선박용 중유 (HFO)',
   lngMarine: 'LNG (해상용)',
   lpgMarine: 'LPG (해상용)',
+  // Cat 10
+  rolling: '압연',
+  moldingForming: '성형/주조',
+  welding: '용접',
+  heatTreatment: '열처리',
+  assembly: '조립',
+  downstreamProcessingSpend: '다운스트림 가공 서비스 (지출)',
 };
 
 export type TranslationKey = keyof typeof en;

@@ -508,6 +508,8 @@ export const TRANSPORTATION_FACTORS_BY_MODE = {
     'Light-duty Truck': { factor: 0.18, translationKey: 'roadLightTruck' },
     'Medium-duty Truck': { factor: 0.12, translationKey: 'roadMediumTruck' },
     'Heavy-duty Truck': { factor: 0.08, translationKey: 'roadHeavyTruck' },
+    'Delivery Van': { factor: 0.28, translationKey: 'roadDeliveryVan' },
+    'Motorcycle (for delivery)': { factor: 0.65, translationKey: 'roadMotorcycleDelivery' },
   },
   Sea: {
     'Container Ship': { factor: 0.008, translationKey: 'seaContainerShip' },
@@ -674,15 +676,25 @@ export const LEASED_ASSETS_FACTORS_DETAILED = {
 };
 
 // Category 10
-export const PROCESSING_SOLD_PRODUCTS_FACTORS: CO2eFactorFuel[] = [
-  { name: 'Chemical Processing', translationKey: 'chemProcessing', units: ['tonnes processed'], factors: { 'tonnes processed': 250 } },
-  { name: 'Metal Forging', translationKey: 'metalForging', units: ['tonnes processed'], factors: { 'tonnes processed': 400 } },
-];
+export const PROCESSING_SOLD_PRODUCTS_FACTORS_DETAILED = {
+  activity: [
+    { name: 'Chemical Processing', translationKey: 'chemProcessing', units: ['tonnes', 'kg', 'cubic meters'], factors: { 'tonnes': 250, 'kg': 0.25, 'cubic meters': 200 } },
+    { name: 'Metal Forging', translationKey: 'metalForging', units: ['tonnes', 'kg'], factors: { 'tonnes': 400, 'kg': 0.4 } },
+    { name: 'Rolling', translationKey: 'rolling', units: ['tonnes', 'kg'], factors: { 'tonnes': 150, 'kg': 0.15 } },
+    { name: 'Heat Treatment', translationKey: 'heatTreatment', units: ['tonnes', 'kg'], factors: { 'tonnes': 300, 'kg': 0.3 } },
+    { name: 'Assembly', translationKey: 'assembly', units: ['tonnes', 'kg', 'unit'], factors: { 'tonnes': 50, 'kg': 0.05, 'unit': 5 } },
+    { name: 'Molding/Forming', translationKey: 'moldingForming', units: ['tonnes', 'kg'], factors: { 'tonnes': 200, 'kg': 0.2 } },
+    { name: 'Welding', translationKey: 'welding', units: ['tonnes', 'kg'], factors: { 'tonnes': 100, 'kg': 0.1 } },
+  ],
+  spend: [
+    { name: 'Downstream Processing Services (spend)', translationKey: 'downstreamProcessingSpend', units: ['USD', 'KRW'], factors: { 'USD': 0.3, 'KRW': 0.00024 } },
+  ]
+};
 
 // Category 11
 export const USE_SOLD_PRODUCTS_FACTORS: CO2eFactorFuel[] = [
-  { name: 'Electronics Lifetime Energy', translationKey: 'electronicsLifetime', units: ['product-unit'], factors: { 'product-unit': 150 } }, // kg CO2e per unit sold, assuming lifetime kWh * grid factor
-  { name: 'Vehicle Lifetime Fuel', translationKey: 'vehicleLifetime', units: ['product-unit'], factors: { 'product-unit': 35000 } }, // kg CO2e per vehicle, assuming lifetime mileage * fuel factor
+  { name: 'Electronics Lifetime Energy', translationKey: 'electronicsLifetime', units: ['unit'], factors: { 'unit': 150 } }, // kg CO2e per unit sold, assuming lifetime kWh * grid factor
+  { name: 'Vehicle Lifetime Fuel', translationKey: 'vehicleLifetime', units: ['unit'], factors: { 'unit': 35000 } }, // kg CO2e per vehicle, assuming lifetime mileage * fuel factor
 ];
 
 // Category 12

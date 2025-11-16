@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { EmissionSource, Facility, Refrigerant, CO2eFactorFuel, EmissionCategory, CalculationMethod, Cat4CalculationMethod, TransportMode, Cat5CalculationMethod, WasteType, TreatmentMethod, Cat6CalculationMethod, BusinessTravelMode, Cat7CalculationMethod, EmployeeCommutingMode, PersonalCarType, PublicTransportType, Cat8CalculationMethod, LeasedAssetType, BuildingType } from '../types';
+import { EmissionSource, Facility, Refrigerant, CO2eFactorFuel, EmissionCategory, CalculationMethod, Cat4CalculationMethod, TransportMode, Cat5CalculationMethod, WasteType, TreatmentMethod, Cat6CalculationMethod, BusinessTravelMode, Cat7CalculationMethod, EmployeeCommutingMode, PersonalCarType, PublicTransportType, Cat8CalculationMethod, LeasedAssetType, BuildingType, Cat10CalculationMethod } from '../types';
 import { useTranslation } from '../LanguageContext';
 import { TranslationKey } from '../translations';
 import { IconInfo, IconTrash, IconSparkles } from './IconComponents';
@@ -1180,6 +1180,8 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
         { group: t('BicycleWalking'), key: 'BicycleWalking', types: Object.entries(activityFactors.BicycleWalking).map(([type, data]: [string, any]) => ({ key: type, translationKey: data.translationKey })) },
     ], [t, activityFactors]);
 
+    // FIX: The `val` from `Object.values` may be inferred as `unknown` by TypeScript, causing a type error.
+    // Casting `val` to `number` ensures type safety for the addition operation.
     const totalDistribution = useMemo(() => Object.values(source.modeDistribution || {}).reduce((sum, val) => sum + (val as number), 0), [source.modeDistribution]);
 
 
@@ -1575,6 +1577,279 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
             <div>
                 <label htmlFor={`supplier-co2e-${source.id}`} className={commonLabelClass}>{t('supplierProvidedCO2e')}</label>
                 <input id={`supplier-co2e-${source.id}`} type="number" step="any" value={source.supplierProvidedCO2e ?? ''} onChange={(e) => onUpdate({ supplierProvidedCO2e: parseFloat(e.target.value) || 0 })} className={commonSelectClass} placeholder="0" />
+            </div>
+        )}
+
+        {/* Total emissions display */}
+        <div className="mt-2 p-2 bg-gray-100 dark:bg-gray-700 rounded-md text-right">
+            <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{t('emissionsForSource')}: </span>
+            <span className="text-sm font-bold text-ghg-dark dark:text-gray-100">{(totalEmissions / 1000).toLocaleString('en-US', {minimumFractionDigits: 3})} t CO₂e</span>
+        </div>
+      </div>
+    );
+  }
+
+  // == Advanced UI for Category 10 ==
+  if (source.category === EmissionCategory.ProcessingOfSoldProducts) {
+    const calculationMethod = (source.calculationMethod as Cat10CalculationMethod) || 'process_specific';
+
+    const methodTranslationMap: Record<Cat10CalculationMethod, TranslationKey> = {
+        'process_specific': 'processSpecificMethod',
+        'customer_specific': 'customerSpecificMethod',
+        'spend': 'spendMethod'
+    };
+
+    const handleMethodChange = (method: Cat10CalculationMethod) => {
+        let updates: Partial<EmissionSource> = { calculationMethod: method, monthlyQuantities: Array(12).fill(0) };
+        if (method === 'process_specific') {
+            const defaultProcess = fuels.activity[0];
+            updates = { ...updates, processingMethod: defaultProcess.name, unit: defaultProcess.units[0] };
+        } else if (method === 'spend') {
+            const defaultSpend = fuels.spend[0];
+            updates = { ...updates, fuelType: defaultSpend.name, unit: defaultSpend.units[0] };
+        } else if (method === 'customer_specific') {
+            updates = { ...updates, supplierDataType: 'total_co2e', supplierProvidedCO2e: 0, energyInputs: [] };
+        }
+        onUpdate(updates);
+    };
+
+    const handleProcessChange = (processName: string) => {
+        const processData = fuels.activity.find((p: any) => p.name === processName);
+        if (processData) {
+            onUpdate({ processingMethod: processName, unit: processData.units[0] });
+        }
+    };
+    
+    // Logic for energy inputs, copied from Cat 8
+    const allEnergyAndFuelFactors = useMemo(() => {
+        return [...STATIONARY_FUELS, ...MOBILE_FUELS, ...SCOPE2_ENERGY_SOURCES];
+    }, []);
+
+    const handleEnergyInputChange = (index: number, field: string, value: any) => {
+        const newInputs = [...(source.energyInputs || [])];
+        newInputs[index] = { ...newInputs[index], [field]: value };
+        onUpdate({ energyInputs: newInputs });
+    };
+
+    const handleEnergyInputTypeChange = (index: number, newType: string) => {
+        const newInputs = [...(source.energyInputs || [])];
+        const factorData = allEnergyAndFuelFactors.find(f => f.name === newType);
+        newInputs[index] = { ...newInputs[index], type: newType, unit: factorData?.units[0] || '' };
+        onUpdate({ energyInputs: newInputs });
+    };
+
+    const addEnergyInput = () => {
+        const newInputs = [...(source.energyInputs || [])];
+        const defaultFactor = allEnergyAndFuelFactors[0];
+        newInputs.push({
+            id: `energy-${Date.now()}`,
+            type: defaultFactor.name,
+            value: 0,
+            unit: defaultFactor.units[0],
+        });
+        onUpdate({ energyInputs: newInputs });
+    };
+
+    const removeEnergyInput = (index: number) => {
+        const newInputs = [...(source.energyInputs || [])];
+        newInputs.splice(index, 1);
+        onUpdate({ energyInputs: newInputs });
+    };
+
+    return (
+      <div className="flex flex-col gap-3 p-3 bg-gray-50 rounded-lg border dark:bg-gray-800 dark:border-gray-600">
+        {/* Method Switcher & Remove Button */}
+        <div className="flex justify-between items-start">
+            <div className='flex-grow pr-4'>
+                <label className={commonLabelClass}>{t('calculationMethod')}</label>
+                <div className="flex gap-1 rounded-md bg-gray-200 dark:bg-gray-900 p-1 text-xs">
+                    {(['process_specific', 'customer_specific', 'spend'] as Cat10CalculationMethod[]).map(method => (
+                        <button 
+                            key={method}
+                            onClick={() => handleMethodChange(method)}
+                            className={`flex-1 py-1 rounded-md transition-colors ${calculationMethod === method ? 'bg-white dark:bg-gray-700 shadow font-semibold' : 'hover:bg-gray-100 dark:hover:bg-gray-800'}`}>
+                            {t(methodTranslationMap[method])}
+                        </button>
+                    ))}
+                </div>
+            </div>
+            <button onClick={onRemove} className="text-gray-400 hover:text-red-600 p-1 dark:text-gray-500 dark:hover:text-red-500" aria-label={t('removeSourceAria')}>
+                <IconTrash className="h-5 w-5" />
+            </button>
+        </div>
+        
+        {/* Common Inputs */}
+        <div>
+            <label htmlFor={`description-${source.id}`} className={commonLabelClass}>{t('emissionSourceDescription')}</label>
+            <input id={`description-${source.id}`} type="text" value={source.description || ''} onChange={(e) => onUpdate({ description: e.target.value })} className={commonSelectClass} placeholder={t(placeholderKey)} />
+        </div>
+         <div>
+            <label htmlFor={`activityDataSource-${source.id}`} className={commonLabelClass}>{t('activityDataSource')}</label>
+            <input id={`activityDataSource-${source.id}`} type="text" value={source.activityDataSource ?? ''} onChange={(e) => onUpdate({ activityDataSource: e.target.value })} className={commonSelectClass} placeholder={t('activityDataSourcePlaceholder')} />
+        </div>
+
+        {/* Process-specific Form */}
+        {calculationMethod === 'process_specific' && (
+            <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-2">
+                    <div>
+                        <label className={commonLabelClass}>{t('processingMethod')}</label>
+                        <select value={source.processingMethod} onChange={(e) => handleProcessChange(e.target.value)} className={commonSelectClass}>
+                            {fuels.activity.map((item: any) => (
+                                <option key={item.name} value={item.name}>{t(item.translationKey as TranslationKey)}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div>
+                         <label className={commonLabelClass}>{t('unit')}</label>
+                         <select value={source.unit} onChange={(e) => onUpdate({ unit: e.target.value })} className={commonSelectClass}>
+                            {(fuels.activity.find((f: any) => f.name === source.processingMethod) as any)?.units.map((unit: string) => (
+                                <option key={unit} value={unit}>{t(unit as TranslationKey) || unit}</option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+                 <div className="p-2 bg-gray-100 dark:bg-gray-700 rounded-md text-sm">
+                    <strong>{t('emissionFactor')}:</strong> {(fuels.activity.find((f: any) => f.name === source.processingMethod) as any)?.factors[source.unit] || 0} kg CO₂e / {renderUnit(source.unit)}
+                </div>
+
+                {/* Monthly Data */}
+                <div className="mt-2">
+                    <div className={`flex justify-between items-center bg-gray-100 dark:bg-gray-700 p-2 ${isEditing ? 'rounded-t-lg' : 'rounded-lg'}`}>
+                        <div>
+                            <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{t('totalProcessed')}: </span>
+                            <span className="text-sm font-bold text-ghg-dark dark:text-gray-100">{totalQuantity.toLocaleString()}&nbsp;{renderUnit(source.unit)}</span>
+                        </div>
+                        {!isEditing && (
+                        <button onClick={handleEdit} className="text-sm text-ghg-green font-semibold hover:underline">
+                            {t('editMonthly')}
+                        </button>
+                        )}
+                    </div>
+                     {isEditing && (
+                        <div className="p-3 bg-gray-100 dark:bg-gray-900/50 rounded-b-lg">
+                           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                                {monthKeys.map((monthKey, index) => (
+                                    <div key={monthKey}>
+                                        <label className={commonLabelClass} htmlFor={`quantity-${source.id}-${index}`}>{t(monthKey)}</label>
+                                        <div className={`flex items-center rounded-md shadow-sm border border-gray-300 dark:border-gray-500 bg-white dark:bg-gray-600 focus-within:ring-1 focus-within:ring-ghg-green focus-within:border-ghg-green overflow-hidden`}>
+                                            <input id={`quantity-${source.id}-${index}`} type="number" onKeyDown={preventNonNumericKeys} value={editedQuantities[index] === 0 ? '' : editedQuantities[index]} onChange={(e) => handleMonthlyChange(index, e.target.value)} className="w-0 flex-grow bg-transparent text-gray-900 dark:text-gray-200 py-1 px-2 text-sm text-right focus:outline-none" placeholder="0" />
+                                            <span className="pr-3 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{renderUnit(source.unit)}</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="flex justify-end gap-2 mt-4">
+                                <button onClick={handleCancel} className="px-3 py-1 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 dark:bg-gray-600 dark:text-gray-200 dark:border-gray-500 dark:hover:bg-gray-500">{t('cancel')}</button>
+                                <button onClick={handleSave} className="px-3 py-1 text-sm font-medium text-white bg-ghg-green rounded-md shadow-sm hover:bg-ghg-dark">{t('save')}</button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+        )}
+        
+        {/* Customer-specific Form */}
+        {calculationMethod === 'customer_specific' && (
+            <div className="space-y-3">
+                <div className='flex-grow'>
+                    <label className={commonLabelClass}>{t('dataType')}</label>
+                    <div className="flex gap-1 rounded-md bg-gray-200 dark:bg-gray-900 p-1 text-xs">
+                        <button onClick={() => onUpdate({ supplierDataType: 'total_co2e' })} className={`flex-1 py-1 rounded-md transition-colors ${source.supplierDataType === 'total_co2e' ? 'bg-white dark:bg-gray-700 shadow font-semibold' : 'hover:bg-gray-100 dark:hover:bg-gray-800'}`}>{t('totalCO2e')}</button>
+                        <button onClick={() => onUpdate({ supplierDataType: 'energy_data' })} className={`flex-1 py-1 rounded-md transition-colors ${source.supplierDataType === 'energy_data' ? 'bg-white dark:bg-gray-700 shadow font-semibold' : 'hover:bg-gray-100 dark:hover:bg-gray-800'}`}>{t('energyConsumptionData')}</button>
+                    </div>
+                </div>
+
+                {source.supplierDataType === 'total_co2e' && (
+                    <div>
+                        <label htmlFor={`supplier-co2e-${source.id}`} className={commonLabelClass}>{t('supplierProvidedCO2e')}</label>
+                        <input id={`supplier-co2e-${source.id}`} type="number" step="any" value={source.supplierProvidedCO2e ?? ''} onChange={(e) => onUpdate({ supplierProvidedCO2e: parseFloat(e.target.value) || 0 })} className={commonSelectClass} placeholder="0" />
+                    </div>
+                )}
+                
+                {source.supplierDataType === 'energy_data' && (
+                     <div>
+                        <label className={commonLabelClass}>{t('energyInputs')}</label>
+                        <div className="space-y-2 p-2 bg-gray-100 dark:bg-gray-900/50 rounded-md">
+                            {(source.energyInputs || []).map((input, index) => {
+                                const factorData = allEnergyAndFuelFactors.find(f => f.name === input.type);
+                                return (
+                                    <div key={input.id} className="p-2 border rounded dark:border-gray-600 bg-white dark:bg-gray-800">
+                                        <div className="flex justify-end">
+                                            <button onClick={() => removeEnergyInput(index)} className="text-gray-400 hover:text-red-500"><IconTrash className="w-4 h-4" /></button>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <select value={input.type} onChange={(e) => handleEnergyInputTypeChange(index, e.target.value)} className={commonSelectClass}>
+                                                {allEnergyAndFuelFactors.map(f => <option key={f.name} value={f.name}>{language === 'ko' && f.translationKey ? t(f.translationKey as TranslationKey) : f.name}</option>)}
+                                            </select>
+                                            <select value={input.unit} onChange={(e) => handleEnergyInputChange(index, 'unit', e.target.value)} className={commonSelectClass}>
+                                                {factorData?.units.map((u: string) => <option key={u} value={u}>{t(u as TranslationKey) || u}</option>)}
+                                            </select>
+                                        </div>
+                                        <div className="mt-2">
+                                            <label className={commonLabelClass}>{t('annualConsumption')}</label>
+                                            <input type="number" value={input.value} onChange={(e) => handleEnergyInputChange(index, 'value', parseFloat(e.target.value) || 0)} className={commonSelectClass} placeholder="0" />
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                            <button onClick={addEnergyInput} className="w-full text-sm bg-ghg-light-green/50 text-ghg-dark font-semibold py-1 px-2 rounded-md hover:bg-ghg-light-green/80 transition-colors">{t('addEnergyInput')}</button>
+                        </div>
+                    </div>
+                )}
+            </div>
+        )}
+        
+        {/* Spend-based Form */}
+        {calculationMethod === 'spend' && (
+            <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-2">
+                    <select value={source.fuelType} onChange={(e) => onFuelTypeChange(e.target.value)} className={commonSelectClass} aria-label="Service Type">
+                        {fuels.spend.map((item: any) => (
+                            <option key={item.name} value={item.name}>{t(item.translationKey as TranslationKey)}</option>
+                        ))}
+                    </select>
+                     <select value={source.unit} onChange={(e) => onUpdate({ unit: e.target.value })} className={commonSelectClass} aria-label="Unit">
+                        {(fuels.spend.find((f: any) => f.name === source.fuelType) as any)?.units.map((unit: string) => (
+                            <option key={unit} value={unit}>{t(unit as TranslationKey) || unit}</option>
+                        ))}
+                    </select>
+                </div>
+                 <div className="p-2 bg-gray-100 dark:bg-gray-700 rounded-md text-sm">
+                    <strong>{t('emissionFactor')}:</strong> {(fuels.spend.find((f: any) => f.name === source.fuelType) as any)?.factors[source.unit] || 0} kg CO₂e / {renderUnit(source.unit)}
+                </div>
+                <div className="mt-2">
+                    <div className={`flex justify-between items-center bg-gray-100 dark:bg-gray-700 p-2 ${isEditing ? 'rounded-t-lg' : 'rounded-lg'}`}>
+                        <div>
+                            <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{t('totalYear')}: </span>
+                            <span className="text-sm font-bold text-ghg-dark dark:text-gray-100">{totalQuantity.toLocaleString()}&nbsp;{renderUnit(source.unit)}</span>
+                        </div>
+                        {!isEditing && (
+                        <button onClick={handleEdit} className="text-sm text-ghg-green font-semibold hover:underline">
+                            {t('editMonthly')}
+                        </button>
+                        )}
+                    </div>
+                    {isEditing && (
+                         <div className="p-3 bg-gray-100 dark:bg-gray-900/50 rounded-b-lg">
+                           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                                {monthKeys.map((monthKey, index) => (
+                                    <div key={monthKey}>
+                                        <label className={commonLabelClass} htmlFor={`quantity-${source.id}-${index}`}>{t(monthKey)}</label>
+                                        <div className={`flex items-center rounded-md shadow-sm border border-gray-300 dark:border-gray-500 bg-white dark:bg-gray-600 focus-within:ring-1 focus-within:ring-ghg-green focus-within:border-ghg-green overflow-hidden`}>
+                                            <input id={`quantity-${source.id}-${index}`} type="number" onKeyDown={preventNonNumericKeys} value={editedQuantities[index] === 0 ? '' : editedQuantities[index]} onChange={(e) => handleMonthlyChange(index, e.target.value)} className="w-0 flex-grow bg-transparent text-gray-900 dark:text-gray-200 py-1 px-2 text-sm text-right focus:outline-none" placeholder="0" />
+                                            <span className="pr-3 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{renderUnit(source.unit)}</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="flex justify-end gap-2 mt-4">
+                                <button onClick={handleCancel} className="px-3 py-1 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 dark:bg-gray-600 dark:text-gray-200 dark:border-gray-500 dark:hover:bg-gray-500">{t('cancel')}</button>
+                                <button onClick={handleSave} className="px-3 py-1 text-sm font-medium text-white bg-ghg-green rounded-md shadow-sm hover:bg-ghg-dark">{t('save')}</button>
+                            </div>
+                        </div>
+                    )}
+                </div>
             </div>
         )}
 
