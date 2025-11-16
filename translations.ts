@@ -27,6 +27,7 @@ const en = {
   'Upstream Leased Assets': '8. Upstream Leased Assets',
   'Downstream Transportation and Distribution': '9. Downstream Transportation and Distribution',
   'Processing of Sold Products': '10. Processing of Sold Products',
+  // Fix: Corrected key from 'UseOfSoldProducts' to 'Use of Sold Products' for consistency with EmissionCategory enum and to resolve TypeScript errors.
   'Use of Sold Products': '11. Use of Sold Products',
   'End-of-Life Treatment of Sold Products': '12. End-of-Life Treatment of Sold Products',
   'Downstream Leased Assets': '13. Downstream Leased Assets',
@@ -76,6 +77,8 @@ const en = {
   cat5GuidanceText: 'This category covers third-party disposal and treatment of waste. <br> - <strong>Boundary:</strong> If waste treatment is done on-site by your company, report it under Scope 1. <br> - <strong>Transport:</strong> Emissions from transporting waste can be included here for convenience. The calculation uses Category 4 methodology. If your waste contractor provides a total CO2e value that includes transport, use the "Supplier-specific" method and do not add transport separately to avoid double counting.',
   cat6GuidanceTitle: 'Key Principles for Business Travel Accounting',
   cat6GuidanceText: 'This category covers emissions from employee travel for business purposes. <br> - <strong>Boundary with Scope 1:</strong> Do not include fuel from vehicles owned or controlled by your company. That is Scope 1. <br> - <strong>Boundary with Category 7:</strong> Do not include employee commuting. That is Category 7. <br> - <strong>Data Hierarchy:</strong> Activity-based data (distance) is preferred over spend-based data for accuracy.',
+  cat7GuidanceTitle: 'Key Principles for Employee Commuting',
+  cat7GuidanceText: 'This category covers emissions from employee commutes between their homes and worksites. <br> - <strong>Boundary with Scope 1:</strong> Commutes in company-owned vehicles where the company pays for fuel should be in Scope 1. <br> - <strong>Boundary with Category 6:</strong> Do not include travel for business purposes (e.g., to a client meeting). That is Business Travel. <br> - <strong>Teleworking:</strong> Emissions from teleworking are considered outside of Scope 3, Category 7.',
   comingSoon: 'Coming Soon',
 
 
@@ -253,6 +256,30 @@ const en = {
   railHighSpeed: 'High-speed Rail',
   carDiesel: 'Car (Average Diesel)',
   carElectric: 'Car (Electric)',
+  PublicTransport: 'Public Transport',
+  Motorbike: 'Motorbike',
+  BicycleWalking: 'Bicycle / Walking',
+  Carpool: 'Carpool',
+
+  // Category 7 Advanced UI
+  averageDataMethod: 'Average Data (Survey)',
+  commutingMode: 'Commuting Mode',
+  oneWayCommuteDistance: 'One-way Commute Distance (km)',
+  commutingDaysPerYear: 'Commuting Days per Year',
+  totalEmployees: 'Total Employees',
+  percentTeleworking: '% of Employees Teleworking',
+  modeDistribution: 'Mode Distribution (%)',
+  carpoolOccupancy: 'Avg. Vehicle Occupancy (incl. driver)',
+  personalCarHybrid: 'Personal Car (Hybrid)',
+  personalCarElectric: 'Personal Car (Electric)',
+  personalCarLPG: 'Personal Car (LPG)',
+  motorbike: 'Motorbike',
+  bicycleWalking: 'Bicycle / Walking',
+  publicTransport: 'Public Transport',
+  employeeFuelSpend: 'Employee Fuel Spend',
+  publicTransportSpend: 'Public Transport Spend',
+  addMode: 'Add Mode',
+  totalDistribution: 'Total Distribution',
 
   // Months
   jan: 'Jan', feb: 'Feb', mar: 'Mar', apr: 'Apr', may: 'May', jun: 'Jun',
@@ -649,6 +676,8 @@ const ko = {
   cat5GuidanceText: '이 카테고리는 제3자에 의한 폐기물 처리 및 처분을 다룹니다. <br> - <strong>경계:</strong> 폐기물 처리가 귀사 사업장 내에서 직접 이루어지는 경우, Scope 1으로 보고해야 합니다. <br> - <strong>운송:</strong> 폐기물 운송 배출량은 편의를 위해 여기서 포함하여 산정할 수 있습니다. 계산은 카테고리 4 방법론을 따릅니다. 폐기물 처리업체가 운송을 포함한 총 CO2e 값을 제공하는 경우, "공급업체 특정" 방법을 사용하고 중복 계산을 피하기 위해 운송을 별도로 추가하지 마십시오.',
   cat6GuidanceTitle: '출장(Category 6) 산정 핵심 원칙',
   cat6GuidanceText: '이 카테고리는 임직원의 업무 목적 출장에서 발생하는 배출을 다룹니다. <br> - <strong>Scope 1과의 경계:</strong> 회사 소유 또는 통제 차량의 연료 사용은 Scope 1이므로 여기에 포함하지 마십시오. <br> - <strong>Category 7과의 경계:</strong> 임직원 출퇴근은 Category 7이므로 여기에 포함하지 마십시오. <br> - <strong>데이터 정확도:</strong> 활동량 기반(거리) 데이터가 지출 기반 데이터보다 선호됩니다.',
+  cat7GuidanceTitle: '임직원 출퇴근(Category 7) 산정 핵심 원칙',
+  cat7GuidanceText: '이 카테고리는 임직원의 자택과 사업장 간 출퇴근에서 발생하는 배출을 다룹니다. <br> - <strong>Scope 1과의 경계:</strong> 회사가 연료비를 지급하는 회사 소유 차량을 이용한 출퇴근은 Scope 1에 해당합니다. <br> - <strong>Category 6과의 경계:</strong> 업무 목적의 이동(예: 고객사 미팅)은 출장(Category 6)에 해당하므로 여기에 포함하지 마십시오. <br> - <strong>재택근무:</strong> 재택근무로 인한 배출은 Scope 3, Category 7의 범위를 벗어나는 것으로 간주됩니다.',
   comingSoon: '출시 예정',
   
   // Results Display
@@ -825,6 +854,30 @@ const ko = {
   railHighSpeed: '고속철도',
   carDiesel: '자동차 (평균 디젤)',
   carElectric: '자동차 (전기)',
+  PublicTransport: '대중교통',
+  Motorbike: '오토바이',
+  BicycleWalking: '자전거/도보',
+  Carpool: '카풀',
+
+  // Category 7 Advanced UI
+  averageDataMethod: '평균 데이터 (설문)',
+  commutingMode: '통근 수단',
+  oneWayCommuteDistance: '편도 통근 거리 (km)',
+  commutingDaysPerYear: '연간 통근 일수',
+  totalEmployees: '총 임직원 수',
+  percentTeleworking: '재택근무 임직원 비율 (%)',
+  modeDistribution: '수단별 분포 (%)',
+  carpoolOccupancy: '평균 탑승 인원 (운전자 포함)',
+  personalCarHybrid: '개인 차량 (하이브리드)',
+  personalCarElectric: '개인 차량 (전기)',
+  personalCarLPG: '개인 차량 (LPG)',
+  motorbike: '오토바이',
+  bicycleWalking: '자전거/도보',
+  publicTransport: '대중교통',
+  employeeFuelSpend: '임직원 유류비 지출',
+  publicTransportSpend: '대중교통비 지출',
+  addMode: '수단 추가',
+  totalDistribution: '분포 합계',
 
   // Months
   jan: '1월', feb: '2월', mar: '3월', apr: '4월', may: '5월', jun: '6월',

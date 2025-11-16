@@ -1,10 +1,10 @@
 // Fix: Corrected typo in React import
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 // Fix: Import 'EditableCO2eFactorFuel' to resolve type error.
-import { EmissionCategory, EmissionSource, Refrigerant, Facility, BoundaryApproach, EditableRefrigerant, EditableCO2eFactorFuel, CO2eFactorFuel, TransportMode, Cat5CalculationMethod, WasteType, TreatmentMethod, Cat6CalculationMethod, BusinessTravelMode } from '../types';
+import { EmissionCategory, EmissionSource, Refrigerant, Facility, BoundaryApproach, EditableRefrigerant, EditableCO2eFactorFuel, CO2eFactorFuel, TransportMode, Cat5CalculationMethod, WasteType, TreatmentMethod, Cat6CalculationMethod, BusinessTravelMode, EmployeeCommutingMode, PersonalCarType, PublicTransportType, Cat7CalculationMethod } from '../types';
 import { 
     STATIONARY_FUELS, MOBILE_FUELS, PROCESS_MATERIALS, FUGITIVE_GASES, SCOPE2_ENERGY_SOURCES, WASTE_SOURCES, 
-    EMPLOYEE_COMMUTING_FACTORS,
+    EMPLOYEE_COMMUTING_FACTORS_DETAILED,
     PURCHASED_GOODS_SERVICES_FACTORS, CAPITAL_GOODS_FACTORS, FUEL_ENERGY_ACTIVITIES_FACTORS,
     TRANSPORTATION_FACTORS_BY_MODE, TRANSPORTATION_SPEND_FACTORS, LEASED_ASSETS_FACTORS, PROCESSING_SOLD_PRODUCTS_FACTORS,
     USE_SOLD_PRODUCTS_FACTORS, END_OF_LIFE_TREATMENT_FACTORS, FRANCHISES_FACTORS, INVESTMENTS_FACTORS,
@@ -74,7 +74,7 @@ const factorConfig = {
     downstreamTransport: { key: 'ghg-calc-downstreamTransportationDistributionFactors', default: TRANSPORTATION_FACTORS_BY_MODE },
     scope3Waste: { key: 'ghg-calc-scope3WasteFactors', default: WASTE_FACTORS_DETAILED },
     businessTravel: { key: 'ghg-calc-businessTravelFactors', default: BUSINESS_TRAVEL_FACTORS_DETAILED },
-    employeeCommuting: { key: 'ghg-calc-employeeCommutingFactors', default: EMPLOYEE_COMMUTING_FACTORS },
+    employeeCommuting: { key: 'ghg-calc-employeeCommutingFactors', default: EMPLOYEE_COMMUTING_FACTORS_DETAILED },
     upstreamLeased: { key: 'ghg-calc-upstreamLeasedAssetsFactors', default: LEASED_ASSETS_FACTORS },
     downstreamLeased: { key: 'ghg-calc-downstreamLeasedAssetsFactors', default: LEASED_ASSETS_FACTORS },
     processingSold: { key: 'ghg-calc-processingSoldProductsFactors', default: PROCESSING_SOLD_PRODUCTS_FACTORS },
@@ -149,7 +149,7 @@ export const MainCalculator: React.FC = () => {
   useEffect(() => {
     let needsMigration = false;
     for (const key of Object.keys(factorConfig)) {
-        if (key === 'upstreamTransport' || key === 'downstreamTransport' || key === 'businessTravel' || key === 'scope3Waste') continue; // Skip nested objects
+        if (key === 'upstreamTransport' || key === 'downstreamTransport' || key === 'businessTravel' || key === 'scope3Waste' || key === 'employeeCommuting') continue; // Skip nested objects
         const factors = allFactors[key as FactorCategoryKey];
         if (factors && Array.isArray(factors) && factors.some((f: any) => f.isCustom && !f.id)) {
             needsMigration = true;
@@ -161,7 +161,7 @@ export const MainCalculator: React.FC = () => {
         setAllFactors(currentFactors => {
             const migratedFactors = { ...currentFactors };
             for (const key of Object.keys(factorConfig)) {
-                 if (key === 'upstreamTransport' || key === 'downstreamTransport' || key === 'businessTravel' || key === 'scope3Waste') continue;
+                 if (key === 'upstreamTransport' || key === 'downstreamTransport' || key === 'businessTravel' || key === 'scope3Waste' || key === 'employeeCommuting') continue;
                 const categoryKey = key as FactorCategoryKey;
                 migratedFactors[categoryKey] = ensureIdsForCustomFactors(currentFactors[categoryKey] as any[]);
             }
@@ -256,7 +256,7 @@ export const MainCalculator: React.FC = () => {
     [EmissionCategory.CapitalGoods]: allFactors.capitalGoods,
     [EmissionCategory.FuelAndEnergyRelatedActivities]: allFactors.fuelEnergy,
     [EmissionCategory.UpstreamTransportationAndDistribution]: allFactors.upstreamTransport,
-    [EmissionCategory.WasteGeneratedInOperations]: { ...WASTE_TREATMENT_FACTORS, ...WASTE_SPEND_FACTORS },
+    [EmissionCategory.WasteGeneratedInOperations]: allFactors.scope3Waste,
     [EmissionCategory.BusinessTravel]: allFactors.businessTravel,
     [EmissionCategory.EmployeeCommuting]: allFactors.employeeCommuting,
     [EmissionCategory.UpstreamLeasedAssets]: allFactors.upstreamLeased,
@@ -418,6 +418,26 @@ export const MainCalculator: React.FC = () => {
         setSources(prev => ({...prev, [category]: [...prev[category], newSource]}));
         return;
     }
+    
+    if (category === EmissionCategory.EmployeeCommuting) {
+        const newSource: EmissionSource = {
+            id: `source-${Date.now()}`,
+            facilityId: CORPORATE_FACILITY_ID,
+            category,
+            description: '',
+            fuelType: '', // Not used directly, determined by sub-types
+            monthlyQuantities: [], // Not used for this complex type
+            unit: 'km',
+            calculationMethod: 'activity',
+            commutingMode: 'PersonalCar',
+            personalCarType: 'Gasoline',
+            distanceKm: 0,
+            daysPerYear: 0,
+            carpoolOccupancy: 1,
+        };
+        setSources(prev => ({...prev, [category]: [...prev[category], newSource]}));
+        return;
+    }
 
     if (!fuelsForCategory || fuelsForCategory.length === 0) return;
 
@@ -457,7 +477,7 @@ export const MainCalculator: React.FC = () => {
 
     // Find the new fuel/service item from the constants
     let newFuel: any;
-    if (category === EmissionCategory.BusinessTravel) {
+    if (category === EmissionCategory.BusinessTravel || category === EmissionCategory.EmployeeCommuting) {
         newFuel = (fuelsForCategory as any)?.spend?.find((f: any) => f.name === newFuelType);
     } else if (category === EmissionCategory.UpstreamTransportationAndDistribution || category === EmissionCategory.DownstreamTransportationAndDistribution) {
         newFuel = [...MOBILE_FUELS, ...TRANSPORTATION_SPEND_FACTORS].find(f => f.name === newFuelType);
@@ -613,6 +633,59 @@ export const MainCalculator: React.FC = () => {
                         scope3 = activity * factorData.factor;
                     }
                 }
+                break;
+        }
+        return { scope1: 0, scope2Location: 0, scope2Market: 0, scope3 };
+    }
+    
+    if (source.category === EmissionCategory.EmployeeCommuting) {
+        let scope3 = 0;
+        const calcMethod = (source.calculationMethod as Cat7CalculationMethod) || 'activity';
+        const activityFactors = allFactors.employeeCommuting.activity;
+        const spendFactors = allFactors.employeeCommuting.spend;
+
+        switch(calcMethod) {
+            case 'spend':
+                const totalSpend = source.monthlyQuantities.reduce((s, q) => s + q, 0);
+                const spendFactorData = spendFactors.find((f:any) => f.name === source.fuelType);
+                const spendFactor = spendFactorData?.factors[source.unit] || 0;
+                scope3 = totalSpend * spendFactor;
+                break;
+            case 'average':
+                const effectiveEmployees = (source.totalEmployees || 0) * (1 - (source.percentTeleworking || 0) / 100);
+                const avgDistance = source.distanceKm || 0;
+                const avgDays = source.daysPerYear || 0;
+                let totalEmissions = 0;
+
+                for (const [modeKey, percentage] of Object.entries(source.modeDistribution || {})) {
+                    if (percentage > 0) {
+                        const [mode, type] = modeKey.split('_');
+                        const factorData = activityFactors[mode]?.[type];
+                        if (factorData) {
+                            const employeesInMode = effectiveEmployees * (percentage / 100);
+                            const totalKm = employeesInMode * avgDistance * 2 * avgDays;
+                            totalEmissions += totalKm * factorData.factor;
+                        }
+                    }
+                }
+                scope3 = totalEmissions;
+                break;
+            case 'activity':
+            default:
+                const commutingMode = source.commutingMode;
+                let factor = 0;
+                if (commutingMode === 'PersonalCar' || commutingMode === 'Carpool') {
+                    factor = activityFactors.PersonalCar[source.personalCarType as PersonalCarType]?.factor || 0;
+                } else if (commutingMode === 'PublicTransport') {
+                    factor = activityFactors.PublicTransport[source.publicTransportType as PublicTransportType]?.factor || 0;
+                } else if (commutingMode === 'Motorbike') {
+                    factor = activityFactors.Motorbike['Average Motorbike']?.factor || 0;
+                } else if (commutingMode === 'BicycleWalking') {
+                    factor = 0;
+                }
+                const totalAnnualKm = (source.distanceKm || 0) * 2 * (source.daysPerYear || 0);
+                const occupancy = (commutingMode === 'Carpool' && (source.carpoolOccupancy || 1) > 1) ? (source.carpoolOccupancy || 1) : 1;
+                scope3 = (totalAnnualKm * factor) / occupancy;
                 break;
         }
         return { scope1: 0, scope2Location: 0, scope2Market: 0, scope3 };

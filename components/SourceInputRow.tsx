@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { EmissionSource, Facility, Refrigerant, CO2eFactorFuel, EmissionCategory, CalculationMethod, Cat4CalculationMethod, TransportMode, Cat5CalculationMethod, WasteType, TreatmentMethod, Cat6CalculationMethod, BusinessTravelMode } from '../types';
+import { EmissionSource, Facility, Refrigerant, CO2eFactorFuel, EmissionCategory, CalculationMethod, Cat4CalculationMethod, TransportMode, Cat5CalculationMethod, WasteType, TreatmentMethod, Cat6CalculationMethod, BusinessTravelMode, Cat7CalculationMethod, EmployeeCommutingMode, PersonalCarType, PublicTransportType } from '../types';
 import { useTranslation } from '../LanguageContext';
 import { TranslationKey } from '../translations';
 import { IconInfo, IconTrash, IconSparkles } from './IconComponents';
@@ -1121,6 +1121,230 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
     );
   }
 
+  // == Advanced UI for Category 7 ==
+  if (source.category === EmissionCategory.EmployeeCommuting) {
+    const calculationMethod = (source.calculationMethod as Cat7CalculationMethod) || 'activity';
+
+    const handleMethodChange = (method: Cat7CalculationMethod) => {
+        let updates: Partial<EmissionSource> = { calculationMethod: method, monthlyQuantities: [] };
+        // Set defaults for the new method
+        if (method === 'activity') {
+            updates = { ...updates, commutingMode: 'PersonalCar', personalCarType: 'Gasoline', unit: 'km', distanceKm: 0, daysPerYear: 0, carpoolOccupancy: 1 };
+        } else if (method === 'average') {
+            updates = { ...updates, totalEmployees: 0, percentTeleworking: 0, distanceKm: 0, daysPerYear: 0, modeDistribution: {} };
+        } else if (method === 'spend') {
+            updates = { ...updates, fuelType: fuels.spend[0].name, unit: fuels.spend[0].units[0], monthlyQuantities: Array(12).fill(0) };
+        }
+        onUpdate(updates);
+    };
+    
+    const commutingMode = source.commutingMode || 'PersonalCar';
+    const activityFactors = fuels.activity;
+
+    const handleModeDistributionChange = (modeKey: string, value: string) => {
+      const percentage = Math.max(0, Math.min(100, parseFloat(value) || 0));
+      onUpdate({
+          modeDistribution: {
+              ...(source.modeDistribution || {}),
+              [modeKey]: percentage,
+          }
+      });
+    };
+    
+    const allCommutingTypes = useMemo(() => [
+        { group: t('PersonalCar'), key: 'PersonalCar', types: Object.entries(activityFactors.PersonalCar).map(([type, data]: [string, any]) => ({ key: type, translationKey: data.translationKey })) },
+        { group: t('PublicTransport'), key: 'PublicTransport', types: Object.entries(activityFactors.PublicTransport).map(([type, data]: [string, any]) => ({ key: type, translationKey: data.translationKey })) },
+        { group: t('Motorbike'), key: 'Motorbike', types: Object.entries(activityFactors.Motorbike).map(([type, data]: [string, any]) => ({ key: type, translationKey: data.translationKey })) },
+        { group: t('BicycleWalking'), key: 'BicycleWalking', types: Object.entries(activityFactors.BicycleWalking).map(([type, data]: [string, any]) => ({ key: type, translationKey: data.translationKey })) },
+    ], [t, activityFactors]);
+
+    const totalDistribution = useMemo(() => Object.values(source.modeDistribution || {}).reduce((sum, val) => sum + (val as number), 0), [source.modeDistribution]);
+
+
+    return (
+      <div className="flex flex-col gap-3 p-3 bg-gray-50 rounded-lg border dark:bg-gray-800 dark:border-gray-600">
+        <div className="flex justify-between items-start">
+            <div className='flex-grow pr-4'>
+                <label className={commonLabelClass}>{t('calculationMethod')}</label>
+                <div className="flex gap-1 rounded-md bg-gray-200 dark:bg-gray-900 p-1 text-xs">
+                    {(['activity', 'average', 'spend'] as Cat7CalculationMethod[]).map(method => (
+                        <button 
+                            key={method}
+                            onClick={() => handleMethodChange(method)}
+                            className={`flex-1 py-1 rounded-md transition-colors ${calculationMethod === method ? 'bg-white dark:bg-gray-700 shadow font-semibold' : 'hover:bg-gray-100 dark:hover:bg-gray-800'}`}>
+                            {t(`${method === 'average' ? 'averageData' : method}Method` as TranslationKey)}
+                        </button>
+                    ))}
+                </div>
+            </div>
+            <button onClick={onRemove} className="text-gray-400 hover:text-red-600 p-1 dark:text-gray-500 dark:hover:text-red-500" aria-label={t('removeSourceAria')}>
+                <IconTrash className="h-5 w-5" />
+            </button>
+        </div>
+
+        <div>
+          <label htmlFor={`description-${source.id}`} className={commonLabelClass}>{t('emissionSourceDescription')}</label>
+          <input id={`description-${source.id}`} type="text" value={source.description || ''} onChange={(e) => onUpdate({ description: e.target.value })} className={commonSelectClass} placeholder={t(placeholderKey)} />
+        </div>
+         <div>
+            <label htmlFor={`activityDataSource-${source.id}`} className={commonLabelClass}>{t('activityDataSource')}</label>
+            <input id={`activityDataSource-${source.id}`} type="text" value={source.activityDataSource ?? ''} onChange={(e) => onUpdate({ activityDataSource: e.target.value })} className={commonSelectClass} placeholder={t('activityDataSourcePlaceholder')} />
+        </div>
+
+        {calculationMethod === 'activity' && (
+            <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-2">
+                    <div>
+                        <label className={commonLabelClass}>{t('commutingMode')}</label>
+                        <select value={commutingMode} onChange={(e) => onUpdate({ commutingMode: e.target.value as EmployeeCommutingMode })} className={commonSelectClass}>
+                            {(['PersonalCar', 'Carpool', 'PublicTransport', 'Motorbike', 'BicycleWalking'] as EmployeeCommutingMode[]).map(mode => <option key={mode} value={mode}>{t(mode as TranslationKey)}</option>)}
+                        </select>
+                    </div>
+                    {(commutingMode === 'PersonalCar' || commutingMode === 'Carpool') && (
+                        <div>
+                            <label className={commonLabelClass}>{t('vehicleType')}</label>
+                            <select value={source.personalCarType || 'Gasoline'} onChange={e => onUpdate({ personalCarType: e.target.value as PersonalCarType })} className={commonSelectClass}>
+                                {Object.keys(activityFactors.PersonalCar).map(type => <option key={type} value={type}>{t(activityFactors.PersonalCar[type].translationKey)}</option>)}
+                            </select>
+                        </div>
+                    )}
+                     {commutingMode === 'PublicTransport' && (
+                        <div>
+                            <label className={commonLabelClass}>{t('vehicleType')}</label>
+                            <select value={source.publicTransportType || 'Bus'} onChange={e => onUpdate({ publicTransportType: e.target.value as PublicTransportType })} className={commonSelectClass}>
+                                {Object.keys(activityFactors.PublicTransport).map(type => <option key={type} value={type}>{t(activityFactors.PublicTransport[type].translationKey)}</option>)}
+                            </select>
+                        </div>
+                    )}
+                </div>
+                 <div className="grid grid-cols-2 gap-2">
+                    <div>
+                        <label className={commonLabelClass}>{t('oneWayCommuteDistance')}</label>
+                        <input type="number" value={source.distanceKm ?? ''} onChange={e => onUpdate({ distanceKm: parseFloat(e.target.value) || 0 })} className={commonSelectClass} placeholder="0" />
+                    </div>
+                     <div>
+                        <label className={commonLabelClass}>{t('commutingDaysPerYear')}</label>
+                        <input type="number" value={source.daysPerYear ?? ''} onChange={e => onUpdate({ daysPerYear: parseInt(e.target.value) || 0 })} className={commonSelectClass} placeholder="0" />
+                    </div>
+                 </div>
+                 {commutingMode === 'Carpool' && (
+                     <div>
+                        <label className={commonLabelClass}>{t('carpoolOccupancy')}</label>
+                        <input type="number" value={source.carpoolOccupancy ?? ''} onChange={e => onUpdate({ carpoolOccupancy: parseInt(e.target.value) || 1 })} className={commonSelectClass} placeholder="2" min="1"/>
+                    </div>
+                 )}
+            </div>
+        )}
+
+        {calculationMethod === 'average' && (
+            <div className="space-y-3">
+                 <div className="grid grid-cols-2 gap-2">
+                     <div>
+                        <label className={commonLabelClass}>{t('totalEmployees')}</label>
+                        <input type="number" value={source.totalEmployees ?? ''} onChange={e => onUpdate({ totalEmployees: parseInt(e.target.value) || 0 })} className={commonSelectClass} placeholder="0" />
+                    </div>
+                     <div>
+                        <label className={commonLabelClass}>{t('percentTeleworking')}</label>
+                        <input type="number" value={source.percentTeleworking ?? ''} onChange={e => onUpdate({ percentTeleworking: parseFloat(e.target.value) || 0 })} className={commonSelectClass} placeholder="0" />
+                    </div>
+                 </div>
+                 <div className="grid grid-cols-2 gap-2">
+                    <div>
+                        <label className={commonLabelClass}>{t('oneWayCommuteDistance')}</label>
+                        <input type="number" value={source.distanceKm ?? ''} onChange={e => onUpdate({ distanceKm: parseFloat(e.target.value) || 0 })} className={commonSelectClass} placeholder="0" />
+                    </div>
+                     <div>
+                        <label className={commonLabelClass}>{t('commutingDaysPerYear')}</label>
+                        <input type="number" value={source.daysPerYear ?? ''} onChange={e => onUpdate({ daysPerYear: parseInt(e.target.value) || 0 })} className={commonSelectClass} placeholder="0" />
+                    </div>
+                 </div>
+                <div>
+                    <label className={commonLabelClass}>{t('modeDistribution')}</label>
+                    <div className="p-3 bg-gray-100 dark:bg-gray-900/50 rounded-md space-y-3">
+                        {allCommutingTypes.map(group => (
+                            <div key={group.key}>
+                                <h4 className="text-sm font-semibold text-gray-600 dark:text-gray-300 mb-1">{group.group}</h4>
+                                {group.types.map(type => {
+                                    const modeKey = `${group.key}_${type.key}`;
+                                    return (
+                                        <div key={modeKey} className="flex items-center justify-between gap-2 pl-2">
+                                            <label className="text-sm text-gray-500 dark:text-gray-400">{t(type.translationKey)}</label>
+                                            <div className="flex items-center gap-1 w-24">
+                                                <input type="number" value={source.modeDistribution?.[modeKey] || ''} onChange={e => handleModeDistributionChange(modeKey, e.target.value)} className="w-full p-1 text-sm text-right rounded-md" placeholder="0" min="0" max="100" />
+                                                <span className="text-sm">%</span>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        ))}
+                        <div className={`mt-2 pt-2 border-t dark:border-gray-600 flex justify-end font-semibold ${Math.abs(totalDistribution - 100) > 0.1 ? 'text-red-500' : 'text-gray-700 dark:text-gray-200'}`}>
+                            {t('totalDistribution')}: {totalDistribution.toFixed(1)}%
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )}
+        
+        {calculationMethod === 'spend' && (
+            <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-2">
+                    <select value={source.fuelType} onChange={(e) => onFuelTypeChange(e.target.value)} className={commonSelectClass} aria-label={t('serviceType')}>
+                    {fuels.spend.map((item: any) => (
+                        <option key={item.name} value={item.name}>
+                        {language === 'ko' && item.translationKey ? t(item.translationKey as TranslationKey) : item.name}
+                        </option>
+                    ))}
+                    </select>
+                    <select value={source.unit} onChange={(e) => onUpdate({ unit: e.target.value })} className={commonSelectClass} aria-label="Unit">
+                    { (fuels.spend.find((f: any) => f.name === source.fuelType) as any)?.units.map((unit: string) => (
+                        <option key={unit} value={unit}>{t(unit as TranslationKey) || unit}</option>
+                    ))}
+                    </select>
+                </div>
+                <div className="mt-2">
+                    <div className={`flex justify-between items-center bg-gray-100 dark:bg-gray-700 p-2 ${isEditing ? 'rounded-t-lg' : 'rounded-lg'}`}>
+                        <div>
+                            <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{t('totalYear')}: </span>
+                            <span className="text-sm font-bold text-ghg-dark dark:text-gray-100">{totalQuantity.toLocaleString()} {t(source.unit as TranslationKey) || source.unit}</span>
+                        </div>
+                        {!isEditing && (
+                        <button onClick={handleEdit} className="text-sm text-ghg-green font-semibold hover:underline">
+                            {t('editMonthly')}
+                        </button>
+                        )}
+                    </div>
+                    {isEditing && (
+                        <div className="p-3 bg-gray-100 dark:bg-gray-900/50 rounded-b-lg">
+                           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                                {monthKeys.map((monthKey, index) => (
+                                    <div key={monthKey}>
+                                        <label className={commonLabelClass} htmlFor={`quantity-${source.id}-${index}`}>{t(monthKey)}</label>
+                                        <div className={`flex items-center rounded-md shadow-sm border border-gray-300 dark:border-gray-500 bg-white dark:bg-gray-600 focus-within:ring-1 focus-within:ring-ghg-green focus-within:border-ghg-green overflow-hidden`}>
+                                            <input id={`quantity-${source.id}-${index}`} type="number" onKeyDown={preventNonNumericKeys} value={editedQuantities[index] === 0 ? '' : editedQuantities[index]} onChange={(e) => handleMonthlyChange(index, e.target.value)} className="flex-grow bg-transparent text-gray-900 dark:text-gray-200 py-1 px-2 text-sm text-right focus:outline-none" placeholder="0" />
+                                            <span className="pr-3 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{t(source.unit as TranslationKey) || source.unit}</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="flex justify-end gap-2 mt-4">
+                                <button onClick={handleCancel} className="px-3 py-1 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 dark:bg-gray-600 dark:text-gray-200 dark:border-gray-500 dark:hover:bg-gray-500">{t('cancel')}</button>
+                                <button onClick={handleSave} className="px-3 py-1 text-sm font-medium text-white bg-ghg-green rounded-md shadow-sm hover:bg-ghg-dark">{t('save')}</button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+        )}
+        
+        <div className="mt-2 p-2 bg-gray-100 dark:bg-gray-700 rounded-md text-right">
+            <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{t('emissionsForSource')}: </span>
+            <span className="text-sm font-bold text-ghg-dark dark:text-gray-100">{(totalEmissions / 1000).toLocaleString('en-US', {minimumFractionDigits: 3})} t CO₂e</span>
+        </div>
+      </div>
+    );
+  }
+
   // == Default UI for all other categories ==
   const selectedFuel = Array.isArray(fuels) ? fuels.find((f: any) => f.name === source.fuelType) : null;
   const isFugitive = selectedFuel && 'gwp' in selectedFuel;
@@ -1299,13 +1523,4 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
                         </div>
                     ))}
                 </div>
-                <div className="flex justify-end gap-2 mt-4">
-                    <button onClick={handleCancel} className="px-3 py-1 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 dark:bg-gray-600 dark:text-gray-200 dark:border-gray-500 dark:hover:bg-gray-500">{t('cancel')}</button>
-                    <button onClick={handleSave} className="px-3 py-1 text-sm font-medium text-white bg-ghg-green rounded-md shadow-sm hover:bg-ghg-dark">{t('save')}</button>
-                </div>
-            </div>
-        )}
-      </div>
-    </div>
-  );
-};
+                <div

@@ -66,12 +66,17 @@ export type CalculationMethod = 'supplier_co2e' | 'activity' | 'spend';
 export type Cat4CalculationMethod = 'activity' | 'fuel' | 'spend' | 'supplier_specific';
 export type Cat5CalculationMethod = 'activity' | 'supplier_specific' | 'spend';
 export type Cat6CalculationMethod = 'activity' | 'spend' | 'supplier_specific';
+export type Cat7CalculationMethod = 'activity' | 'average' | 'spend';
 export type BusinessTravelMode = 'Air' | 'Rail' | 'Bus' | 'RentalCar' | 'PersonalCar' | 'Hotel';
 export type FlightClass = 'Economy' | 'Business' | 'First';
 export type TripType = 'one-way' | 'round-trip';
 export type TransportMode = 'Road' | 'Sea' | 'Air' | 'Rail';
 export type WasteType = 'MSW' | 'Paper' | 'Plastics' | 'Food' | 'Metal' | 'Hazardous';
 export type TreatmentMethod = 'Landfill' | 'Incineration' | 'Recycling' | 'Composting' | 'AnaerobicDigestion';
+export type EmployeeCommutingMode = 'PersonalCar' | 'PublicTransport' | 'Motorbike' | 'Carpool' | 'BicycleWalking';
+export type PersonalCarType = 'Gasoline' | 'Diesel' | 'Hybrid' | 'Electric' | 'LPG';
+export type PublicTransportType = 'Bus' | 'Subway';
+
 
 export interface EmissionSource {
   id: string;
@@ -84,7 +89,7 @@ export interface EmissionSource {
   marketBasedFactor?: number;
   
   // New fields for advanced Scope 3 calculation
-  calculationMethod?: CalculationMethod | Cat4CalculationMethod | Cat5CalculationMethod | Cat6CalculationMethod;
+  calculationMethod?: CalculationMethod | Cat4CalculationMethod | Cat5CalculationMethod | Cat6CalculationMethod | Cat7CalculationMethod;
   supplierProvidedCO2e?: number; // Total annual kg CO2e from supplier
   factor?: number; // kg CO2e per unit
   factorUnit?: string; // e.g., kg CO2e / KRW, kg CO2e / tonne
@@ -121,4 +126,15 @@ export interface EmissionSource {
   tripType?: TripType;
   passengers?: number;
   nights?: number; // for hotels
+
+  // New fields for advanced Scope 3 Category 7 calculation
+  commutingMode?: EmployeeCommutingMode;
+  personalCarType?: PersonalCarType;
+  publicTransportType?: PublicTransportType;
+  daysPerYear?: number;
+  carpoolOccupancy?: number;
+  // For 'average' method in Cat 7
+  totalEmployees?: number;
+  percentTeleworking?: number;
+  modeDistribution?: { [key: string]: number };
 }
