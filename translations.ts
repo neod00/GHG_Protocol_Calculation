@@ -215,6 +215,8 @@ const en = {
   adjustmentFactors: 'Adjustment Factors',
   cat4FuelType: 'Fuel Type',
   cat4ServiceType: 'Service Type',
+  suggestedTransportMode: 'Suggested Transport Mode',
+  suggestedVehicleType: 'Suggested Vehicle Type',
 
   // Category 5 Advanced UI
   wasteType: 'Waste Type',
@@ -234,6 +236,8 @@ const en = {
   composting: 'Composting',
   anaerobicDigestion: 'Anaerobic Digestion',
   wasteSpend: 'Waste Management Services (spend)',
+  suggestedWasteType: 'Suggested Waste Type',
+  suggestedTreatmentMethod: 'Suggested Treatment Method',
 
   // Category 6 Advanced UI
   businessTravelMode: 'Travel Mode',
@@ -267,6 +271,8 @@ const en = {
   Motorbike: 'Motorbike',
   BicycleWalking: 'Bicycle / Walking',
   Carpool: 'Carpool',
+  suggestedTravelMode: 'Suggested Travel Mode',
+  suggestedTravelType: 'Suggested Type',
 
   // Category 7 Advanced UI
   averageDataMethod: 'Average Data (Survey)',
@@ -315,6 +321,8 @@ const en = {
   downstreamActivityType: 'Downstream Activity Type',
   transportation: 'Transportation & Distribution',
   warehousing: 'Warehousing & Storage',
+  suggestedAssetType: 'Suggested Asset Type',
+  suggestedBuildingType: 'Suggested Building Type',
 
   // Category 10 Advanced UI
   processSpecificMethod: 'Process-specific',
@@ -872,6 +880,8 @@ const ko = {
   adjustmentFactors: '조정 계수',
   cat4FuelType: '연료 유형',
   cat4ServiceType: '서비스 유형',
+  suggestedTransportMode: '추천 운송 수단',
+  suggestedVehicleType: '추천 차량 유형',
 
   // Category 5 Advanced UI
   wasteType: '폐기물 유형',
@@ -891,6 +901,8 @@ const ko = {
   composting: '퇴비화',
   anaerobicDigestion: '혐기성 소화',
   wasteSpend: '폐기물 처리 서비스 (지출)',
+  suggestedWasteType: '추천 폐기물 유형',
+  suggestedTreatmentMethod: '추천 처리 방법',
 
   // Category 6 Advanced UI
   businessTravelMode: '이동 수단',
@@ -924,6 +936,8 @@ const ko = {
   Motorbike: '오토바이',
   BicycleWalking: '자전거/도보',
   Carpool: '카풀',
+  suggestedTravelMode: '추천 이동 수단',
+  suggestedTravelType: '추천 유형',
 
   // Category 7 Advanced UI
   averageDataMethod: '평균 데이터 (설문)',
@@ -972,6 +986,8 @@ const ko = {
   downstreamActivityType: '다운스트림 활동 유형',
   transportation: '운송 및 유통',
   warehousing: '창고 보관',
+  suggestedAssetType: '추천 자산 유형',
+  suggestedBuildingType: '추천 건물 유형',
 
   // Category 10 Advanced UI
   processSpecificMethod: '공정별 산정',

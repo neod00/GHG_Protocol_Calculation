@@ -4,7 +4,7 @@ import { useTranslation } from '../LanguageContext';
 import { TranslationKey } from '../translations';
 import { IconInfo, IconTrash, IconSparkles } from './IconComponents';
 import { GoogleGenAI, Type } from '@google/genai';
-import { BUSINESS_TRAVEL_FACTORS_DETAILED, MOBILE_FUELS, SCOPE2_ENERGY_SOURCES, STATIONARY_FUELS, TRANSPORTATION_FACTORS_BY_MODE, TRANSPORTATION_SPEND_FACTORS, WASTE_SPEND_FACTORS, WASTE_TREATMENT_FACTORS } from '../constants';
+import { BUSINESS_TRAVEL_FACTORS_DETAILED, LEASED_ASSETS_FACTORS_DETAILED, MOBILE_FUELS, SCOPE2_ENERGY_SOURCES, STATIONARY_FUELS, TRANSPORTATION_FACTORS_BY_MODE, TRANSPORTATION_SPEND_FACTORS, WASTE_SPEND_FACTORS, WASTE_TREATMENT_FACTORS } from '../constants';
 
 interface SourceInputRowProps {
   source: EmissionSource;
@@ -177,6 +177,157 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
     }
   };
 
+  const handleAnalyze = async () => {
+    if (!source.description) return;
+    setIsLoadingAI(true);
+    setAiAnalysisResult(null);
+
+    try {
+        const ai = new GoogleGenAI({apiKey: process.env.API_KEY as string});
+        let promptText = '';
+        let responseSchema: any = {};
+
+        switch (source.category) {
+            case EmissionCategory.PurchasedGoodsAndServices:
+            case EmissionCategory.CapitalGoods:
+                promptText = `You are a GHG accounting expert specializing in Scope 3 emissions according to the GHG Protocol. Analyze the following purchased item description and provide a structured JSON response. Item Description: "${source.description}"`;
+                responseSchema = {
+                    type: Type.OBJECT,
+                    properties: {
+                        suggested_category: { type: Type.STRING, description: 'The most likely Scope 3 category (e.g., "1. Purchased Goods and Services", "2. Capital Goods", "4. Upstream Transportation and Distribution").' },
+                        justification: { type: Type.STRING, description: "A brief explanation for your choice." },
+                    }
+                };
+                break;
+            case EmissionCategory.ProcessingOfSoldProducts:
+                const knownProcesses = (fuels.activity as any[]).map(f => f.name).join(', ');
+                promptText = `As a GHG Protocol expert for Scope 3 Category 10 (Processing of Sold Products), analyze the following downstream processing description. Determine the most appropriate calculation method ('process_specific', 'customer_specific', 'spend') and suggest a specific process type if applicable. Description: "${source.description}". Available 'process_specific' types: ${knownProcesses}. Provide a structured JSON response.`;
+                responseSchema = {
+                    type: Type.OBJECT,
+                    properties: {
+                        suggested_calculation_method: { type: Type.STRING, description: "One of: 'process_specific', 'customer_specific', 'spend'." },
+                        suggested_process_name: { type: Type.STRING, description: `If method is 'process_specific', suggest one of the known process names. Otherwise, null.` },
+                        justification: { type: Type.STRING, description: "A brief explanation for your choices." },
+                    }
+                };
+                break;
+            case EmissionCategory.UpstreamTransportationAndDistribution:
+            case EmissionCategory.DownstreamTransportationAndDistribution:
+                const transportModes = Object.keys(TRANSPORTATION_FACTORS_BY_MODE);
+                const vehicleTypes = JSON.stringify(TRANSPORTATION_FACTORS_BY_MODE, (k, v) => k === 'translationKey' ? undefined : v, 2);
+                promptText = `As a GHG Protocol expert for Scope 3 Transportation, analyze the following activity: "${source.description}". Suggest a transport mode and vehicle type. Valid Modes: ${transportModes.join(', ')}. Valid Vehicle Types (by mode): ${vehicleTypes}. Provide a structured JSON response.`;
+                responseSchema = { type: Type.OBJECT, properties: { suggested_mode: { type: Type.STRING }, suggested_vehicle: { type: Type.STRING }, justification: { type: Type.STRING }}};
+                break;
+            case EmissionCategory.WasteGeneratedInOperations:
+                const wasteTypes = Object.keys(WASTE_TREATMENT_FACTORS);
+                const treatmentCombos = JSON.stringify(WASTE_TREATMENT_FACTORS, (k, v) => k === 'translationKey' ? undefined : v, 2);
+                promptText = `As a GHG Protocol expert for Scope 3 Waste, analyze: "${source.description}". Suggest a waste type and treatment method. Valid Waste Types: ${wasteTypes.join(', ')}. Valid Combinations (WasteType: { TreatmentMethod: ... }): ${treatmentCombos}. Provide a structured JSON response.`;
+                responseSchema = { type: Type.OBJECT, properties: { suggested_waste_type: { type: Type.STRING }, suggested_treatment_method: { type: Type.STRING }, justification: { type: Type.STRING }}};
+                break;
+            case EmissionCategory.BusinessTravel:
+                 const travelOptions = JSON.stringify(BUSINESS_TRAVEL_FACTORS_DETAILED.activity, (k,v) => k === 'translationKey' ? undefined : v, 2);
+                 promptText = `As a GHG Protocol expert for Scope 3 Business Travel, analyze: "${source.description}". Suggest a travel mode and a specific sub-type. For 'Air', the sub-type should be the haul distance key. For others, the vehicle/service key. Available Options: ${travelOptions}. Provide a structured JSON response.`;
+                 responseSchema = { type: Type.OBJECT, properties: { suggested_mode: { type: Type.STRING }, suggested_type: { type: Type.STRING }, justification: { type: Type.STRING }}};
+                 break;
+            case EmissionCategory.UpstreamLeasedAssets:
+            case EmissionCategory.DownstreamLeasedAssets:
+                const buildingTypes = Object.keys(LEASED_ASSETS_FACTORS_DETAILED.area_based).join(', ');
+                promptText = `As a GHG Protocol expert for Scope 3 Leased Assets, analyze: "${source.description}". Suggest an asset type and, if it is a building, a building type. Valid Asset Types: Building, Vehicle, Equipment. Valid Building Types: ${buildingTypes}. Provide a structured JSON response.`;
+                responseSchema = { type: Type.OBJECT, properties: { suggested_asset_type: { type: Type.STRING }, suggested_building_type: { type: Type.STRING, nullable: true }, justification: { type: Type.STRING }}};
+                break;
+            default:
+                return;
+        }
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: promptText,
+            config: { responseMimeType: "application/json", responseSchema },
+        });
+        const result = JSON.parse(response.text);
+        setAiAnalysisResult(result);
+
+    } catch (error) {
+        console.error("AI analysis failed:", error);
+        setAiAnalysisResult({ error: "Failed to analyze." });
+    } finally {
+        setIsLoadingAI(false);
+    }
+  };
+
+  // Fix: Add block scopes to `case` statements to prevent variable redeclaration errors.
+  const handleApplyAISuggestion = () => {
+    if (!aiAnalysisResult) return;
+    let updates: Partial<EmissionSource> = {};
+
+    switch (source.category) {
+        case EmissionCategory.ProcessingOfSoldProducts: {
+            const { suggested_calculation_method, suggested_process_name } = aiAnalysisResult;
+            updates.calculationMethod = suggested_calculation_method;
+            if (suggested_calculation_method === 'process_specific' && suggested_process_name) {
+                const processData = fuels.activity.find((p: any) => p.name === suggested_process_name);
+                if (processData) {
+                    updates.processingMethod = processData.name;
+                    updates.unit = processData.units[0];
+                }
+            } else if (suggested_calculation_method === 'spend') {
+                const spendData = fuels.spend[0];
+                updates.fuelType = spendData.name;
+                updates.unit = spendData.units[0];
+            }
+            break;
+        }
+        case EmissionCategory.UpstreamTransportationAndDistribution:
+        case EmissionCategory.DownstreamTransportationAndDistribution: {
+            const { suggested_mode, suggested_vehicle } = aiAnalysisResult;
+            if (Object.keys(fuels).includes(suggested_mode) && Object.keys(fuels[suggested_mode]).includes(suggested_vehicle)) {
+                updates.transportMode = suggested_mode;
+                updates.vehicleType = suggested_vehicle;
+            }
+            break;
+        }
+        case EmissionCategory.WasteGeneratedInOperations: {
+            const { suggested_waste_type, suggested_treatment_method } = aiAnalysisResult;
+            if (fuels.activity[suggested_waste_type]?.[suggested_treatment_method]) {
+                updates.wasteType = suggested_waste_type;
+                updates.treatmentMethod = suggested_treatment_method;
+            }
+            break;
+        }
+        case EmissionCategory.BusinessTravel: {
+            const { suggested_mode, suggested_type } = aiAnalysisResult;
+            if (fuels.activity[suggested_mode]?.[suggested_type] || (suggested_mode === 'Air' && Object.values(fuels.activity.Air).some((haul: any) => haul[suggested_type]))) {
+                 updates.businessTravelMode = suggested_mode;
+                 // For Air, `suggested_type` is the class, `fuelType` is the haul
+                 if (suggested_mode === 'Air') {
+                    for (const haul in fuels.activity.Air) {
+                        if(Object.keys(fuels.activity.Air[haul]).includes(suggested_type)) {
+                           updates.fuelType = haul; // This is not ideal, but how the structure works
+                           updates.flightClass = suggested_type;
+                        }
+                    }
+                 } else {
+                    updates.fuelType = suggested_type;
+                 }
+            }
+            break;
+        }
+        case EmissionCategory.UpstreamLeasedAssets:
+        case EmissionCategory.DownstreamLeasedAssets: {
+            const { suggested_asset_type, suggested_building_type } = aiAnalysisResult;
+            if (['Building', 'Vehicle', 'Equipment'].includes(suggested_asset_type)) {
+                updates.leasedAssetType = suggested_asset_type;
+            }
+            if (suggested_asset_type === 'Building' && Object.keys(fuels.area_based).includes(suggested_building_type)) {
+                updates.buildingType = suggested_building_type;
+            }
+            break;
+        }
+    }
+    onUpdate(updates);
+    setAiAnalysisResult(null);
+  };
+
 
   // == Advanced UI for Category 1 & 2 ==
   if (source.category === EmissionCategory.PurchasedGoodsAndServices || source.category === EmissionCategory.CapitalGoods) {
@@ -196,40 +347,6 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
             updates.monthlyQuantities = Array(12).fill(0);
         }
         onUpdate(updates);
-    };
-    
-    const handleAnalyze = async () => {
-        if (!source.fuelType) return;
-        setIsLoadingAI(true);
-        setAiAnalysisResult(null);
-        try {
-            const ai = new GoogleGenAI({apiKey: process.env.API_KEY as string});
-            const promptText = source.category === EmissionCategory.PurchasedGoodsAndServices
-              ? `You are a GHG accounting expert specializing in Scope 3 emissions according to the GHG Protocol. Analyze the following purchased item description and provide a structured JSON response. Item Description: "${source.fuelType}"`
-              : `You are a GHG accounting expert specializing in Scope 3 emissions according to the GHG Protocol. Analyze the following capital good description and provide a structured JSON response. Item Description: "${source.fuelType}"`;
-
-            const response = await ai.models.generateContent({
-                model: 'gemini-2.5-flash',
-                contents: promptText,
-                config: {
-                    responseMimeType: "application/json",
-                    responseSchema: {
-                        type: Type.OBJECT,
-                        properties: {
-                            suggested_category: { type: Type.STRING, description: 'The most likely Scope 3 category (e.g., "1. Purchased Goods and Services", "2. Capital Goods", "4. Upstream Transportation and Distribution").' },
-                            justification: { type: Type.STRING, description: "A brief explanation for your choice." },
-                        }
-                    },
-                }
-            });
-            const result = JSON.parse(response.text);
-            setAiAnalysisResult(result);
-        } catch (error) {
-            console.error("AI analysis failed:", error);
-            setAiAnalysisResult({ error: "Failed to analyze." });
-        } finally {
-            setIsLoadingAI(false);
-        }
     };
     
     const activityTotal = source.calculationMethod === 'supplier_co2e' 
@@ -622,8 +739,26 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
         
         <div>
           <label htmlFor={`description-${source.id}`} className={commonLabelClass}>{t('emissionSourceDescription')}</label>
-          <input id={`description-${source.id}`} type="text" value={source.description || ''} onChange={(e) => onUpdate({ description: e.target.value })} className={commonSelectClass} placeholder={t(placeholderKey)} />
+          <div className="flex gap-2">
+            <input id={`description-${source.id}`} type="text" value={source.description || ''} onChange={(e) => onUpdate({ description: e.target.value })} className={commonSelectClass} placeholder={t(placeholderKey)} />
+             <button onClick={handleAnalyze} disabled={isLoadingAI || !source.description} className="px-3 py-2 bg-ghg-light-green text-white rounded-md hover:bg-ghg-green disabled:bg-gray-400 flex items-center gap-2">
+                <IconSparkles className="w-4 h-4" />
+                <span className="text-sm font-semibold">{isLoadingAI ? '...' : t('analyzeWithAI')}</span>
+            </button>
+          </div>
         </div>
+        {aiAnalysisResult && !aiAnalysisResult.error && (
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-800 dark:bg-blue-900/30 dark:border-blue-700/50 text-xs space-y-2">
+                <h4 className="font-semibold text-sm mb-1">{t('aiAnalysis')}</h4>
+                <p><span className="font-semibold">{t('suggestedTransportMode')}:</span> {t(aiAnalysisResult.suggested_mode as TranslationKey)}</p>
+                <p><span className="font-semibold">{t('suggestedVehicleType')}:</span> {t((fuels[aiAnalysisResult.suggested_mode]?.[aiAnalysisResult.suggested_vehicle] as any)?.translationKey as TranslationKey)}</p>
+                <p><span className="font-semibold">{t('justification')}:</span> {aiAnalysisResult.justification}</p>
+                <div className="flex justify-between items-center mt-2 pt-2 border-t dark:border-blue-700/50">
+                    <p className="text-blue-600 dark:text-blue-300">{t('aiDisclaimer')}</p>
+                    <button onClick={handleApplyAISuggestion} className="bg-blue-500 text-white font-semibold py-1 px-3 rounded-md hover:bg-blue-600 text-xs">{t('applySuggestion')}</button>
+                </div>
+            </div>
+        )}
          <div>
             <label htmlFor={`activityDataSource-${source.id}`} className={commonLabelClass}>{t('activityDataSource')}</label>
             <input id={`activityDataSource-${source.id}`} type="text" value={source.activityDataSource ?? ''} onChange={(e) => onUpdate({ activityDataSource: e.target.value })} className={commonSelectClass} placeholder={t('activityDataSourcePlaceholder')} />
@@ -800,8 +935,26 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
 
         <div>
           <label htmlFor={`description-${source.id}`} className={commonLabelClass}>{t('emissionSourceDescription')}</label>
-          <input id={`description-${source.id}`} type="text" value={source.description || ''} onChange={(e) => onUpdate({ description: e.target.value })} className={commonSelectClass} placeholder={t(placeholderKey)} />
+          <div className="flex gap-2">
+            <input id={`description-${source.id}`} type="text" value={source.description || ''} onChange={(e) => onUpdate({ description: e.target.value })} className={commonSelectClass} placeholder={t(placeholderKey)} />
+            <button onClick={handleAnalyze} disabled={isLoadingAI || !source.description} className="px-3 py-2 bg-ghg-light-green text-white rounded-md hover:bg-ghg-green disabled:bg-gray-400 flex items-center gap-2">
+                <IconSparkles className="w-4 h-4" />
+                <span className="text-sm font-semibold">{isLoadingAI ? '...' : t('analyzeWithAI')}</span>
+            </button>
+          </div>
         </div>
+        {aiAnalysisResult && !aiAnalysisResult.error && (
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-800 dark:bg-blue-900/30 dark:border-blue-700/50 text-xs space-y-2">
+                <h4 className="font-semibold text-sm mb-1">{t('aiAnalysis')}</h4>
+                <p><span className="font-semibold">{t('suggestedWasteType')}:</span> {t(`waste${aiAnalysisResult.suggested_waste_type}` as TranslationKey)}</p>
+                <p><span className="font-semibold">{t('suggestedTreatmentMethod')}:</span> {t(fuels.activity[aiAnalysisResult.suggested_waste_type]?.[aiAnalysisResult.suggested_treatment_method]?.translationKey as TranslationKey)}</p>
+                <p><span className="font-semibold">{t('justification')}:</span> {aiAnalysisResult.justification}</p>
+                <div className="flex justify-between items-center mt-2 pt-2 border-t dark:border-blue-700/50">
+                    <p className="text-blue-600 dark:text-blue-300">{t('aiDisclaimer')}</p>
+                    <button onClick={handleApplyAISuggestion} className="bg-blue-500 text-white font-semibold py-1 px-3 rounded-md hover:bg-blue-600 text-xs">{t('applySuggestion')}</button>
+                </div>
+            </div>
+        )}
         
         {calculationMethod === 'activity' && (
             <div className="space-y-3">
@@ -997,8 +1150,26 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
 
         <div>
           <label htmlFor={`description-${source.id}`} className={commonLabelClass}>{t('emissionSourceDescription')}</label>
-          <input id={`description-${source.id}`} type="text" value={source.description || ''} onChange={(e) => onUpdate({ description: e.target.value })} className={commonSelectClass} placeholder={t(placeholderKey)} />
+          <div className="flex gap-2">
+            <input id={`description-${source.id}`} type="text" value={source.description || ''} onChange={(e) => onUpdate({ description: e.target.value })} className={commonSelectClass} placeholder={t(placeholderKey)} />
+            <button onClick={handleAnalyze} disabled={isLoadingAI || !source.description} className="px-3 py-2 bg-ghg-light-green text-white rounded-md hover:bg-ghg-green disabled:bg-gray-400 flex items-center gap-2">
+                <IconSparkles className="w-4 h-4" />
+                <span className="text-sm font-semibold">{isLoadingAI ? '...' : t('analyzeWithAI')}</span>
+            </button>
+          </div>
         </div>
+        {aiAnalysisResult && !aiAnalysisResult.error && (
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-800 dark:bg-blue-900/30 dark:border-blue-700/50 text-xs space-y-2">
+                <h4 className="font-semibold text-sm mb-1">{t('aiAnalysis')}</h4>
+                <p><span className="font-semibold">{t('suggestedTravelMode')}:</span> {t(aiAnalysisResult.suggested_mode as TranslationKey)}</p>
+                <p><span className="font-semibold">{t('suggestedTravelType')}:</span> {aiAnalysisResult.suggested_type}</p>
+                <p><span className="font-semibold">{t('justification')}:</span> {aiAnalysisResult.justification}</p>
+                <div className="flex justify-between items-center mt-2 pt-2 border-t dark:border-blue-700/50">
+                    <p className="text-blue-600 dark:text-blue-300">{t('aiDisclaimer')}</p>
+                    <button onClick={handleApplyAISuggestion} className="bg-blue-500 text-white font-semibold py-1 px-3 rounded-md hover:bg-blue-600 text-xs">{t('applySuggestion')}</button>
+                </div>
+            </div>
+        )}
 
         {calculationMethod === 'activity' && (
             <div className="space-y-3">
@@ -1182,8 +1353,8 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
 
     // Fix: Operator '+' cannot be applied to types 'unknown' and 'number'.
     // The `val` from `Object.values` may be inferred as `unknown` by TypeScript, causing a type error.
-    // Casting `val` to `number` ensures type safety for the addition operation.
-    const totalDistribution = useMemo(() => Object.values(source.modeDistribution || {}).reduce((sum, val) => sum + (val as number), 0), [source.modeDistribution]);
+    // Using `Number(val)` ensures type safety for the addition operation.
+    const totalDistribution = useMemo(() => Object.values(source.modeDistribution || {}).reduce((sum, val) => sum + Number(val), 0), [source.modeDistribution]);
 
 
     return (
@@ -1449,8 +1620,26 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
         {/* Common Inputs */}
         <div>
             <label htmlFor={`description-${source.id}`} className={commonLabelClass}>{t('emissionSourceDescription')}</label>
-            <input id={`description-${source.id}`} type="text" value={source.description || ''} onChange={(e) => onUpdate({ description: e.target.value })} className={commonSelectClass} placeholder={t(placeholderKey)} />
+            <div className="flex gap-2">
+                <input id={`description-${source.id}`} type="text" value={source.description || ''} onChange={(e) => onUpdate({ description: e.target.value })} className={commonSelectClass} placeholder={t(placeholderKey)} />
+                <button onClick={handleAnalyze} disabled={isLoadingAI || !source.description} className="px-3 py-2 bg-ghg-light-green text-white rounded-md hover:bg-ghg-green disabled:bg-gray-400 flex items-center gap-2">
+                    <IconSparkles className="w-4 h-4" />
+                    <span className="text-sm font-semibold">{isLoadingAI ? '...' : t('analyzeWithAI')}</span>
+                </button>
+            </div>
         </div>
+         {aiAnalysisResult && !aiAnalysisResult.error && (
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-800 dark:bg-blue-900/30 dark:border-blue-700/50 text-xs space-y-2">
+                <h4 className="font-semibold text-sm mb-1">{t('aiAnalysis')}</h4>
+                <p><span className="font-semibold">{t('suggestedAssetType')}:</span> {t(aiAnalysisResult.suggested_asset_type as TranslationKey)}</p>
+                {aiAnalysisResult.suggested_building_type && <p><span className="font-semibold">{t('suggestedBuildingType')}:</span> {t(fuels.area_based[aiAnalysisResult.suggested_building_type]?.translationKey as TranslationKey)}</p>}
+                <p><span className="font-semibold">{t('justification')}:</span> {aiAnalysisResult.justification}</p>
+                <div className="flex justify-between items-center mt-2 pt-2 border-t dark:border-blue-700/50">
+                    <p className="text-blue-600 dark:text-blue-300">{t('aiDisclaimer')}</p>
+                    <button onClick={handleApplyAISuggestion} className="bg-blue-500 text-white font-semibold py-1 px-3 rounded-md hover:bg-blue-600 text-xs">{t('applySuggestion')}</button>
+                </div>
+            </div>
+        )}
         
         {calculationMethod !== 'spend_based' && (
             <div>
@@ -1657,72 +1846,6 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
         onUpdate({ energyInputs: newInputs });
     };
 
-    const handleAnalyzeCat10 = async () => {
-        if (!source.description) return;
-        setIsLoadingAI(true);
-        setAiAnalysisResult(null);
-        const knownProcesses = (fuels.activity as any[]).map(f => f.name).join(', ');
-
-        try {
-            const ai = new GoogleGenAI({apiKey: process.env.API_KEY as string});
-            const promptText = `As a GHG Protocol expert for Scope 3 Category 10 (Processing of Sold Products), analyze the following downstream processing description. Determine the most appropriate calculation method ('process_specific', 'customer_specific', 'spend') and suggest a specific process type if applicable.
-
-Description: "${source.description}"
-
-Available 'process_specific' types: ${knownProcesses}.
-Available 'spend' type: 'Downstream Processing Services (spend)'.
-
-Provide a structured JSON response.`;
-
-            const response = await ai.models.generateContent({
-                model: 'gemini-2.5-flash',
-                contents: promptText,
-                config: {
-                    responseMimeType: "application/json",
-                    responseSchema: {
-                        type: Type.OBJECT,
-                        properties: {
-                            suggested_calculation_method: { type: Type.STRING, description: "One of: 'process_specific', 'customer_specific', 'spend'." },
-                            suggested_process_name: { type: Type.STRING, description: `If method is 'process_specific', suggest one of the known process names. Otherwise, null.` },
-                            justification: { type: Type.STRING, description: "A brief explanation for your choices." },
-                        }
-                    },
-                }
-            });
-            const result = JSON.parse(response.text);
-            setAiAnalysisResult(result);
-        } catch (error) {
-            console.error("AI analysis failed:", error);
-            setAiAnalysisResult({ error: "Failed to analyze." });
-        } finally {
-            setIsLoadingAI(false);
-        }
-    };
-    
-    const handleApplyAISuggestion = () => {
-        if (!aiAnalysisResult) return;
-        const { suggested_calculation_method, suggested_process_name } = aiAnalysisResult;
-
-        const updates: Partial<EmissionSource> = {
-            calculationMethod: suggested_calculation_method,
-        };
-
-        if (suggested_calculation_method === 'process_specific' && suggested_process_name) {
-            const processData = fuels.activity.find((p: any) => p.name === suggested_process_name);
-            if (processData) {
-                updates.processingMethod = processData.name;
-                updates.unit = processData.units[0];
-            }
-        } else if (suggested_calculation_method === 'spend') {
-            const spendData = fuels.spend[0];
-            updates.fuelType = spendData.name;
-            updates.unit = spendData.units[0];
-        }
-
-        onUpdate(updates);
-        setAiAnalysisResult(null);
-    };
-
     return (
       <div className="flex flex-col gap-3 p-3 bg-gray-50 rounded-lg border dark:bg-gray-800 dark:border-gray-600">
         {/* Method Switcher & Remove Button */}
@@ -1750,13 +1873,13 @@ Provide a structured JSON response.`;
             <label htmlFor={`description-${source.id}`} className={commonLabelClass}>{t('emissionSourceDescription')}</label>
             <div className="flex gap-2">
                 <input id={`description-${source.id}`} type="text" value={source.description || ''} onChange={(e) => onUpdate({ description: e.target.value })} className={commonSelectClass} placeholder={t(placeholderKey)} />
-                <button onClick={handleAnalyzeCat10} disabled={isLoadingAI || !source.description} className="px-3 py-2 bg-ghg-light-green text-white rounded-md hover:bg-ghg-green disabled:bg-gray-400 flex items-center gap-2">
+                <button onClick={handleAnalyze} disabled={isLoadingAI || !source.description} className="px-3 py-2 bg-ghg-light-green text-white rounded-md hover:bg-ghg-green disabled:bg-gray-400 flex items-center gap-2">
                     <IconSparkles className="w-4 h-4" />
                     <span className="text-sm font-semibold">{isLoadingAI ? '...' : t('analyzeWithAI')}</span>
                 </button>
             </div>
         </div>
-         {aiAnalysisResult && (
+         {aiAnalysisResult && !aiAnalysisResult.error && (
             <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-800 dark:bg-blue-900/30 dark:border-blue-700/50 text-xs space-y-2">
                 <h4 className="font-semibold text-sm mb-1">{t('aiAnalysis')}</h4>
                 <p><span className="font-semibold">{t('suggestedMethod')}:</span> {t(methodTranslationMap[aiAnalysisResult.suggested_calculation_method as Cat10CalculationMethod])}</p>
