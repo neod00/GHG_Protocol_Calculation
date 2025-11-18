@@ -1,9 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import { EditableRefrigerant, EditableCO2eFactorFuel, EmissionCategory } from '../types';
 import { useTranslation } from '../LanguageContext';
-import { ALL_SCOPE3_CATEGORIES, SCOPE2_FACTORS_BY_REGION } from '../constants';
+// FIX: Changed import path to be more explicit.
+import { ALL_SCOPE3_CATEGORIES, SCOPE2_FACTORS_BY_REGION } from '../constants/index';
 import { IconTrash, IconInfo, IconPencil, IconChevronUp, IconChevronDown } from './IconComponents';
-import { TranslationKey } from '../translations';
+// FIX: Changed import path to be more explicit.
+import { TranslationKey } from '../translations/index';
 
 type FactorCategoryKey = 'stationary' | 'mobile' | 'process' | 'fugitive' | 'waste' | 'scope2' | 'purchasedGoods' | 'capitalGoods' | 'fuelEnergy' | 'upstreamTransport' | 'downstreamTransport' | 'scope3Waste' | 'businessTravel' | 'employeeCommuting' | 'upstreamLeased' | 'downstreamLeased' | 'processingSold' | 'useSold' | 'endOfLife' | 'franchises' | 'investments';
 
@@ -146,12 +148,13 @@ const TransportationFactors: React.FC<{
                     <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
                         {Object.entries(vehicles as object).map(([vehicle, details]) => (
                             <div key={vehicle}>
-                                <label className={commonLabelClass()}>{t(details.translationKey)}</label>
+                                {/* FIX: Cast 'details' to 'any' to access properties on the unknown type. */}
+                                <label className={commonLabelClass()}>{t((details as any).translationKey)}</label>
                                 <div className="flex items-center gap-2">
                                     <input
                                         type="number"
                                         step="any"
-                                        value={details.factor}
+                                        value={(details as any).factor}
                                         onChange={(e) => onFactorChange(categoryKey, [mode, vehicle, 'factor'], e.target.value)}
                                         className={commonInputClass}
                                     />
@@ -191,10 +194,11 @@ const BusinessTravelFactors: React.FC<{
                        <div className="mt-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-2 pl-2">
                           {Object.entries(classes as object).map(([flightClass, details]) => (
                             <div key={flightClass}>
-                                <label className={commonLabelClass()}>{t(details.translationKey)}</label>
+                                {/* FIX: Cast 'details' to 'any' to access properties on the unknown type. */}
+                                <label className={commonLabelClass()}>{t((details as any).translationKey)}</label>
                                 <div className="flex items-center gap-2">
-                                    <input type="number" step="any" value={details.factor} onChange={(e) => onFactorChange(categoryKey, ['activity', mode, haul, flightClass, 'factor'], e.target.value)} className={commonInputClass}/>
-                                    <span className="mt-1 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">kg CO₂e / {t(details.unit as TranslationKey)}</span>
+                                    <input type="number" step="any" value={(details as any).factor} onChange={(e) => onFactorChange(categoryKey, ['activity', mode, haul, flightClass, 'factor'], e.target.value)} className={commonInputClass}/>
+                                    <span className="mt-1 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">kg CO₂e / {t((details as any).unit as TranslationKey)}</span>
                                 </div>
                             </div>
                           ))}
@@ -205,10 +209,11 @@ const BusinessTravelFactors: React.FC<{
                   <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
                     {Object.entries(modeData as object).map(([vehicle, details]) => (
                        <div key={vehicle}>
-                            <label className={commonLabelClass()}>{t(details.translationKey)}</label>
+                            {/* FIX: Cast 'details' to 'any' to access properties on the unknown type. */}
+                            <label className={commonLabelClass()}>{t((details as any).translationKey)}</label>
                             <div className="flex items-center gap-2">
-                                <input type="number" step="any" value={details.factor} onChange={(e) => onFactorChange(categoryKey, ['activity', mode, vehicle, 'factor'], e.target.value)} className={commonInputClass}/>
-                                <span className="mt-1 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">kg CO₂e / {t(details.unit as TranslationKey)}</span>
+                                <input type="number" step="any" value={(details as any).factor} onChange={(e) => onFactorChange(categoryKey, ['activity', mode, vehicle, 'factor'], e.target.value)} className={commonInputClass}/>
+                                <span className="mt-1 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">kg CO₂e / {t((details as any).unit as TranslationKey)}</span>
                             </div>
                         </div>
                     ))}
@@ -264,12 +269,13 @@ const WasteFactors: React.FC<{
                             <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
                                 {Object.entries(treatments as object).map(([treatment, details]) => (
                                     <div key={treatment}>
-                                        <label className={commonLabelClass()}>{t(details.translationKey)}</label>
+                                        {/* FIX: Cast 'details' to 'any' to access properties on the unknown type. */}
+                                        <label className={commonLabelClass()}>{t((details as any).translationKey)}</label>
                                         <div className="flex items-center gap-2">
                                             <input
                                                 type="number"
                                                 step="any"
-                                                value={details.factor}
+                                                value={(details as any).factor}
                                                 onChange={(e) => onFactorChange(categoryKey, ['activity', wasteType, treatment, 'factor'], e.target.value)}
                                                 className={commonInputClass}
                                             />
@@ -329,18 +335,19 @@ const EmployeeCommutingFactors: React.FC<{
                             <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
                                 {Object.entries(modeData as object).map(([type, details]) => (
                                     <div key={type}>
-                                        <label className={commonLabelClass()}>{t(details.translationKey)}</label>
+                                        {/* FIX: Cast 'details' to 'any' to access properties on the unknown type. */}
+                                        <label className={commonLabelClass()}>{t((details as any).translationKey)}</label>
                                         <div className="flex items-center gap-2">
                                             <input
                                                 type="number"
                                                 step="any"
-                                                value={details.factor}
+                                                value={(details as any).factor}
                                                 onChange={(e) => onFactorChange(categoryKey, ['activity', mode, type, 'factor'], e.target.value)}
                                                 className={commonInputClass}
-                                                disabled={details.factor === 0}
+                                                disabled={(details as any).factor === 0}
                                             />
                                             <span className="mt-1 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                                                kg CO₂e / {t(details.unit as TranslationKey)}
+                                                kg CO₂e / {t((details as any).unit as TranslationKey)}
                                             </span>
                                         </div>
                                     </div>

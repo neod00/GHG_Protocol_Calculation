@@ -1,3 +1,4 @@
+
 // Fix: Define and export interfaces and enums for use throughout the application.
 // This resolves circular dependency and missing type export errors.
 
@@ -118,6 +119,8 @@ export interface EmissionSource {
   refrigerated?: boolean;
   loadFactor?: number; // Percentage 0-100
   emptyBackhaul?: boolean;
+  origin?: string;
+  destination?: string;
 
   // New fields for advanced Scope 3 Category 5 calculation
   wasteType?: WasteType;

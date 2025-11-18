@@ -1,19 +1,20 @@
+
 // Fix: Corrected typo in React import
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 // Fix: Import 'EditableCO2eFactorFuel' to resolve type error.
 import { EmissionCategory, EmissionSource, Refrigerant, Facility, BoundaryApproach, EditableRefrigerant, EditableCO2eFactorFuel, CO2eFactorFuel, TransportMode, Cat5CalculationMethod, WasteType, TreatmentMethod, Cat6CalculationMethod, BusinessTravelMode, EmployeeCommutingMode, PersonalCarType, PublicTransportType, Cat7CalculationMethod, Cat8CalculationMethod, BuildingType, LeasedAssetType, Cat4CalculationMethod, Cat10CalculationMethod } from '../types';
 import { 
-    STATIONARY_FUELS, MOBILE_FUELS, PROCESS_MATERIALS, FUGITIVE_GASES, SCOPE2_ENERGY_SOURCES, WASTE_SOURCES, 
-    EMPLOYEE_COMMUTING_FACTORS_DETAILED,
-    PURCHASED_GOODS_SERVICES_FACTORS, CAPITAL_GOODS_FACTORS, FUEL_ENERGY_ACTIVITIES_FACTORS,
-    TRANSPORTATION_FACTORS_BY_MODE, TRANSPORTATION_SPEND_FACTORS, LEASED_ASSETS_FACTORS_DETAILED, PROCESSING_SOLD_PRODUCTS_FACTORS_DETAILED,
-    USE_SOLD_PRODUCTS_FACTORS, END_OF_LIFE_TREATMENT_FACTORS, FRANCHISES_FACTORS, INVESTMENTS_FACTORS,
-    SCOPE2_FACTORS_BY_REGION,
-    PURCHASED_ENERGY_UPSTREAM_FACTORS,
-    WASTE_TREATMENT_FACTORS, WASTE_SPEND_FACTORS,
+    STATIONARY_FUELS, MOBILE_FUELS, PROCESS_MATERIALS, FUGITIVE_GASES, WASTE_SOURCES, 
+    SCOPE2_ENERGY_SOURCES, SCOPE2_FACTORS_BY_REGION,
+    PURCHASED_GOODS_SERVICES_FACTORS, CAPITAL_GOODS_FACTORS, FUEL_ENERGY_ACTIVITIES_FACTORS, PURCHASED_ENERGY_UPSTREAM_FACTORS,
+    TRANSPORTATION_FACTORS_BY_MODE, TRANSPORTATION_SPEND_FACTORS,
+    WASTE_FACTORS_DETAILED,
     BUSINESS_TRAVEL_FACTORS_DETAILED,
-    WASTE_FACTORS_DETAILED
-} from '../constants';
+    EMPLOYEE_COMMUTING_FACTORS_DETAILED,
+    LEASED_ASSETS_FACTORS_DETAILED,
+    PROCESSING_SOLD_PRODUCTS_FACTORS_DETAILED,
+    USE_SOLD_PRODUCTS_FACTORS, END_OF_LIFE_TREATMENT_OF_SOLD_PRODUCTS, FRANCHISES_FACTORS, INVESTMENTS_FACTORS,
+} from '../constants/index';
 import { ResultsDisplay } from './ResultsDisplay';
 import { useTranslation } from '../LanguageContext';
 import { FactorManager } from './FactorManager';
@@ -39,7 +40,7 @@ interface Scope3Settings {
 
 type ActiveTab = 'scope1' | 'scope2' | 'scope3';
 
-type FactorCategoryKey = 'stationary' | 'mobile' | 'process' | 'fugitive' | 'waste' | 'scope2' | 'purchasedGoods' | 'capitalGoods' | 'fuelEnergy' | 'upstreamTransport' | 'downstreamTransport' | 'scope3Waste' | 'businessTravel' | 'employeeCommuting' | 'upstreamLeased' | 'downstreamLeased' | 'processingSold' | 'useSold' | 'endOfLife' | 'franchises' | 'investments';
+export type FactorCategoryKey = 'stationary' | 'mobile' | 'process' | 'fugitive' | 'waste' | 'scope2' | 'purchasedGoods' | 'capitalGoods' | 'fuelEnergy' | 'upstreamTransport' | 'downstreamTransport' | 'scope3Waste' | 'businessTravel' | 'employeeCommuting' | 'upstreamLeased' | 'downstreamLeased' | 'processingSold' | 'useSold' | 'endOfLife' | 'franchises' | 'investments';
 
 // Fix: Add a data migration function to ensure all custom factors loaded from localStorage have a unique ID.
 // This retroactively fixes old data that was saved without an ID, resolving the bug where they couldn't be deleted.
@@ -79,7 +80,7 @@ const factorConfig = {
     downstreamLeased: { key: 'ghg-calc-downstreamLeasedAssetsFactors', default: LEASED_ASSETS_FACTORS_DETAILED },
     processingSold: { key: 'ghg-calc-processingSoldProductsFactors', default: PROCESSING_SOLD_PRODUCTS_FACTORS_DETAILED },
     useSold: { key: 'ghg-calc-useSoldProductsFactors', default: USE_SOLD_PRODUCTS_FACTORS },
-    endOfLife: { key: 'ghg-calc-endOfLifeTreatmentFactors', default: END_OF_LIFE_TREATMENT_FACTORS },
+    endOfLife: { key: 'ghg-calc-endOfLifeTreatmentFactors', default: END_OF_LIFE_TREATMENT_OF_SOLD_PRODUCTS },
     franchises: { key: 'ghg-calc-franchisesFactors', default: FRANCHISES_FACTORS },
     investments: { key: 'ghg-calc-investmentsFactors', default: INVESTMENTS_FACTORS },
 };
@@ -325,7 +326,10 @@ export const MainCalculator: React.FC = () => {
     [EmissionCategory.PurchasedGoodsAndServices]: allFactors.purchasedGoods,
     [EmissionCategory.CapitalGoods]: allFactors.capitalGoods,
     [EmissionCategory.FuelAndEnergyRelatedActivities]: allFactors.fuelEnergy,
-    [EmissionCategory.UpstreamTransportationAndDistribution]: allFactors.upstreamTransport,
+    [EmissionCategory.UpstreamTransportationAndDistribution]: {
+      ...allFactors.upstreamTransport,
+      ...LEASED_ASSETS_FACTORS_DETAILED // For warehousing part
+    },
     [EmissionCategory.DownstreamTransportationAndDistribution]: {
       ...allFactors.downstreamTransport,
       ...LEASED_ASSETS_FACTORS_DETAILED // For warehousing part
@@ -448,7 +452,7 @@ export const MainCalculator: React.FC = () => {
             loadFactor: 100,
             emptyBackhaul: false,
             activityDataSource: '',
-            downstreamActivityType: category === EmissionCategory.DownstreamTransportationAndDistribution ? 'transportation' : undefined,
+            downstreamActivityType: category === EmissionCategory.DownstreamTransportationAndDistribution ? 'transportation' : undefined, // Default to transport
         };
         setSources(prev => ({...prev, [category]: [...prev[category], newSource]}));
         return;
@@ -627,11 +631,31 @@ export const MainCalculator: React.FC = () => {
     if (
         source.category === EmissionCategory.UpstreamLeasedAssets || 
         source.category === EmissionCategory.DownstreamLeasedAssets || 
-        (source.category === EmissionCategory.DownstreamTransportationAndDistribution && source.downstreamActivityType === 'warehousing')
+        ((source.category === EmissionCategory.DownstreamTransportationAndDistribution || source.category === EmissionCategory.UpstreamTransportationAndDistribution) && source.downstreamActivityType === 'warehousing')
     ) {
         let scope3 = 0;
-        const calcMethod = (source.calculationMethod as Cat8CalculationMethod) || 'asset_specific';
+        // Treat warehousing essentially like a leased asset or area-based calculation
+        const calcMethod = (source.calculationMethod as any) || 'asset_specific'; // Use 'any' casting to handle Cat 4/9 mapped to Cat 8 logic
         
+        // If it's Cat 4/9 Warehousing, we might be using 'spend' or 'supplier_specific' from Cat 4 types, OR borrowing area-based logic.
+        // Simplification: For warehousing in Cat 4/9, we support: 'supplier_specific', 'spend' (mapped to spend_based logic), or 'area_based' (mapped to area_based logic if implemented in UI).
+
+        if (source.downstreamActivityType === 'warehousing' && source.category !== EmissionCategory.UpstreamLeasedAssets && source.category !== EmissionCategory.DownstreamLeasedAssets) {
+            if (calcMethod === 'supplier_specific') {
+                 scope3 = source.supplierProvidedCO2e || 0;
+            } else if (calcMethod === 'spend') {
+                const totalSpend = source.monthlyQuantities.reduce((s, q) => s + q, 0);
+                const spendFactorData = allFactors.upstreamLeased.spend_based.find((f:any) => f.name.includes('Building') || f.name === source.fuelType); // Fallback to building spend
+                const spendFactor = spendFactorData?.factors[source.unit] || 0;
+                scope3 = totalSpend * spendFactor;
+            } else {
+                // Default fallback for warehousing without specific logic yet
+                scope3 = 0;
+            }
+            return { scope1: 0, scope2Location: 0, scope2Market: 0, scope3 };
+        }
+
+
         switch(calcMethod) {
             case 'supplier_specific':
                 scope3 = source.supplierProvidedCO2e || 0; // Assumed annual
@@ -665,7 +689,7 @@ export const MainCalculator: React.FC = () => {
         }
 
         // Adjust for lease duration for annual calculation methods
-        if (calcMethod !== 'spend_based') {
+        if (calcMethod !== 'spend_based' && calcMethod !== 'supplier_specific') {
             const leaseDurationFactor = (source.leaseDurationMonths || 12) / 12;
             scope3 *= leaseDurationFactor;
         }
@@ -688,7 +712,7 @@ export const MainCalculator: React.FC = () => {
                 
                 let adjustmentMultiplier = 1.0;
                 if (source.refrigerated) adjustmentMultiplier *= 1.2;
-                if (source.emptyBackhaul) adjustmentMultiplier *= 2.0;
+                if (source.emptyBackhaul) adjustmentMultiplier *= 2.0; // Simplified adjustment
                 if (source.loadFactor && source.loadFactor > 0 && source.loadFactor < 100) {
                     adjustmentMultiplier *= (100 / source.loadFactor);
                 }

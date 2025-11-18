@@ -1,7 +1,8 @@
 import React from 'react';
 import { EmissionSourceCard } from './EmissionSourceCard';
 import { EmissionCategory, EmissionSource, Refrigerant, Facility, BoundaryApproach, CO2eFactorFuel } from '../types';
-import { ALL_SCOPE3_CATEGORIES } from '../constants';
+// FIX: Changed import path to be more explicit.
+import { ALL_SCOPE3_CATEGORIES } from '../constants/index';
 import { useTranslation } from '../LanguageContext';
 
 

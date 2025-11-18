@@ -2,8 +2,10 @@ import React, { useMemo } from 'react';
 import { useTranslation } from '../LanguageContext';
 import { EmissionCategory, Facility, BoundaryApproach, EmissionSource } from '../types';
 import { IconX } from './IconComponents';
-import { TranslationKey } from '../translations';
-import { SCOPE2_FACTORS_BY_REGION } from '../constants';
+// FIX: Changed import path to be more explicit.
+import { TranslationKey } from '../translations/index';
+// FIX: Changed import path to be more explicit.
+import { SCOPE2_FACTORS_BY_REGION } from '../constants/index';
 
 interface ReportGeneratorProps {
   isOpen: boolean;
@@ -88,8 +90,10 @@ export const ReportGenerator: React.FC<ReportGeneratorProps> = ({
     if (source.category === EmissionCategory.PurchasedEnergy && source.fuelType === 'Grid Electricity') {
         for (const regionData of Object.values(SCOPE2_FACTORS_BY_REGION)) {
             const fuel = allFactors.scope2.find((f: any) => f.name === 'Grid Electricity');
-            if(fuel && fuel.factors.kWh === regionData.factors.kWh) {
-                return regionData.source;
+            // FIX: Cast regionData to any to access properties on the unknown type.
+            if(fuel && fuel.factors.kWh === (regionData as any).factors.kWh) {
+                // FIX: Cast regionData to any to access properties on the unknown type.
+                return (regionData as any).source;
             }
         }
     }

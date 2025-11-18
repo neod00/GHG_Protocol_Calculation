@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { BoundaryApproach, Facility, EmissionCategory } from '../types';
 import { useTranslation } from '../LanguageContext';
 import { IconX, IconInfo, IconPencil, IconCheck } from './IconComponents';
-import { FACILITY_TYPES_BY_SCOPE, ALL_SCOPE3_CATEGORIES } from '../constants';
+// FIX: Changed import path to be more explicit.
+import { FACILITY_TYPES_BY_SCOPE, ALL_SCOPE3_CATEGORIES } from '../constants/index';
 
 interface Scope3Settings {
     isEnabled: boolean;
