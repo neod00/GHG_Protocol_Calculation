@@ -29,10 +29,14 @@ export const Category6Row: React.FC<SourceInputRowProps> = ({ source, onUpdate, 
     
     const calculationMethod: Cat6CalculationMethod = source.calculationMethod as Cat6CalculationMethod || 'activity';
 
-    // Ensure default calculation method
+    // Ensure default calculation method and default values
     useEffect(() => {
         if (!source.calculationMethod) {
-            onUpdate({ calculationMethod: 'activity', unit: 'passenger-km', businessTravelMode: 'Air' });
+            onUpdate({ calculationMethod: 'activity', unit: 'passenger-km', businessTravelMode: 'Air', flightClass: 'Economy' });
+        } else if (source.calculationMethod === 'activity' && source.businessTravelMode !== 'Air' && !source.fuelType && fuels?.activity?.[source.businessTravelMode || 'Rail']) {
+            // Auto-select first sub-type if missing for non-Air modes to prevent 0 emissions
+            const firstType = Object.keys(fuels.activity[source.businessTravelMode || 'Rail'])[0];
+            if (firstType) onUpdate({ fuelType: firstType });
         }
     }, []);
 
@@ -52,6 +56,14 @@ export const Category6Row: React.FC<SourceInputRowProps> = ({ source, onUpdate, 
         onUpdate(updates);
     };
 
+    const handleTotalChange = (value: string) => {
+        const val = parseFloat(value);
+        // Update the annual total by setting the first month and resetting others
+        const newQuantities = Array(12).fill(0);
+        newQuantities[0] = isNaN(val) ? 0 : val;
+        onUpdate({ monthlyQuantities: newQuantities });
+    };
+
     const handleAnalyze = async () => {
         if (!source.description) return;
         setIsLoadingAI(true);
@@ -61,9 +73,13 @@ export const Category6Row: React.FC<SourceInputRowProps> = ({ source, onUpdate, 
             const ai = new GoogleGenAI({apiKey: process.env.API_KEY as string});
             const promptText = `You are a GHG Protocol Scope 3 expert. Analyze this business travel description: "${source.description}".
             
-            1. Extract Trip Details: Origin, Destination, Mode (Air, Rail, Bus, RentalCar, PersonalCar, Hotel), and Flight Class if applicable.
-            2. Estimate Distance: Calculate the estimated one-way distance in km.
-            3. Boundary Check (CRITICAL): 
+            1. Extract Trip Details: Origin, Destination, Mode (Air, Rail, Bus, RentalCar, PersonalCar, Hotel).
+            2. Determine Sub-type:
+               - If Air: Flight Class (Economy, Business, First).
+               - If PersonalCar/RentalCar: Fuel type (Gasoline, Diesel, Electric, Hybrid, LPG).
+               - If Rail: Type (National Rail, High-speed Rail, Subway).
+            3. Estimate Distance: Calculate the estimated one-way distance in km.
+            4. Boundary Check (CRITICAL): 
                - If it describes commuting (home to work), flag as 'Category 7'.
                - If it implies a company-owned vehicle (e.g. "Company fleet"), flag as 'Scope 1'.
             
@@ -73,6 +89,7 @@ export const Category6Row: React.FC<SourceInputRowProps> = ({ source, onUpdate, 
                 type: Type.OBJECT,
                 properties: {
                     mode: { type: Type.STRING, description: 'Air, Rail, Bus, RentalCar, PersonalCar, Hotel' },
+                    sub_type: { type: Type.STRING, description: 'Specific fuel or type (e.g., Gasoline, High-speed Rail)' },
                     origin: { type: Type.STRING },
                     destination: { type: Type.STRING },
                     flight_class: { type: Type.STRING, description: 'Economy, Business, First' },
@@ -109,6 +126,20 @@ export const Category6Row: React.FC<SourceInputRowProps> = ({ source, onUpdate, 
         
         if (aiAnalysisResult.mode && Object.keys(fuels.activity).includes(aiAnalysisResult.mode)) {
             updates.businessTravelMode = aiAnalysisResult.mode as BusinessTravelMode;
+            
+            // Auto-select sub-type based on AI suggestion or default to first available
+            if (aiAnalysisResult.mode !== 'Air') {
+                const availableTypes = Object.keys(fuels.activity[aiAnalysisResult.mode] || {});
+                if (availableTypes.length > 0) {
+                    // Try to match AI sub_type (fuzzy match)
+                    let matchedType = availableTypes[0];
+                    if (aiAnalysisResult.sub_type) {
+                        const found = availableTypes.find(t => t.toLowerCase().includes(aiAnalysisResult.sub_type.toLowerCase()) || aiAnalysisResult.sub_type.toLowerCase().includes(t.toLowerCase()));
+                        if (found) matchedType = found;
+                    }
+                    updates.fuelType = matchedType;
+                }
+            }
         }
         
         if (aiAnalysisResult.flight_class && ['Economy', 'Business', 'First'].includes(aiAnalysisResult.flight_class)) {
@@ -131,6 +162,29 @@ export const Category6Row: React.FC<SourceInputRowProps> = ({ source, onUpdate, 
                  return `${(source.supplierProvidedCO2e || 0).toLocaleString()} kg CO₂e`;
             default:
                 return '-';
+        }
+    };
+
+    const handleModeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const newMode = e.target.value as BusinessTravelMode;
+        const updates: Partial<EmissionSource> = { businessTravelMode: newMode };
+
+        // Automatically set a default sub-type/fuelType to avoid 0 emissions
+        if (newMode === 'Air') {
+             updates.flightClass = 'Economy';
+        } else if (fuels.activity[newMode]) {
+             // Select the first available type for this mode
+             const firstType = Object.keys(fuels.activity[newMode])[0];
+             if (firstType) {
+                 updates.fuelType = firstType;
+             }
+        }
+        onUpdate(updates);
+    };
+
+    const preventNonNumericKeys = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (['e', 'E', '+', '-'].includes(e.key)) {
+          e.preventDefault();
         }
     };
 
@@ -196,6 +250,7 @@ export const Category6Row: React.FC<SourceInputRowProps> = ({ source, onUpdate, 
                                  ) : (
                                     <p><span className="font-semibold">{t('estimatedDistance')}:</span> {aiAnalysisResult.estimated_distance_km} km</p>
                                  )}
+                                 {aiAnalysisResult.sub_type && <p><span className="font-semibold">{t('suggestedTravelType')}:</span> {aiAnalysisResult.sub_type}</p>}
                              </div>
 
                              <div className="flex justify-end mt-2">
@@ -228,7 +283,7 @@ export const Category6Row: React.FC<SourceInputRowProps> = ({ source, onUpdate, 
                             <div className="grid grid-cols-2 gap-2">
                                 <div>
                                     <label className={commonLabelClass}>{t('businessTravelMode')}</label>
-                                    <select value={source.businessTravelMode} onChange={e => onUpdate({ businessTravelMode: e.target.value as BusinessTravelMode })} className={commonSelectClass}>
+                                    <select value={source.businessTravelMode} onChange={handleModeChange} className={commonSelectClass}>
                                         {Object.keys(fuels.activity).map(mode => <option key={mode} value={mode}>{t(mode as TranslationKey)}</option>)}
                                     </select>
                                 </div>
@@ -243,7 +298,8 @@ export const Category6Row: React.FC<SourceInputRowProps> = ({ source, onUpdate, 
                                                 <option value="First">{t('First')}</option>
                                             </select>
                                         ) : (
-                                            <select value={source.fuelType} onChange={e => onUpdate({ fuelType: e.target.value })} className={commonSelectClass}>
+                                            <select value={source.fuelType || ''} onChange={e => onUpdate({ fuelType: e.target.value })} className={commonSelectClass}>
+                                                 {!source.fuelType && <option value="" disabled>{t('type')}</option>}
                                                  {source.businessTravelMode && fuels.activity[source.businessTravelMode] && Object.keys(fuels.activity[source.businessTravelMode]).map(type => {
                                                      const item = fuels.activity[source.businessTravelMode][type];
                                                      // item could be nested for flight distance (handled above) or direct factor
@@ -257,7 +313,7 @@ export const Category6Row: React.FC<SourceInputRowProps> = ({ source, onUpdate, 
                                 {source.businessTravelMode === 'Hotel' && (
                                      <div>
                                         <label className={commonLabelClass}>{t('serviceType')}</label>
-                                        <select value={source.fuelType} onChange={e => onUpdate({ fuelType: e.target.value })} className={commonSelectClass}>
+                                        <select value={source.fuelType || ''} onChange={e => onUpdate({ fuelType: e.target.value })} className={commonSelectClass}>
                                              {Object.keys(fuels.activity.Hotel).map(type => <option key={type} value={type}>{t(fuels.activity.Hotel[type].translationKey)}</option>)}
                                         </select>
                                     </div>
@@ -325,9 +381,14 @@ export const Category6Row: React.FC<SourceInputRowProps> = ({ source, onUpdate, 
                              </div>
                              <div className="col-span-2">
                                  <label className={commonLabelClass}>{t('totalYear')}</label>
-                                 <div className="bg-gray-100 dark:bg-gray-700 p-2 rounded text-sm">
-                                    {source.monthlyQuantities.reduce((a,b)=>a+b,0).toLocaleString()} {source.unit}
-                                 </div>
+                                 <input 
+                                    type="number" 
+                                    value={source.monthlyQuantities.reduce((a,b)=>a+b,0) || ''} 
+                                    onChange={(e) => handleTotalChange(e.target.value)}
+                                    onKeyDown={preventNonNumericKeys}
+                                    className={commonInputClass}
+                                    placeholder="0"
+                                 />
                              </div>
                         </div>
                     )}

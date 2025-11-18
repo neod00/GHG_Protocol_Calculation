@@ -54,6 +54,13 @@ export const Category5Row: React.FC<SourceInputRowProps> = ({ source, onUpdate, 
         
         onUpdate(updates);
     };
+    
+    const handleTotalChange = (value: string) => {
+        const val = parseFloat(value);
+        const newQuantities = Array(12).fill(0);
+        newQuantities[0] = isNaN(val) ? 0 : val;
+        onUpdate({ monthlyQuantities: newQuantities });
+    };
 
     const handleAnalyze = async () => {
         if (!source.description) return;
@@ -139,6 +146,12 @@ export const Category5Row: React.FC<SourceInputRowProps> = ({ source, onUpdate, 
                  return `${(source.supplierProvidedCO2e || 0).toLocaleString()} kg CO₂e`;
             default:
                 return '-';
+        }
+    };
+    
+    const preventNonNumericKeys = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (['e', 'E', '+', '-'].includes(e.key)) {
+          e.preventDefault();
         }
     };
 
@@ -258,10 +271,14 @@ export const Category5Row: React.FC<SourceInputRowProps> = ({ source, onUpdate, 
                              {/* Total Weight */}
                              <div>
                                  <label className={commonLabelClass}>{t('totalYear')} ({t('tonnes')})</label>
-                                 <div className="bg-gray-100 dark:bg-gray-700 p-2 rounded text-sm flex justify-between items-center">
-                                     <span>{source.monthlyQuantities.reduce((a,b)=>a+b,0).toLocaleString()}</span>
-                                     <span className="text-xs text-ghg-green cursor-pointer hover:underline" onClick={() => alert('Switch to main view to edit monthly data')}>{t('editMonthly')}</span>
-                                 </div>
+                                 <input 
+                                    type="number" 
+                                    value={source.monthlyQuantities.reduce((a,b)=>a+b,0) || ''} 
+                                    onChange={(e) => handleTotalChange(e.target.value)}
+                                    onKeyDown={preventNonNumericKeys}
+                                    className={commonInputClass}
+                                    placeholder="0"
+                                 />
                              </div>
 
                              {/* Transport Integration */}
@@ -321,9 +338,14 @@ export const Category5Row: React.FC<SourceInputRowProps> = ({ source, onUpdate, 
                              </div>
                              <div className="col-span-2">
                                  <label className={commonLabelClass}>{t('totalYear')}</label>
-                                 <div className="bg-gray-100 dark:bg-gray-700 p-2 rounded text-sm">
-                                    {source.monthlyQuantities.reduce((a,b)=>a+b,0).toLocaleString()} {source.unit}
-                                 </div>
+                                 <input 
+                                    type="number" 
+                                    value={source.monthlyQuantities.reduce((a,b)=>a+b,0) || ''} 
+                                    onChange={(e) => handleTotalChange(e.target.value)}
+                                    onKeyDown={preventNonNumericKeys}
+                                    className={commonInputClass}
+                                    placeholder="0"
+                                 />
                              </div>
                         </div>
                     )}

@@ -39,9 +39,6 @@ export const Category4_9Row: React.FC<SourceInputRowProps> = ({ source, onUpdate
         if (method === 'warehousing') {
             onUpdate({ 
                 downstreamActivityType: 'warehousing',
-                // Default warehousing to spend-based unless user has better data, 
-                // but keep 'spend' as the calc method key for simplicity in MainCalculator or 'asset_specific' if available.
-                // For now, mapping to 'spend' logic for simplified warehousing in Cat 4.
                 calculationMethod: 'spend',
                 fuelType: TRANSPORTATION_SPEND_FACTORS[1]?.name || '', // Default to warehousing spend
                 unit: 'USD'
@@ -54,6 +51,13 @@ export const Category4_9Row: React.FC<SourceInputRowProps> = ({ source, onUpdate
                 unit: method === 'activity' ? 'tonne-km' : method === 'spend' ? 'USD' : method === 'fuel' ? 'liters' : 'kg CO₂e'
             });
         }
+    };
+    
+    const handleTotalChange = (value: string) => {
+        const val = parseFloat(value);
+        const newQuantities = Array(12).fill(0);
+        newQuantities[0] = isNaN(val) ? 0 : val;
+        onUpdate({ monthlyQuantities: newQuantities });
     };
 
     const handleAnalyze = async () => {
@@ -135,6 +139,12 @@ export const Category4_9Row: React.FC<SourceInputRowProps> = ({ source, onUpdate
                  return `${(source.supplierProvidedCO2e || 0).toLocaleString()} kg CO₂e`;
             default:
                 return '-';
+        }
+    };
+    
+    const preventNonNumericKeys = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (['e', 'E', '+', '-'].includes(e.key)) {
+          e.preventDefault();
         }
     };
 
@@ -291,11 +301,14 @@ export const Category4_9Row: React.FC<SourceInputRowProps> = ({ source, onUpdate
                              </select>
                              <div className="mt-2">
                                  <label className={commonLabelClass}>{t('totalYear')} ({t('liters')})</label>
-                                 {/* Simplified single input for total fuel if month breakdown isn't needed, reusing existing component logic usually implies monthly array though. */}
-                                 {/* We'll let the existing monthly logic handle this in a separate component or simply sum it up here for quick edit */}
-                                 <div className="bg-gray-100 dark:bg-gray-700 p-2 rounded text-sm">
-                                     {source.monthlyQuantities.reduce((a,b)=>a+b,0)} {source.unit} <span className="text-xs text-gray-500">(Use 'Edit Monthly' to change)</span>
-                                 </div>
+                                 <input 
+                                    type="number" 
+                                    value={source.monthlyQuantities.reduce((a,b)=>a+b,0) || ''} 
+                                    onChange={(e) => handleTotalChange(e.target.value)}
+                                    onKeyDown={preventNonNumericKeys}
+                                    className={commonInputClass}
+                                    placeholder="0"
+                                 />
                              </div>
                         </div>
                     )}
@@ -317,9 +330,14 @@ export const Category4_9Row: React.FC<SourceInputRowProps> = ({ source, onUpdate
                                  </div>
                                  <div>
                                      <label className={commonLabelClass}>{t('totalYear')}</label>
-                                     <div className="bg-gray-100 dark:bg-gray-700 p-2 rounded text-sm h-[38px] flex items-center">
-                                        {source.monthlyQuantities.reduce((a,b)=>a+b,0).toLocaleString()}
-                                     </div>
+                                     <input 
+                                        type="number" 
+                                        value={source.monthlyQuantities.reduce((a,b)=>a+b,0) || ''} 
+                                        onChange={(e) => handleTotalChange(e.target.value)}
+                                        onKeyDown={preventNonNumericKeys}
+                                        className={commonInputClass}
+                                        placeholder="0"
+                                     />
                                  </div>
                              </div>
                         </div>
