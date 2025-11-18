@@ -29,25 +29,38 @@ export const Scope3Calculator: React.FC<Scope3CalculatorProps> = (props) => {
     <>
       {ALL_SCOPE3_CATEGORIES
         .filter(category => props.enabledScope3Categories.includes(category))
-        .map((category) => (
-          <EmissionSourceCard
-            key={category}
-            category={category}
-            sources={props.sources[category] || []}
-            onAddSource={() => props.onAddSource(category)}
-            onUpdateSource={(id, update) => props.onUpdateSource(id, category, update)}
-            onRemoveSource={(id) => props.onRemoveSource(id, category)}
-            onFuelTypeChange={(id, newFuel) => props.onFuelTypeChange(id, newFuel, category)}
-            fuels={props.fuelsMap[category] || []}
-            calculateEmissions={props.calculateEmissions}
-            description={props.categoryDescriptions[category]}
-            facilities={props.facilities}
-            isOpen={props.openCategory === category}
-            onToggle={() => props.onToggleCategory(category)}
-            boundaryApproach={props.boundaryApproach}
-            isDisabled={!props.fuelsMap[category]}
-          />
-      ))}
+        .map((category) => {
+          const fuels = (category === EmissionCategory.UpstreamLeasedAssets || category === EmissionCategory.DownstreamLeasedAssets)
+            ? {
+                ...(props.fuelsMap[category] as any),
+                asset_specific_fuels: [
+                    ...(props.fuelsMap[EmissionCategory.StationaryCombustion] || []),
+                    ...(props.fuelsMap[EmissionCategory.MobileCombustion] || []),
+                    ...(props.fuelsMap[EmissionCategory.PurchasedEnergy] || [])
+                ]
+            }
+            : props.fuelsMap[category] || [];
+            
+          return (
+            <EmissionSourceCard
+              key={category}
+              category={category}
+              sources={props.sources[category] || []}
+              onAddSource={() => props.onAddSource(category)}
+              onUpdateSource={(id, update) => props.onUpdateSource(id, category, update)}
+              onRemoveSource={(id) => props.onRemoveSource(id, category)}
+              onFuelTypeChange={(id, newFuel) => props.onFuelTypeChange(id, newFuel, category)}
+              fuels={fuels}
+              calculateEmissions={props.calculateEmissions}
+              description={props.categoryDescriptions[category]}
+              facilities={props.facilities}
+              isOpen={props.openCategory === category}
+              onToggle={() => props.onToggleCategory(category)}
+              boundaryApproach={props.boundaryApproach}
+              isDisabled={!props.fuelsMap[category]}
+            />
+          )
+        })}
       <div className="md:col-span-2 flex justify-center items-center p-6 bg-gray-50 dark:bg-gray-800/50 rounded-xl border-2 border-dashed dark:border-gray-600">
           <button onClick={props.onManageScope3} className="bg-white dark:bg-gray-700 text-ghg-dark dark:text-gray-100 font-semibold py-2 px-4 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ghg-green border dark:border-gray-500">
               {t('manageScope3Categories')}

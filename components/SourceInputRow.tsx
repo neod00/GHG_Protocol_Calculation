@@ -16,48 +16,206 @@ interface SourceInputRowProps {
   calculateEmissions: (source: EmissionSource) => { scope1: number, scope2Location: number, scope2Market: number, scope3: number };
 }
 
-export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate, onRemove, onFuelTypeChange, fuels, facilities, calculateEmissions }) => {
-  const { t, language } = useTranslation();
-  const [isEditing, setIsEditing] = useState(false);
-  const [editedQuantities, setEditedQuantities] = useState([...source.monthlyQuantities]);
-  const [provideMarketData, setProvideMarketData] = useState(typeof source.marketBasedFactor !== 'undefined');
-  
-  // State for advanced Category 1 UI
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [isLoadingAI, setIsLoadingAI] = useState(false);
-  const [aiAnalysisResult, setAiAnalysisResult] = useState<any>(null);
+// FIX: Defined the LeasedAssetRow component which was missing, causing a compile error.
+// This component handles the specific UI and logic for Scope 3 Category 8 & 13.
+const LeasedAssetRow: React.FC<SourceInputRowProps> = ({ source, onUpdate, onRemove, onFuelTypeChange, fuels, facilities, calculateEmissions }) => {
+    const { t, language } = useTranslation();
+    const commonSelectClass = "w-full bg-white text-gray-900 dark:bg-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-500 rounded-md shadow-sm py-2 px-3 text-sm focus:outline-none focus:ring-ghg-green focus:border-ghg-green";
+    const commonLabelClass = "block text-xs font-medium text-gray-500 dark:text-gray-400";
+    const placeholderKey = getPlaceholderKey(source.category);
+    const [isLoadingAI, setIsLoadingAI] = useState(false);
+    const [aiAnalysisResult, setAiAnalysisResult] = useState<any>(null);
 
+    const calculationMethod = (source.calculationMethod as Cat8CalculationMethod) || 'asset_specific';
+    const totalEmissions = calculateEmissions(source).scope3;
 
-  useEffect(() => {
-    if ((source.category === EmissionCategory.PurchasedGoodsAndServices || source.category === EmissionCategory.CapitalGoods) && !source.calculationMethod) {
-      onUpdate({
-        calculationMethod: 'spend',
-        unit: 'KRW',
-        factor: source.factor ?? 0,
-        factorUnit: 'kg CO₂e / KRW'
-      });
-    }
-  }, [source.category, source.calculationMethod, source.factor, onUpdate]);
+    const handleMethodChange = (method: Cat8CalculationMethod) => {
+        let updates: Partial<EmissionSource> = { calculationMethod: method, monthlyQuantities: Array(12).fill(0) };
+        if (method === 'area_based') {
+            updates = { ...updates, leasedAssetType: 'Building', buildingType: 'Office' };
+        } else if (method === 'spend_based') {
+            updates = { ...updates, fuelType: fuels.spend_based[0].name, unit: fuels.spend_based[0].units[0] };
+        }
+        onUpdate(updates);
+    };
 
-  // This effect synchronizes the local editing state with the props from the parent.
-  // It runs when the source data changes externally OR when editing is cancelled.
-  // It specifically avoids running while the user is actively editing,
-  // preventing their input from being overwritten by prop updates.
-  useEffect(() => {
-    if (!isEditing) {
-      setEditedQuantities([...source.monthlyQuantities]);
-    }
-  }, [source.monthlyQuantities, isEditing]);
+    const handleEnergyInputChange = (index: number, field: string, value: any) => {
+        const newInputs = [...(source.energyInputs || [])];
+        const updatedInput = { ...newInputs[index], [field]: value };
+        if (field === 'type') {
+            const fuelData = fuels.asset_specific_fuels.find((f:any) => f.name === value);
+            if(fuelData && fuelData.units) {
+                updatedInput.unit = fuelData.units[0];
+            }
+        }
+        newInputs[index] = updatedInput;
+        onUpdate({ energyInputs: newInputs });
+    };
 
-  const renderUnit = (unit: string) => {
-    if (unit === 'cubic meters') {
-      return <span>m<sup>3</sup></span>;
-    }
-    return t(unit as TranslationKey) || unit;
-  };
+    const addEnergyInput = () => {
+        const newInputs = [...(source.energyInputs || [])];
+        newInputs.push({ id: `energy-${Date.now()}`, type: 'Natural Gas', value: 0, unit: 'cubic meters' });
+        onUpdate({ energyInputs: newInputs });
+    };
+    
+    const removeEnergyInput = (index: number) => {
+        const newInputs = [...(source.energyInputs || [])];
+        newInputs.splice(index, 1);
+        onUpdate({ energyInputs: newInputs });
+    };
 
+    const handleAnalyze = async () => {
+        if (!source.description) return;
+        setIsLoadingAI(true);
+        setAiAnalysisResult(null);
 
-  const getPlaceholderKey = (category: EmissionCategory): TranslationKey => {
+        try {
+            const ai = new GoogleGenAI({apiKey: process.env.API_KEY as string});
+            const buildingTypes = Object.keys(fuels.area_based).join(', ');
+            const promptText = `As a GHG Protocol expert for Scope 3 Leased Assets, analyze: "${source.description}". Suggest an asset type and, if it is a building, a building type. Valid Asset Types: Building, Vehicle, Equipment. Valid Building Types: ${buildingTypes}. Provide a structured JSON response.`;
+            const responseSchema = {
+                type: Type.OBJECT,
+                properties: {
+                    suggested_asset_type: { type: Type.STRING, description: "One of: 'Building', 'Vehicle', 'Equipment'." },
+                    suggested_building_type: { type: Type.STRING, description: `If asset type is 'Building', suggest one of the valid building types. Otherwise, null.`, nullable: true },
+                    justification: { type: Type.STRING, description: "A brief explanation for your choices." },
+                }
+            };
+
+            const response = await ai.models.generateContent({
+                model: 'gemini-2.5-flash',
+                contents: promptText,
+                config: { responseMimeType: "application/json", responseSchema },
+            });
+            const result = JSON.parse(response.text);
+            setAiAnalysisResult(result);
+
+        } catch (error) {
+            console.error("AI analysis failed:", error);
+            setAiAnalysisResult({ error: "Failed to analyze." });
+        } finally {
+            setIsLoadingAI(false);
+        }
+    };
+    
+    const handleApplyAISuggestion = () => {
+        if (!aiAnalysisResult || aiAnalysisResult.error) return;
+        
+        const updates: Partial<EmissionSource> = {};
+        const { suggested_asset_type, suggested_building_type } = aiAnalysisResult;
+
+        if (['Building', 'Vehicle', 'Equipment'].includes(suggested_asset_type)) {
+            updates.leasedAssetType = suggested_asset_type as LeasedAssetType;
+        }
+        
+        if (suggested_asset_type === 'Building' && suggested_building_type && Object.keys(fuels.area_based).includes(suggested_building_type)) {
+            updates.buildingType = suggested_building_type as BuildingType;
+            if (source.calculationMethod === 'spend_based' || source.calculationMethod === 'supplier_specific') {
+                updates.calculationMethod = 'area_based';
+            }
+        }
+        
+        onUpdate(updates);
+        setAiAnalysisResult(null);
+    };
+
+    return (
+      <div className="flex flex-col gap-3 p-3 bg-gray-50 rounded-lg border dark:bg-gray-800 dark:border-gray-600">
+        <div className="flex justify-between items-start">
+            <div className='flex-grow pr-4'>
+                <label className={commonLabelClass}>{t('calculationMethod')}</label>
+                <div className="flex gap-1 rounded-md bg-gray-200 dark:bg-gray-900 p-1 text-xs">
+                    {(['asset_specific', 'area_based', 'spend_based', 'supplier_specific'] as Cat8CalculationMethod[]).map(method => (
+                        <button key={method} onClick={() => handleMethodChange(method)} className={`flex-1 py-1 rounded-md transition-colors ${calculationMethod === method ? 'bg-white dark:bg-gray-700 shadow font-semibold' : 'hover:bg-gray-100 dark:hover:bg-gray-800'}`}>
+                            {t(`${method}Method` as TranslationKey)}
+                        </button>
+                    ))}
+                </div>
+            </div>
+            <button onClick={onRemove} className="text-gray-400 hover:text-red-600 p-1 dark:text-gray-500 dark:hover:text-red-500" aria-label={t('removeSourceAria')}>
+                <IconTrash className="h-5 w-5" />
+            </button>
+        </div>
+
+        <div>
+            <label htmlFor={`description-${source.id}`} className={commonLabelClass}>{t('emissionSourceDescription')}</label>
+             <div className="flex gap-2">
+                <input id={`description-${source.id}`} type="text" value={source.description || ''} onChange={(e) => onUpdate({ description: e.target.value })} className={commonSelectClass} placeholder={t(placeholderKey)} />
+                 <button onClick={handleAnalyze} disabled={isLoadingAI || !source.description} className="px-3 py-2 bg-ghg-light-green text-white rounded-md hover:bg-ghg-green disabled:bg-gray-400 flex items-center gap-2">
+                    <IconSparkles className="w-4 h-4" />
+                    <span className="text-sm font-semibold">{isLoadingAI ? '...' : t('analyzeWithAI')}</span>
+                </button>
+            </div>
+        </div>
+        
+        {aiAnalysisResult && !aiAnalysisResult.error && (
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-800 dark:bg-blue-900/30 dark:border-blue-700/50 text-xs space-y-2">
+                <h4 className="font-semibold text-sm mb-1">{t('aiAnalysis')}</h4>
+                <p><span className="font-semibold">{t('suggestedAssetType')}:</span> {t(aiAnalysisResult.suggested_asset_type as TranslationKey)}</p>
+                {aiAnalysisResult.suggested_building_type && <p><span className="font-semibold">{t('suggestedBuildingType')}:</span> {t(fuels.area_based[aiAnalysisResult.suggested_building_type]?.translationKey as TranslationKey)}</p>}
+                <p><span className="font-semibold">{t('justification')}:</span> {aiAnalysisResult.justification}</p>
+                <div className="flex justify-between items-center mt-2 pt-2 border-t dark:border-blue-700/50">
+                    <p className="text-blue-600 dark:text-blue-300">{t('aiDisclaimer')}</p>
+                    <button onClick={handleApplyAISuggestion} className="bg-blue-500 text-white font-semibold py-1 px-3 rounded-md hover:bg-blue-600 text-xs">{t('applySuggestion')}</button>
+                </div>
+            </div>
+        )}
+        
+        {calculationMethod === 'supplier_specific' && (
+            <div>
+                <label htmlFor={`supplier-co2e-${source.id}`} className={commonLabelClass}>{t('supplierProvidedCO2e')}</label>
+                <input id={`supplier-co2e-${source.id}`} type="number" step="any" value={source.supplierProvidedCO2e ?? ''} onChange={(e) => onUpdate({ supplierProvidedCO2e: parseFloat(e.target.value) || 0 })} className={commonSelectClass} placeholder="0" />
+            </div>
+        )}
+        
+        {calculationMethod === 'area_based' && source.leasedAssetType === 'Building' && (
+            <div className="space-y-3">
+                <div className="p-2 bg-blue-50 text-blue-800 text-xs rounded-md border border-blue-200 dark:bg-blue-900/30 dark:text-blue-200 dark:border-blue-700/50">{t('cat8AreaGuidance')}</div>
+                <div className="grid grid-cols-2 gap-2">
+                    <div>
+                        <label className={commonLabelClass}>{t('buildingType')}</label>
+                        <select value={source.buildingType} onChange={(e) => onUpdate({ buildingType: e.target.value as BuildingType })} className={commonSelectClass}>
+                            {Object.keys(fuels.area_based).map(type => <option key={type} value={type}>{t(fuels.area_based[type].translationKey)}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label className={commonLabelClass}>{t('areaSqm')}</label>
+                        <input type="number" value={source.areaSqm || ''} onChange={e => onUpdate({ areaSqm: parseFloat(e.target.value) || 0 })} className={commonSelectClass} />
+                    </div>
+                </div>
+            </div>
+        )}
+
+        {calculationMethod === 'asset_specific' && (
+            <div className="space-y-3">
+                <h4 className="text-sm font-medium">{t('energyInputs')}</h4>
+                <div className="space-y-2 max-h-40 overflow-y-auto pr-2 -mr-2">
+                    {(source.energyInputs || []).map((input, index) => (
+                        <div key={input.id} className="p-2 border rounded dark:border-gray-600 grid grid-cols-[1fr_1fr_1fr_auto] gap-2 items-end">
+                            <select value={input.type} onChange={e => handleEnergyInputChange(index, 'type', e.target.value)} className={commonSelectClass}>
+                                {fuels.asset_specific_fuels.map((f: any) => <option key={f.name} value={f.name}>{t(f.translationKey as TranslationKey)}</option>)}
+                            </select>
+                            <input type="number" value={input.value || ''} onChange={e => handleEnergyInputChange(index, 'value', parseFloat(e.target.value) || 0)} className={commonSelectClass} />
+                            <select value={input.unit} onChange={e => handleEnergyInputChange(index, 'unit', e.target.value)} className={commonSelectClass}>
+                                {(fuels.asset_specific_fuels.find((f:any) => f.name === input.type)?.units || []).map((u: string) => <option key={u} value={u}>{t(u as TranslationKey)}</option>)}
+                            </select>
+                            <button onClick={() => removeEnergyInput(index)} className="text-gray-400 hover:text-red-500"><IconTrash className="w-4 h-4" /></button>
+                        </div>
+                    ))}
+                </div>
+                <button onClick={addEnergyInput} className="text-sm text-ghg-green font-semibold hover:underline">{t('addEnergyInput')}</button>
+            </div>
+        )}
+
+        <div className="mt-2 p-2 bg-gray-100 dark:bg-gray-700 rounded-md text-right">
+            <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{t('emissionsForSource')}: </span>
+            <span className="text-sm font-bold text-ghg-dark dark:text-gray-100">{(totalEmissions / 1000).toLocaleString('en-US', {minimumFractionDigits: 3})} t CO₂e</span>
+        </div>
+      </div>
+    );
+};
+
+const getPlaceholderKey = (category: EmissionCategory): TranslationKey => {
     switch (category) {
         case EmissionCategory.FugitiveEmissions:
             return 'fugitiveDescriptionPlaceholder';
@@ -103,7 +261,48 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
         default:
             return 'emissionSourceDescriptionPlaceholder';
     }
-  }
+}
+
+
+export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate, onRemove, onFuelTypeChange, fuels, facilities, calculateEmissions }) => {
+  const { t, language } = useTranslation();
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedQuantities, setEditedQuantities] = useState([...source.monthlyQuantities]);
+  const [provideMarketData, setProvideMarketData] = useState(typeof source.marketBasedFactor !== 'undefined');
+  
+  // State for advanced Category 1 UI
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isLoadingAI, setIsLoadingAI] = useState(false);
+  const [aiAnalysisResult, setAiAnalysisResult] = useState<any>(null);
+
+
+  useEffect(() => {
+    if ((source.category === EmissionCategory.PurchasedGoodsAndServices || source.category === EmissionCategory.CapitalGoods) && !source.calculationMethod) {
+      onUpdate({
+        calculationMethod: 'spend',
+        unit: 'KRW',
+        factor: source.factor ?? 0,
+        factorUnit: 'kg CO₂e / KRW'
+      });
+    }
+  }, [source.category, source.calculationMethod, source.factor, onUpdate]);
+
+  // This effect synchronizes the local editing state with the props from the parent.
+  // It runs when the source data changes externally OR when editing is cancelled.
+  // It specifically avoids running while the user is actively editing,
+  // preventing their input from being overwritten by prop updates.
+  useEffect(() => {
+    if (!isEditing) {
+      setEditedQuantities([...source.monthlyQuantities]);
+    }
+  }, [source.monthlyQuantities, isEditing]);
+
+  const renderUnit = (unit: string) => {
+    if (unit === 'cubic meters') {
+      return <span>m<sup>3</sup></span>;
+    }
+    return t(unit as TranslationKey) || unit;
+  };
 
   const handleMonthlyChange = (monthIndex: number, value: string) => {
     const newQuantities = [...editedQuantities];
@@ -154,9 +353,13 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
   const groupedFacilities = useMemo(() => {
     const groups: { [key: string]: Facility[] } = {};
     const ungrouped: Facility[] = [];
+    const corporate: Facility[] = [];
     
     facilities.forEach(f => {
-        if (f.isCorporate) return; // Exclude corporate from regular grouping
+        if (f.isCorporate) {
+            corporate.push(f);
+            return;
+        }
         const groupKey = f.group || '';
         if (groupKey) {
             if (!groups[groupKey]) {
@@ -168,7 +371,7 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
         }
     });
     
-    return { groups, ungrouped };
+    return { groups, ungrouped, corporate };
   }, [facilities]);
 
   const preventNonNumericKeys = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -280,7 +483,6 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
     }
   };
 
-  // Fix: Add block scopes to `case` statements to prevent variable redeclaration errors.
   const handleApplyAISuggestion = () => {
     if (!aiAnalysisResult) return;
     let updates: Partial<EmissionSource> = {};
@@ -323,11 +525,10 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
             const { suggested_mode, suggested_type } = aiAnalysisResult;
             if (fuels.activity[suggested_mode]?.[suggested_type] || (suggested_mode === 'Air' && Object.values(fuels.activity.Air).some((haul: any) => haul[suggested_type]))) {
                  updates.businessTravelMode = suggested_mode;
-                 // For Air, `suggested_type` is the class, `fuelType` is the haul
                  if (suggested_mode === 'Air') {
                     for (const haul in fuels.activity.Air) {
                         if(Object.keys(fuels.activity.Air[haul]).includes(suggested_type)) {
-                           updates.fuelType = haul; // This is not ideal, but how the structure works
+                           updates.fuelType = haul; 
                            updates.flightClass = suggested_type;
                         }
                     }
@@ -383,7 +584,6 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
   };
 
 
-  // == Advanced UI for Category 1 & 2 ==
   if (source.category === EmissionCategory.PurchasedGoodsAndServices || source.category === EmissionCategory.CapitalGoods) {
     const placeholderText = source.category === EmissionCategory.PurchasedGoodsAndServices
       ? t('purchasedGoodsServicesPlaceholder')
@@ -411,7 +611,6 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
 
     return (
       <div className="flex flex-col gap-2 p-3 bg-gray-50 rounded-lg border dark:bg-gray-800 dark:border-gray-600">
-        {/* Collapsed View */}
         <div className="flex justify-between items-center">
             <div className='truncate pr-2'>
                 <p className="text-sm font-medium text-ghg-dark dark:text-gray-100 truncate">{source.fuelType || placeholderText}</p>
@@ -430,9 +629,7 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
             </div>
         </div>
 
-        {/* Expanded View */}
         {isExpanded && <div className="flex flex-col gap-3 pt-3 border-t dark:border-gray-600">
-            {/* GUIDANCE BOX for Category 2 */}
             {source.category === EmissionCategory.CapitalGoods && (
                 <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800 dark:bg-yellow-900/30 dark:border-yellow-700/50 dark:text-yellow-200 text-xs space-y-2">
                     <h4 className="font-semibold text-sm flex items-center gap-2"><IconInfo className="w-4 h-4" /> {t('capitalGoodsInfoTitle')}</h4>
@@ -444,7 +641,6 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
                 </div>
             )}
             
-            {/* Item Description & AI */}
             <div>
                 <label htmlFor={`description-${source.id}`} className={commonLabelClass}>{t('emissionSourceDescription')}</label>
                 <div className="flex gap-2">
@@ -471,7 +667,6 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
                 </div>
             )}
 
-            {/* Calculation Method */}
             <div>
                 <label className={commonLabelClass}>{t('calculationMethod')}</label>
                 <div className="flex gap-2 rounded-md bg-gray-200 dark:bg-gray-900 p-1">
@@ -486,7 +681,6 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
                 </div>
             </div>
 
-            {/* Conditional Inputs */}
             {source.calculationMethod === 'supplier_co2e' && (
                 <div>
                     <label htmlFor={`supplier-co2e-${source.id}`} className={commonLabelClass}>{t('supplierProvidedCO2e')}</label>
@@ -534,7 +728,6 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
                  </div>
             </>)}
 
-            {/* Data Quality & Assumptions */}
              <div>
                 <label htmlFor={`activityDataSource-${source.id}`} className={commonLabelClass}>{t('activityDataSource')}</label>
                 <input
@@ -573,8 +766,6 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
                 />
             </div>
 
-
-            {/* Monthly Inputs */}
              <div className="mt-2">
                 <div className="flex justify-between items-center bg-gray-100 dark:bg-gray-700 p-2 rounded-md">
                     <div>
@@ -623,7 +814,6 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
     );
   }
 
-  // == Advanced UI for Category 3 ==
   if (source.category === EmissionCategory.FuelAndEnergyRelatedActivities) {
     if (source.isAutoGenerated) {
         return (
@@ -641,7 +831,6 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
         );
     }
 
-    // Render interactive UI for user-added sources
     const activityType = source.activityType || 'fuel_wtt';
     
     return (
@@ -757,8 +946,6 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
                 </>
             )}
             {activityType === 'spend_based' && (
-                // This is a simplified version of the Cat 1/2 UI.
-                // It reuses the same logic by setting calculationMethod.
                  <p className='text-sm text-center p-4 bg-yellow-50 dark:bg-yellow-900/50 rounded-md'>{t('comingSoon')}</p>
             )}
 
@@ -766,7 +953,6 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
     );
   }
 
-  // == Advanced UI for Category 4 & 9 ==
   if (source.category === EmissionCategory.UpstreamTransportationAndDistribution || source.category === EmissionCategory.DownstreamTransportationAndDistribution) {
     const calculationMethod = source.calculationMethod || 'activity';
 
@@ -787,11 +973,29 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
     };
 
     const vehicleTypesForMode = source.transportMode ? Object.keys(fuels[source.transportMode]) : [];
+    
+    // For Cat 9, if warehousing is selected, render the Leased Asset UI
+    if (source.category === EmissionCategory.DownstreamTransportationAndDistribution && source.downstreamActivityType === 'warehousing') {
+      return <LeasedAssetRow source={source} onUpdate={onUpdate} onRemove={onRemove} onFuelTypeChange={onFuelTypeChange} fuels={fuels} facilities={facilities} calculateEmissions={calculateEmissions} />;
+    }
 
     return (
       <div className="flex flex-col gap-3 p-3 bg-gray-50 rounded-lg border dark:bg-gray-800 dark:border-gray-600">
         <div className="flex justify-between items-start">
             <div className='flex-grow pr-4'>
+                {source.category === EmissionCategory.DownstreamTransportationAndDistribution && (
+                    <div className="mb-3">
+                        <label className={commonLabelClass}>{t('downstreamActivityType')}</label>
+                        <select
+                            value={source.downstreamActivityType || 'transportation'}
+                            onChange={(e) => onUpdate({ downstreamActivityType: e.target.value as any, leasedAssetType: 'Building', buildingType: 'Warehouse' })} // Default to warehouse for warehousing
+                            className="text-sm bg-white text-gray-900 border border-gray-300 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100 rounded-md shadow-sm py-1 px-2 focus:outline-none focus:ring-ghg-green focus:border-ghg-green"
+                        >
+                            <option value="transportation">{t('transportation')}</option>
+                            <option value="warehousing">{t('warehousing')}</option>
+                        </select>
+                    </div>
+                )}
                 <label className={commonLabelClass}>{t('calculationMethod')}</label>
                 <div className="flex gap-1 rounded-md bg-gray-200 dark:bg-gray-900 p-1 text-xs">
                     {(['activity', 'fuel', 'spend', 'supplier_specific'] as Cat4CalculationMethod[]).map(method => (
@@ -836,7 +1040,6 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
             <input id={`activityDataSource-${source.id}`} type="text" value={source.activityDataSource ?? ''} onChange={(e) => onUpdate({ activityDataSource: e.target.value })} className={commonSelectClass} placeholder={t('activityDataSourcePlaceholder')} />
         </div>
 
-        {/* Activity-based Form */}
         {calculationMethod === 'activity' && (
             <div className="space-y-3">
                  <div className="grid grid-cols-2 gap-2">
@@ -883,7 +1086,6 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
             </div>
         )}
 
-        {/* Fuel-based & Spend-based Forms with Monthly Data */}
         {(calculationMethod === 'fuel' || calculationMethod === 'spend') && (
             <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-2">
@@ -946,7 +1148,6 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
             </div>
         )}
         
-        {/* Supplier-specific Form */}
         {calculationMethod === 'supplier_specific' && (
             <div>
                 <label htmlFor={`supplier-co2e-${source.id}`} className={commonLabelClass}>{t('supplierProvidedCO2e')}</label>
@@ -954,7 +1155,6 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
             </div>
         )}
 
-        {/* Total emissions display */}
         <div className="mt-2 p-2 bg-gray-100 dark:bg-gray-700 rounded-md text-right">
             <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{t('emissionsForSource')}: </span>
             <span className="text-sm font-bold text-ghg-dark dark:text-gray-100">{(totalEmissions / 1000).toLocaleString('en-US', {minimumFractionDigits: 3})} t CO₂e</span>
@@ -963,7 +1163,6 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
     );
   }
 
-  // == Advanced UI for Category 5 ==
   if (source.category === EmissionCategory.WasteGeneratedInOperations) {
     const calculationMethod = (source.calculationMethod as Cat5CalculationMethod) || 'activity';
 
@@ -1045,7 +1244,6 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
                     </div>
                 </div>
 
-                {/* Monthly Data */}
                 <div className="mt-2">
                     <div className={`flex justify-between items-center bg-gray-100 dark:bg-gray-700 p-2 ${isEditing ? 'rounded-t-lg' : 'rounded-lg'}`}>
                         <div>
@@ -1082,7 +1280,6 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
                     )}
                 </div>
 
-                {/* Transport Section */}
                  <div className="mt-2 space-y-2 p-3 bg-gray-100 dark:bg-gray-900/50 rounded-md">
                     <label className="flex items-center space-x-2 text-sm font-medium">
                         <input type="checkbox" checked={source.includeTransport || false} onChange={e => onUpdate({ includeTransport: e.target.checked })} className="rounded text-ghg-green focus:ring-ghg-green"/>
@@ -1173,7 +1370,6 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
             </div>
         )}
 
-        {/* Total emissions display */}
         <div className="mt-2 p-2 bg-gray-100 dark:bg-gray-700 rounded-md text-right">
             <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{t('emissionsForSource')}: </span>
             <span className="text-sm font-bold text-ghg-dark dark:text-gray-100">{(totalEmissions / 1000).toLocaleString('en-US', {minimumFractionDigits: 3})} t CO₂e</span>
@@ -1182,7 +1378,6 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
     );
   }
 
-  // == Advanced UI for Category 6 ==
   if (source.category === EmissionCategory.BusinessTravel) {
     const calculationMethod = (source.calculationMethod as Cat6CalculationMethod) || 'activity';
 
@@ -1277,105 +1472,53 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
                         </div>
                          <div>
                             <label className={commonLabelClass}>{t('passengers')}</label>
-                            <input type="number" value={source.passengers || ''} onChange={e => onUpdate({ passengers: parseInt(e.target.value) || 0 })} className={commonSelectClass} placeholder="1" />
+                            <input type="number" value={source.passengers || ''} onChange={e => onUpdate({ passengers: parseInt(e.target.value) || 1 })} className={commonSelectClass} placeholder="1" min="1" />
                         </div>
                     </div>
                 )}
+                
                 {(travelMode === 'Rail' || travelMode === 'Bus' || travelMode === 'RentalCar' || travelMode === 'PersonalCar') && (
-                    <div className="grid grid-cols-2 gap-2">
+                     <div className="grid grid-cols-2 gap-2">
                         <div>
                             <label className={commonLabelClass}>{t('vehicle')}</label>
-                            <select value={source.fuelType || ''} onChange={e => onUpdate({ fuelType: e.target.value })} className={commonSelectClass}>
-                                {Object.keys(activityFactors[travelMode]).map(v => <option key={v} value={v}>{t((activityFactors[travelMode] as any)[v].translationKey)}</option>)}
+                            <select value={source.fuelType} onChange={(e) => onUpdate({ fuelType: e.target.value })} className={commonSelectClass}>
+                                {Object.keys(activityFactors[travelMode]).map(type => <option key={type} value={type}>{t(activityFactors[travelMode][type].translationKey)}</option>)}
                             </select>
                         </div>
                         <div>
                             <label className={commonLabelClass}>{t('distance')} (km)</label>
                             <input type="number" value={source.distanceKm || ''} onChange={e => onUpdate({ distanceKm: parseFloat(e.target.value) || 0 })} className={commonSelectClass} placeholder="0" />
                         </div>
-                         {(travelMode === 'Rail' || travelMode === 'Bus') && <div>
+                         <div>
                             <label className={commonLabelClass}>{t('passengers')}</label>
-                            <input type="number" value={source.passengers || ''} onChange={e => onUpdate({ passengers: parseInt(e.target.value) || 0 })} className={commonSelectClass} placeholder="1" />
-                        </div>}
+                            <input type="number" value={source.passengers || ''} onChange={e => onUpdate({ passengers: parseInt(e.target.value) || 1 })} className={commonSelectClass} placeholder="1" min="1" />
+                        </div>
                     </div>
                 )}
-                {travelMode === 'Hotel' && (
-                    <div className="grid grid-cols-2 gap-2">
+
+                 {travelMode === 'Hotel' && (
+                     <div className="grid grid-cols-2 gap-2">
                         <div>
-                            <label className={commonLabelClass}>{t('Hotel')}</label>
-                             <select value={source.fuelType || ''} onChange={e => onUpdate({ fuelType: e.target.value })} className={commonSelectClass}>
-                                {Object.keys(activityFactors.Hotel).map(v => <option key={v} value={v}>{t((activityFactors.Hotel as any)[v].translationKey)}</option>)}
+                            <label className={commonLabelClass}>{t('serviceType')}</label>
+                             <select value={source.fuelType} onChange={(e) => onUpdate({ fuelType: e.target.value })} className={commonSelectClass}>
+                                {Object.keys(activityFactors.Hotel).map(type => <option key={type} value={type}>{t(activityFactors.Hotel[type].translationKey)}</option>)}
                             </select>
                         </div>
                         <div>
                             <label className={commonLabelClass}>{t('nights')}</label>
-                            <input type="number" value={source.nights || ''} onChange={e => onUpdate({ nights: parseInt(e.target.value) || 0 })} className={commonSelectClass} placeholder="0" />
+                             <input type="number" value={source.nights || ''} onChange={e => onUpdate({ nights: parseInt(e.target.value) || 0 })} className={commonSelectClass} placeholder="0" />
                         </div>
-                        <div>
+                         <div>
                             <label className={commonLabelClass}>{t('passengers')}</label>
-                            <input type="number" value={source.passengers || ''} onChange={e => onUpdate({ passengers: parseInt(e.target.value) || 0 })} className={commonSelectClass} placeholder="1" />
+                            <input type="number" value={source.passengers || ''} onChange={e => onUpdate({ passengers: parseInt(e.target.value) || 1 })} className={commonSelectClass} placeholder="1" min="1" />
                         </div>
                     </div>
                 )}
             </div>
         )}
-
-        {calculationMethod === 'spend' && (
-            <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-2">
-                    <select value={source.fuelType} onChange={(e) => onFuelTypeChange(e.target.value)} className={commonSelectClass} aria-label={t('serviceType')}>
-                    {BUSINESS_TRAVEL_FACTORS_DETAILED.spend.map((item: any) => (
-                        <option key={item.name} value={item.name}>
-                        {language === 'ko' && item.translationKey ? t(item.translationKey as TranslationKey) : item.name}
-                        </option>
-                    ))}
-                    </select>
-                    <select value={source.unit} onChange={(e) => onUpdate({ unit: e.target.value })} className={commonSelectClass} aria-label="Unit">
-                    { (BUSINESS_TRAVEL_FACTORS_DETAILED.spend.find((f: any) => f.name === source.fuelType) as any)?.units.map((unit: string) => (
-                        <option key={unit} value={unit}>{t(unit as TranslationKey) || unit}</option>
-                    ))}
-                    </select>
-                </div>
-                 <div className="mt-2">
-                    <div className={`flex justify-between items-center bg-gray-100 dark:bg-gray-700 p-2 ${isEditing ? 'rounded-t-lg' : 'rounded-lg'}`}>
-                        <div>
-                            <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{t('totalYear')}: </span>
-                            <span className="text-sm font-bold text-ghg-dark dark:text-gray-100">{totalQuantity.toLocaleString()}&nbsp;{renderUnit(source.unit)}</span>
-                        </div>
-                        {!isEditing && (
-                        <button onClick={handleEdit} className="text-sm text-ghg-green font-semibold hover:underline">
-                            {t('editMonthly')}
-                        </button>
-                        )}
-                    </div>
-                    {isEditing && (
-                        <div className="p-3 bg-gray-100 dark:bg-gray-900/50 rounded-b-lg">
-                           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                                {monthKeys.map((monthKey, index) => (
-                                    <div key={monthKey}>
-                                        <label className={commonLabelClass} htmlFor={`quantity-${source.id}-${index}`}>{t(monthKey)}</label>
-                                        <div className={`flex items-center rounded-md shadow-sm border border-gray-300 dark:border-gray-500 bg-white dark:bg-gray-600 focus-within:ring-1 focus-within:ring-ghg-green focus-within:border-ghg-green overflow-hidden`}>
-                                            <input id={`quantity-${source.id}-${index}`} type="number" onKeyDown={preventNonNumericKeys} value={editedQuantities[index] === 0 ? '' : editedQuantities[index]} onChange={(e) => handleMonthlyChange(index, e.target.value)} className="w-0 flex-grow bg-transparent text-gray-900 dark:text-gray-200 py-1 px-2 text-sm text-right focus:outline-none" placeholder="0" />
-                                            <span className="pr-3 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{renderUnit(source.unit)}</span>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                            <div className="flex justify-end gap-2 mt-4">
-                                <button onClick={handleCancel} className="px-3 py-1 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 dark:bg-gray-600 dark:text-gray-200 dark:border-gray-500 dark:hover:bg-gray-500">{t('cancel')}</button>
-                                <button onClick={handleSave} className="px-3 py-1 text-sm font-medium text-white bg-ghg-green rounded-md shadow-sm hover:bg-ghg-dark">{t('save')}</button>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            </div>
-        )}
-
-        {calculationMethod === 'supplier_specific' && (
-            <div>
-                <label htmlFor={`supplier-co2e-${source.id}`} className={commonLabelClass}>{t('supplierProvidedCO2e')}</label>
-                <input id={`supplier-co2e-${source.id}`} type="number" step="any" value={source.supplierProvidedCO2e ?? ''} onChange={(e) => onUpdate({ supplierProvidedCO2e: parseFloat(e.target.value) || 0 })} className={commonSelectClass} placeholder="0" />
-            </div>
+        
+         {(calculationMethod === 'spend' || calculationMethod === 'supplier_specific') && (
+            <p className='text-sm text-center p-4 bg-yellow-50 dark:bg-yellow-900/50 rounded-md'>{t('comingSoon')}</p>
         )}
 
         <div className="mt-2 p-2 bg-gray-100 dark:bg-gray-700 rounded-md text-right">
@@ -1386,49 +1529,19 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
     );
   }
 
-  // == Advanced UI for Category 7 ==
   if (source.category === EmissionCategory.EmployeeCommuting) {
     const calculationMethod = (source.calculationMethod as Cat7CalculationMethod) || 'activity';
 
     const handleMethodChange = (method: Cat7CalculationMethod) => {
-        let updates: Partial<EmissionSource> = { calculationMethod: method, monthlyQuantities: [] };
-        // Set defaults for the new method
+        let updates: Partial<EmissionSource> = { calculationMethod: method };
         if (method === 'activity') {
-            updates = { ...updates, commutingMode: 'PersonalCar', personalCarType: 'Gasoline', unit: 'km', distanceKm: 0, daysPerYear: 0, carpoolOccupancy: 1 };
-        } else if (method === 'average') {
-            updates = { ...updates, totalEmployees: 0, percentTeleworking: 0, distanceKm: 0, daysPerYear: 0, modeDistribution: {} };
-        } else if (method === 'spend') {
-            updates = { ...updates, fuelType: fuels.spend[0].name, unit: fuels.spend[0].units[0], monthlyQuantities: Array(12).fill(0) };
+          updates = {...updates, commutingMode: 'PersonalCar', personalCarType: 'Gasoline'}
         }
         onUpdate(updates);
     };
-    
-    const commutingMode = source.commutingMode || 'PersonalCar';
+
     const activityFactors = fuels.activity;
-
-    const handleModeDistributionChange = (modeKey: string, value: string) => {
-      const percentage = Math.max(0, Math.min(100, parseFloat(value) || 0));
-      onUpdate({
-          modeDistribution: {
-              ...(source.modeDistribution || {}),
-              [modeKey]: percentage,
-          }
-      });
-    };
     
-    const allCommutingTypes = useMemo(() => [
-        { group: t('PersonalCar'), key: 'PersonalCar', types: Object.entries(activityFactors.PersonalCar).map(([type, data]: [string, any]) => ({ key: type, translationKey: data.translationKey })) },
-        { group: t('PublicTransport'), key: 'PublicTransport', types: Object.entries(activityFactors.PublicTransport).map(([type, data]: [string, any]) => ({ key: type, translationKey: data.translationKey })) },
-        { group: t('Motorbike'), key: 'Motorbike', types: Object.entries(activityFactors.Motorbike).map(([type, data]: [string, any]) => ({ key: type, translationKey: data.translationKey })) },
-        { group: t('BicycleWalking'), key: 'BicycleWalking', types: Object.entries(activityFactors.BicycleWalking).map(([type, data]: [string, any]) => ({ key: type, translationKey: data.translationKey })) },
-    ], [t, activityFactors]);
-
-    // Fix: Operator '+' cannot be applied to types 'unknown' and 'number'.
-    // The `val` from `Object.values` may be inferred as `unknown` by TypeScript, causing a type error.
-    // Using `Number(val)` ensures type safety for the addition operation.
-    const totalDistribution = useMemo(() => Object.values(source.modeDistribution || {}).reduce((sum, val) => sum + Number(val), 0), [source.modeDistribution]);
-
-
     return (
       <div className="flex flex-col gap-3 p-3 bg-gray-50 rounded-lg border dark:bg-gray-800 dark:border-gray-600">
         <div className="flex justify-between items-start">
@@ -1436,264 +1549,6 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
                 <label className={commonLabelClass}>{t('calculationMethod')}</label>
                 <div className="flex gap-1 rounded-md bg-gray-200 dark:bg-gray-900 p-1 text-xs">
                     {(['activity', 'average', 'spend'] as Cat7CalculationMethod[]).map(method => (
-                        <button 
-                            key={method}
-                            onClick={() => handleMethodChange(method)}
-                            className={`flex-1 py-1 rounded-md transition-colors ${calculationMethod === method ? 'bg-white dark:bg-gray-700 shadow font-semibold' : 'hover:bg-gray-100 dark:hover:bg-gray-800'}`}>
-                            {t(`${method === 'average' ? 'averageData' : method}Method` as TranslationKey)}
-                        </button>
-                    ))}
-                </div>
-            </div>
-            <button onClick={onRemove} className="text-gray-400 hover:text-red-600 p-1 dark:text-gray-500 dark:hover:text-red-500" aria-label={t('removeSourceAria')}>
-                <IconTrash className="h-5 w-5" />
-            </button>
-        </div>
-
-        <div>
-          <label htmlFor={`description-${source.id}`} className={commonLabelClass}>{t('emissionSourceDescription')}</label>
-          <div className="flex gap-2">
-            <input id={`description-${source.id}`} type="text" value={source.description || ''} onChange={(e) => onUpdate({ description: e.target.value })} className={commonSelectClass} placeholder={t(placeholderKey)} />
-             <button onClick={handleAnalyze} disabled={isLoadingAI || !source.description} className="px-3 py-2 bg-ghg-light-green text-white rounded-md hover:bg-ghg-green disabled:bg-gray-400 flex items-center gap-2">
-                <IconSparkles className="w-4 h-4" />
-                <span className="text-sm font-semibold">{isLoadingAI ? '...' : t('analyzeWithAI')}</span>
-            </button>
-          </div>
-        </div>
-        {aiAnalysisResult && !aiAnalysisResult.error && (
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-800 dark:bg-blue-900/30 dark:border-blue-700/50 text-xs space-y-2">
-                <h4 className="font-semibold text-sm mb-1">{t('aiAnalysis')}</h4>
-                <p><span className="font-semibold">{t('suggestedCommutingMode')}:</span> {t(aiAnalysisResult.suggested_commuting_mode as TranslationKey)}</p>
-                {aiAnalysisResult.suggested_personal_car_type && <p><span className="font-semibold">{t('suggestedPersonalCarType')}:</span> {t(fuels.activity.PersonalCar[aiAnalysisResult.suggested_personal_car_type]?.translationKey as TranslationKey)}</p>}
-                {aiAnalysisResult.suggested_public_transport_type && <p><span className="font-semibold">{t('suggestedPublicTransportType')}:</span> {t(fuels.activity.PublicTransport[aiAnalysisResult.suggested_public_transport_type]?.translationKey as TranslationKey)}</p>}
-                <p><span className="font-semibold">{t('justification')}:</span> {aiAnalysisResult.justification}</p>
-                <div className="flex justify-between items-center mt-2 pt-2 border-t dark:border-blue-700/50">
-                    <p className="text-blue-600 dark:text-blue-300">{t('aiDisclaimer')}</p>
-                    <button onClick={handleApplyAISuggestion} className="bg-blue-500 text-white font-semibold py-1 px-3 rounded-md hover:bg-blue-600 text-xs">{t('applySuggestion')}</button>
-                </div>
-            </div>
-        )}
-         <div>
-            <label htmlFor={`activityDataSource-${source.id}`} className={commonLabelClass}>{t('activityDataSource')}</label>
-            <input id={`activityDataSource-${source.id}`} type="text" value={source.activityDataSource ?? ''} onChange={(e) => onUpdate({ activityDataSource: e.target.value })} className={commonSelectClass} placeholder={t('activityDataSourcePlaceholder')} />
-        </div>
-
-        {calculationMethod === 'activity' && (
-            <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-2">
-                    <div>
-                        <label className={commonLabelClass}>{t('commutingMode')}</label>
-                        <select value={commutingMode} onChange={(e) => onUpdate({ commutingMode: e.target.value as EmployeeCommutingMode })} className={commonSelectClass}>
-                            {(['PersonalCar', 'Carpool', 'PublicTransport', 'Motorbike', 'BicycleWalking'] as EmployeeCommutingMode[]).map(mode => <option key={mode} value={mode}>{t(mode as TranslationKey)}</option>)}
-                        </select>
-                    </div>
-                    {(commutingMode === 'PersonalCar' || commutingMode === 'Carpool') && (
-                        <div>
-                            <label className={commonLabelClass}>{t('vehicleType')}</label>
-                            <select value={source.personalCarType || 'Gasoline'} onChange={e => onUpdate({ personalCarType: e.target.value as PersonalCarType })} className={commonSelectClass}>
-                                {Object.keys(activityFactors.PersonalCar).map(type => <option key={type} value={type}>{t(activityFactors.PersonalCar[type].translationKey)}</option>)}
-                            </select>
-                        </div>
-                    )}
-                     {commutingMode === 'PublicTransport' && (
-                        <div>
-                            <label className={commonLabelClass}>{t('vehicleType')}</label>
-                            <select value={source.publicTransportType || 'Bus'} onChange={e => onUpdate({ publicTransportType: e.target.value as PublicTransportType })} className={commonSelectClass}>
-                                {Object.keys(activityFactors.PublicTransport).map(type => <option key={type} value={type}>{t(activityFactors.PublicTransport[type].translationKey)}</option>)}
-                            </select>
-                        </div>
-                    )}
-                </div>
-                 <div className="grid grid-cols-2 gap-2">
-                    <div>
-                        <label className={commonLabelClass}>{t('oneWayCommuteDistance')}</label>
-                        <input type="number" value={source.distanceKm ?? ''} onChange={e => onUpdate({ distanceKm: parseFloat(e.target.value) || 0 })} className={commonSelectClass} placeholder="0" />
-                    </div>
-                     <div>
-                        <label className={commonLabelClass}>{t('commutingDaysPerYear')}</label>
-                        <input type="number" value={source.daysPerYear ?? ''} onChange={e => onUpdate({ daysPerYear: parseInt(e.target.value) || 0 })} className={commonSelectClass} placeholder="0" />
-                    </div>
-                 </div>
-                 {commutingMode === 'Carpool' && (
-                     <div>
-                        <label className={commonLabelClass}>{t('carpoolOccupancy')}</label>
-                        <input type="number" value={source.carpoolOccupancy ?? ''} onChange={e => onUpdate({ carpoolOccupancy: parseInt(e.target.value) || 1 })} className={commonSelectClass} placeholder="2" min="1"/>
-                    </div>
-                 )}
-            </div>
-        )}
-
-        {calculationMethod === 'average' && (
-            <div className="space-y-3">
-                 <div className="grid grid-cols-2 gap-2">
-                     <div>
-                        <label className={commonLabelClass}>{t('totalEmployees')}</label>
-                        <input type="number" value={source.totalEmployees ?? ''} onChange={e => onUpdate({ totalEmployees: parseInt(e.target.value) || 0 })} className={commonSelectClass} placeholder="0" />
-                    </div>
-                     <div>
-                        <label className={commonLabelClass}>{t('percentTeleworking')}</label>
-                        <input type="number" value={source.percentTeleworking ?? ''} onChange={e => onUpdate({ percentTeleworking: parseFloat(e.target.value) || 0 })} className={commonSelectClass} placeholder="0" />
-                    </div>
-                 </div>
-                 <div className="grid grid-cols-2 gap-2">
-                    <div>
-                        <label className={commonLabelClass}>{t('oneWayCommuteDistance')}</label>
-                        <input type="number" value={source.distanceKm ?? ''} onChange={e => onUpdate({ distanceKm: parseFloat(e.target.value) || 0 })} className={commonSelectClass} placeholder="0" />
-                    </div>
-                     <div>
-                        <label className={commonLabelClass}>{t('commutingDaysPerYear')}</label>
-                        <input type="number" value={source.daysPerYear ?? ''} onChange={e => onUpdate({ daysPerYear: parseInt(e.target.value) || 0 })} className={commonSelectClass} placeholder="0" />
-                    </div>
-                 </div>
-                <div>
-                    <label className={commonLabelClass}>{t('modeDistribution')}</label>
-                    <div className="p-3 bg-gray-100 dark:bg-gray-900/50 rounded-md space-y-3">
-                        {allCommutingTypes.map(group => (
-                            <div key={group.key}>
-                                <h4 className="text-sm font-semibold text-gray-600 dark:text-gray-300 mb-1">{group.group}</h4>
-                                {group.types.map(type => {
-                                    const modeKey = `${group.key}_${type.key}`;
-                                    return (
-                                        <div key={modeKey} className="flex items-center justify-between gap-2 pl-2">
-                                            <label className="text-sm text-gray-500 dark:text-gray-400">{t(type.translationKey)}</label>
-                                            <div className="flex items-center gap-1 w-24">
-                                                <input type="number" value={source.modeDistribution?.[modeKey] || ''} onChange={e => handleModeDistributionChange(modeKey, e.target.value)} className="w-full p-1 text-sm text-right rounded-md" placeholder="0" min="0" max="100" />
-                                                <span className="text-sm">%</span>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        ))}
-                        <div className={`mt-2 pt-2 border-t dark:border-gray-600 flex justify-end font-semibold ${Math.abs(totalDistribution - 100) > 0.1 ? 'text-red-500' : 'text-gray-700 dark:text-gray-200'}`}>
-                            {t('totalDistribution')}: {totalDistribution.toFixed(1)}%
-                        </div>
-                    </div>
-                </div>
-            </div>
-        )}
-        
-        {calculationMethod === 'spend' && (
-            <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-2">
-                    <select value={source.fuelType} onChange={(e) => onFuelTypeChange(e.target.value)} className={commonSelectClass} aria-label={t('serviceType')}>
-                    {fuels.spend.map((item: any) => (
-                        <option key={item.name} value={item.name}>
-                        {language === 'ko' && item.translationKey ? t(item.translationKey as TranslationKey) : item.name}
-                        </option>
-                    ))}
-                    </select>
-                    <select value={source.unit} onChange={(e) => onUpdate({ unit: e.target.value })} className={commonSelectClass} aria-label="Unit">
-                    { (fuels.spend.find((f: any) => f.name === source.fuelType) as any)?.units.map((unit: string) => (
-                        <option key={unit} value={unit}>{t(unit as TranslationKey) || unit}</option>
-                    ))}
-                    </select>
-                </div>
-                <div className="mt-2">
-                    <div className={`flex justify-between items-center bg-gray-100 dark:bg-gray-700 p-2 ${isEditing ? 'rounded-t-lg' : 'rounded-lg'}`}>
-                        <div>
-                            <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{t('totalYear')}: </span>
-                            <span className="text-sm font-bold text-ghg-dark dark:text-gray-100">{totalQuantity.toLocaleString()}&nbsp;{renderUnit(source.unit)}</span>
-                        </div>
-                        {!isEditing && (
-                        <button onClick={handleEdit} className="text-sm text-ghg-green font-semibold hover:underline">
-                            {t('editMonthly')}
-                        </button>
-                        )}
-                    </div>
-                    {isEditing && (
-                        <div className="p-3 bg-gray-100 dark:bg-gray-900/50 rounded-b-lg">
-                           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                                {monthKeys.map((monthKey, index) => (
-                                    <div key={monthKey}>
-                                        <label className={commonLabelClass} htmlFor={`quantity-${source.id}-${index}`}>{t(monthKey)}</label>
-                                        <div className={`flex items-center rounded-md shadow-sm border border-gray-300 dark:border-gray-500 bg-white dark:bg-gray-600 focus-within:ring-1 focus-within:ring-ghg-green focus-within:border-ghg-green overflow-hidden`}>
-                                            <input id={`quantity-${source.id}-${index}`} type="number" onKeyDown={preventNonNumericKeys} value={editedQuantities[index] === 0 ? '' : editedQuantities[index]} onChange={(e) => handleMonthlyChange(index, e.target.value)} className="w-0 flex-grow bg-transparent text-gray-900 dark:text-gray-200 py-1 px-2 text-sm text-right focus:outline-none" placeholder="0" />
-                                            <span className="pr-3 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{renderUnit(source.unit)}</span>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                            <div className="flex justify-end gap-2 mt-4">
-                                <button onClick={handleCancel} className="px-3 py-1 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 dark:bg-gray-600 dark:text-gray-200 dark:border-gray-500 dark:hover:bg-gray-500">{t('cancel')}</button>
-                                <button onClick={handleSave} className="px-3 py-1 text-sm font-medium text-white bg-ghg-green rounded-md shadow-sm hover:bg-ghg-dark">{t('save')}</button>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            </div>
-        )}
-        
-        <div className="mt-2 p-2 bg-gray-100 dark:bg-gray-700 rounded-md text-right">
-            <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{t('emissionsForSource')}: </span>
-            <span className="text-sm font-bold text-ghg-dark dark:text-gray-100">{(totalEmissions / 1000).toLocaleString('en-US', {minimumFractionDigits: 3})} t CO₂e</span>
-        </div>
-      </div>
-    );
-  }
-
-  // == Advanced UI for Category 8 ==
-  if (source.category === EmissionCategory.UpstreamLeasedAssets || source.category === EmissionCategory.DownstreamLeasedAssets) {
-    const calculationMethod = (source.calculationMethod as Cat8CalculationMethod) || 'asset_specific';
-
-    const handleMethodChange = (method: Cat8CalculationMethod) => {
-        let updates: Partial<EmissionSource> = { calculationMethod: method, monthlyQuantities: [] };
-        if (method === 'asset_specific') {
-            updates = { ...updates, leasedAssetType: 'Building', energyInputs: [], leaseDurationMonths: 12 };
-        } else if (method === 'area_based') {
-            updates = { ...updates, leasedAssetType: 'Building', buildingType: 'Office', areaSqm: 0, leaseDurationMonths: 12 };
-        } else if (method === 'spend_based') {
-            const spendFactors = fuels.spend_based;
-            updates = { ...updates, fuelType: spendFactors[0].name, unit: spendFactors[0].units[0], monthlyQuantities: Array(12).fill(0) };
-        } else if (method === 'supplier_specific') {
-            updates = { ...updates, supplierProvidedCO2e: 0, leaseDurationMonths: 12 };
-        }
-        onUpdate(updates);
-    };
-
-    const allEnergyAndFuelFactors = useMemo(() => {
-        return [...STATIONARY_FUELS, ...MOBILE_FUELS, ...SCOPE2_ENERGY_SOURCES];
-    }, []);
-
-    const handleEnergyInputChange = (index: number, field: string, value: any) => {
-        const newInputs = [...(source.energyInputs || [])];
-        newInputs[index] = { ...newInputs[index], [field]: value };
-        onUpdate({ energyInputs: newInputs });
-    };
-
-    const handleEnergyInputTypeChange = (index: number, newType: string) => {
-        const newInputs = [...(source.energyInputs || [])];
-        const factorData = allEnergyAndFuelFactors.find(f => f.name === newType);
-        newInputs[index] = { ...newInputs[index], type: newType, unit: factorData?.units[0] || '' };
-        onUpdate({ energyInputs: newInputs });
-    };
-
-    const addEnergyInput = () => {
-        const newInputs = [...(source.energyInputs || [])];
-        const defaultFactor = allEnergyAndFuelFactors[0];
-        newInputs.push({
-            id: `energy-${Date.now()}`,
-            type: defaultFactor.name,
-            value: 0,
-            unit: defaultFactor.units[0],
-        });
-        onUpdate({ energyInputs: newInputs });
-    };
-
-    const removeEnergyInput = (index: number) => {
-        const newInputs = [...(source.energyInputs || [])];
-        newInputs.splice(index, 1);
-        onUpdate({ energyInputs: newInputs });
-    };
-
-    return (
-      <div className="flex flex-col gap-3 p-3 bg-gray-50 rounded-lg border dark:bg-gray-800 dark:border-gray-600">
-        {/* Method Switcher & Remove Button */}
-        <div className="flex justify-between items-start">
-            <div className='flex-grow pr-4'>
-                <label className={commonLabelClass}>{t('calculationMethod')}</label>
-                <div className="flex gap-1 rounded-md bg-gray-200 dark:bg-gray-900 p-1 text-xs">
-                    {(['asset_specific', 'area_based', 'spend_based', 'supplier_specific'] as Cat8CalculationMethod[]).map(method => (
                         <button 
                             key={method}
                             onClick={() => handleMethodChange(method)}
@@ -1707,23 +1562,23 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
                 <IconTrash className="h-5 w-5" />
             </button>
         </div>
-        
-        {/* Common Inputs */}
+
         <div>
-            <label htmlFor={`description-${source.id}`} className={commonLabelClass}>{t('emissionSourceDescription')}</label>
-            <div className="flex gap-2">
-                <input id={`description-${source.id}`} type="text" value={source.description || ''} onChange={(e) => onUpdate({ description: e.target.value })} className={commonSelectClass} placeholder={t(placeholderKey)} />
-                <button onClick={handleAnalyze} disabled={isLoadingAI || !source.description} className="px-3 py-2 bg-ghg-light-green text-white rounded-md hover:bg-ghg-green disabled:bg-gray-400 flex items-center gap-2">
-                    <IconSparkles className="w-4 h-4" />
-                    <span className="text-sm font-semibold">{isLoadingAI ? '...' : t('analyzeWithAI')}</span>
-                </button>
-            </div>
+          <label htmlFor={`description-${source.id}`} className={commonLabelClass}>{t('emissionSourceDescription')}</label>
+          <div className="flex gap-2">
+            <input id={`description-${source.id}`} type="text" value={source.description || ''} onChange={(e) => onUpdate({ description: e.target.value })} className={commonSelectClass} placeholder={t(placeholderKey)} />
+            <button onClick={handleAnalyze} disabled={isLoadingAI || !source.description} className="px-3 py-2 bg-ghg-light-green text-white rounded-md hover:bg-ghg-green disabled:bg-gray-400 flex items-center gap-2">
+                <IconSparkles className="w-4 h-4" />
+                <span className="text-sm font-semibold">{isLoadingAI ? '...' : t('analyzeWithAI')}</span>
+            </button>
+          </div>
         </div>
-         {aiAnalysisResult && !aiAnalysisResult.error && (
+        {aiAnalysisResult && !aiAnalysisResult.error && (
             <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-800 dark:bg-blue-900/30 dark:border-blue-700/50 text-xs space-y-2">
                 <h4 className="font-semibold text-sm mb-1">{t('aiAnalysis')}</h4>
-                <p><span className="font-semibold">{t('suggestedAssetType')}:</span> {t(aiAnalysisResult.suggested_asset_type as TranslationKey)}</p>
-                {aiAnalysisResult.suggested_building_type && <p><span className="font-semibold">{t('suggestedBuildingType')}:</span> {t(fuels.area_based[aiAnalysisResult.suggested_building_type]?.translationKey as TranslationKey)}</p>}
+                <p><span className="font-semibold">{t('suggestedCommutingMode')}:</span> {t(aiAnalysisResult.suggested_commuting_mode as TranslationKey)}</p>
+                {aiAnalysisResult.suggested_personal_car_type && <p><span className="font-semibold">{t('suggestedPersonalCarType')}:</span> {t(`personalCar${aiAnalysisResult.suggested_personal_car_type}` as TranslationKey)}</p>}
+                {aiAnalysisResult.suggested_public_transport_type && <p><span className="font-semibold">{t('suggestedPublicTransportType')}:</span> {t(aiAnalysisResult.suggested_public_transport_type.toLowerCase() as TranslationKey)}</p>}
                 <p><span className="font-semibold">{t('justification')}:</span> {aiAnalysisResult.justification}</p>
                 <div className="flex justify-between items-center mt-2 pt-2 border-t dark:border-blue-700/50">
                     <p className="text-blue-600 dark:text-blue-300">{t('aiDisclaimer')}</p>
@@ -1732,136 +1587,78 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
             </div>
         )}
         
-        {calculationMethod !== 'spend_based' && (
-            <div>
-                <label className={commonLabelClass}>{t('leaseDurationMonths')}</label>
-                <input type="number" value={source.leaseDurationMonths ?? 12} onChange={e => onUpdate({ leaseDurationMonths: parseInt(e.target.value) || 12 })} className={commonSelectClass} placeholder="12" min="1" max="12"/>
-            </div>
-        )}
-
-        {/* Asset-specific Form */}
-        {calculationMethod === 'asset_specific' && (
+        {calculationMethod === 'activity' && (
             <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-2">
+                <div className='grid grid-cols-2 gap-2'>
+                  <div>
+                      <label className={commonLabelClass}>{t('commutingMode')}</label>
+                      <select value={source.commutingMode} onChange={(e) => onUpdate({ commutingMode: e.target.value as EmployeeCommutingMode })} className={commonSelectClass}>
+                          {Object.keys(activityFactors).map(mode => <option key={mode} value={mode}>{t(mode as TranslationKey)}</option>)}
+                      </select>
+                  </div>
+                  {(source.commutingMode === 'PersonalCar' || source.commutingMode === 'Carpool') && (
                     <div>
-                        <label className={commonLabelClass}>{t('leasedAssetType')}</label>
-                        <select value={source.leasedAssetType} onChange={(e) => onUpdate({ leasedAssetType: e.target.value as LeasedAssetType })} className={commonSelectClass}>
-                            {(['Building', 'Vehicle', 'Equipment'] as LeasedAssetType[]).map(type => <option key={type} value={type}>{t(type as TranslationKey) || type}</option>)}
+                        <label className={commonLabelClass}>{t('vehicleType')}</label>
+                        <select value={source.personalCarType} onChange={(e) => onUpdate({ personalCarType: e.target.value as PersonalCarType })} className={commonSelectClass}>
+                            {Object.keys(activityFactors.PersonalCar).map(type => <option key={type} value={type}>{t(activityFactors.PersonalCar[type].translationKey)}</option>)}
                         </select>
                     </div>
-                </div>
-                {source.leasedAssetType === 'Vehicle' && <div className="p-2 bg-yellow-50 text-yellow-800 text-xs rounded-md">{t('cat8VehicleGuidance')}</div>}
-                
-                {/* Energy Inputs */}
-                <div>
-                    <label className={commonLabelClass}>{t('energyInputs')}</label>
-                    <div className="space-y-2 p-2 bg-gray-100 dark:bg-gray-900/50 rounded-md">
-                        {(source.energyInputs || []).map((input, index) => {
-                            const factorData = allEnergyAndFuelFactors.find(f => f.name === input.type);
-                            return (
-                                <div key={input.id} className="p-2 border rounded dark:border-gray-600 bg-white dark:bg-gray-800">
-                                    <div className="flex justify-end">
-                                        <button onClick={() => removeEnergyInput(index)} className="text-gray-400 hover:text-red-500"><IconTrash className="w-4 h-4" /></button>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <select value={input.type} onChange={(e) => handleEnergyInputTypeChange(index, e.target.value)} className={commonSelectClass}>
-                                            {allEnergyAndFuelFactors.map(f => <option key={f.name} value={f.name}>{language === 'ko' && f.translationKey ? t(f.translationKey as TranslationKey) : f.name}</option>)}
-                                        </select>
-                                        <select value={input.unit} onChange={(e) => handleEnergyInputChange(index, 'unit', e.target.value)} className={commonSelectClass}>
-                                            {factorData?.units.map((u: string) => <option key={u} value={u}>{t(u as TranslationKey) || u}</option>)}
-                                        </select>
-                                    </div>
-                                    <div className="mt-2">
-                                        <label className={commonLabelClass}>{t('annualConsumption')}</label>
-                                        <input type="number" value={input.value} onChange={(e) => handleEnergyInputChange(index, 'value', parseFloat(e.target.value) || 0)} className={commonSelectClass} placeholder="0" />
-                                    </div>
-                                </div>
-                            );
-                        })}
-                        <button onClick={addEnergyInput} className="w-full text-sm bg-ghg-light-green/50 text-ghg-dark font-semibold py-1 px-2 rounded-md hover:bg-ghg-light-green/80 transition-colors">{t('addEnergyInput')}</button>
-                    </div>
-                </div>
-            </div>
-        )}
-        
-        {/* Area-based Form */}
-        {calculationMethod === 'area_based' && (
-             <div className="space-y-3">
-                <div className="p-2 bg-blue-50 text-blue-800 dark:text-blue-200 text-xs rounded-md">{t('cat8AreaGuidance')}</div>
-                <div className="grid grid-cols-2 gap-2">
+                  )}
+                  {source.commutingMode === 'PublicTransport' && (
                     <div>
-                        <label className={commonLabelClass}>{t('buildingType')}</label>
-                        <select value={source.buildingType} onChange={(e) => onUpdate({ buildingType: e.target.value as BuildingType })} className={commonSelectClass}>
-                            {Object.entries(fuels.area_based).map(([type, data]: [string, any]) => <option key={type} value={type}>{t(data.translationKey as TranslationKey)}</option>)}
+                        <label className={commonLabelClass}>{t('transportMode')}</label>
+                        <select value={source.publicTransportType} onChange={(e) => onUpdate({ publicTransportType: e.target.value as PublicTransportType })} className={commonSelectClass}>
+                            {Object.keys(activityFactors.PublicTransport).map(type => <option key={type} value={type}>{t(activityFactors.PublicTransport[type].translationKey)}</option>)}
                         </select>
                     </div>
-                     <div>
-                        <label className={commonLabelClass}>{t('areaSqm')}</label>
-                        <input type="number" value={source.areaSqm || ''} onChange={e => onUpdate({ areaSqm: parseFloat(e.target.value) || 0 })} className={commonSelectClass} placeholder="0" />
-                    </div>
+                  )}
                 </div>
+                 <div className="grid grid-cols-2 gap-2">
+                    <div>
+                        <label className={commonLabelClass}>{t('oneWayCommuteDistance')}</label>
+                        <input type="number" value={source.distanceKm || ''} onChange={e => onUpdate({ distanceKm: parseFloat(e.target.value) || 0 })} className={commonSelectClass} placeholder="0" />
+                    </div>
+                    <div>
+                        <label className={commonLabelClass}>{t('commutingDaysPerYear')}</label>
+                        <input type="number" value={source.daysPerYear || ''} onChange={e => onUpdate({ daysPerYear: parseInt(e.target.value) || 0 })} className={commonSelectClass} placeholder="e.g., 240" />
+                    </div>
+                 </div>
+                 {source.commutingMode === 'Carpool' && (
+                    <div>
+                        <label className={commonLabelClass}>{t('carpoolOccupancy')}</label>
+                        <input type="number" value={source.carpoolOccupancy || ''} onChange={e => onUpdate({ carpoolOccupancy: parseInt(e.target.value) || 1 })} className={commonSelectClass} placeholder="2" min="1" />
+                    </div>
+                 )}
             </div>
         )}
 
-        {/* Spend-based Form */}
-        {calculationMethod === 'spend_based' && (
-             <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-2">
-                    <select value={source.fuelType} onChange={(e) => onFuelTypeChange(e.target.value)} className={commonSelectClass}>
-                        {fuels.spend_based.map((item: any) => (
-                            <option key={item.name} value={item.name}>{language === 'ko' && item.translationKey ? t(item.translationKey as TranslationKey) : item.name}</option>
-                        ))}
-                    </select>
-                    <select value={source.unit} onChange={(e) => onUpdate({ unit: e.target.value })} className={commonSelectClass}>
-                        {(fuels.spend_based.find((f: any) => f.name === source.fuelType) as any)?.units.map((unit: string) => (
-                            <option key={unit} value={unit}>{t(unit as TranslationKey) || unit}</option>
-                        ))}
-                    </select>
-                </div>
-                 <div className="mt-2">
-                    <div className={`flex justify-between items-center bg-gray-100 dark:bg-gray-700 p-2 ${isEditing ? 'rounded-t-lg' : 'rounded-lg'}`}>
-                        <div>
-                            <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{t('totalYear')}: </span>
-                            <span className="text-sm font-bold text-ghg-dark dark:text-gray-100">{totalQuantity.toLocaleString()}&nbsp;{renderUnit(source.unit)}</span>
-                        </div>
-                        {!isEditing && (
-                        <button onClick={handleEdit} className="text-sm text-ghg-green font-semibold hover:underline">
-                            {t('editMonthly')}
-                        </button>
-                        )}
-                    </div>
-                    {isEditing && (
-                         <div className="p-3 bg-gray-100 dark:bg-gray-900/50 rounded-b-lg">
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                                {monthKeys.map((monthKey, index) => (
-                                    <div key={monthKey}>
-                                        <label className={commonLabelClass} htmlFor={`quantity-${source.id}-${index}`}>{t(monthKey)}</label>
-                                        <div className={`flex items-center rounded-md shadow-sm border border-gray-300 dark:border-gray-500 bg-white dark:bg-gray-600 focus-within:ring-1 focus-within:ring-ghg-green focus-within:border-ghg-green overflow-hidden`}>
-                                            <input id={`quantity-${source.id}-${index}`} type="number" onKeyDown={preventNonNumericKeys} value={editedQuantities[index] === 0 ? '' : editedQuantities[index]} onChange={(e) => handleMonthlyChange(index, e.target.value)} className="w-0 flex-grow bg-transparent text-gray-900 dark:text-gray-200 py-1 px-2 text-sm text-right focus:outline-none" placeholder="0" />
-                                            <span className="pr-3 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{renderUnit(source.unit)}</span>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                            <div className="flex justify-end gap-2 mt-4">
-                                <button onClick={handleCancel} className="px-3 py-1 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 dark:bg-gray-600 dark:text-gray-200 dark:border-gray-500 dark:hover:bg-gray-500">{t('cancel')}</button>
-                                <button onClick={handleSave} className="px-3 py-1 text-sm font-medium text-white bg-ghg-green rounded-md shadow-sm hover:bg-ghg-dark">{t('save')}</button>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            </div>
-        )}
-        
-        {/* Supplier-specific Form */}
-        {calculationMethod === 'supplier_specific' && (
-            <div>
-                <label htmlFor={`supplier-co2e-${source.id}`} className={commonLabelClass}>{t('supplierProvidedCO2e')}</label>
-                <input id={`supplier-co2e-${source.id}`} type="number" step="any" value={source.supplierProvidedCO2e ?? ''} onChange={(e) => onUpdate({ supplierProvidedCO2e: parseFloat(e.target.value) || 0 })} className={commonSelectClass} placeholder="0" />
-            </div>
+        {(calculationMethod === 'average' || calculationMethod === 'spend') && (
+          <p className='text-sm text-center p-4 bg-yellow-50 dark:bg-yellow-900/50 rounded-md'>{t('comingSoon')}</p>
         )}
 
-        {/* Total emissions display */}
+        <div className="mt-2 p-2 bg-gray-100 dark:bg-gray-700 rounded-md text-right">
+            <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{t('emissionsForSource')}: </span>
+            <span className="text-sm font-bold text-ghg-dark dark:text-gray-100">{(totalEmissions / 1000).toLocaleString('en-US', {minimumFractionDigits: 3})} t CO₂e</span>
+        </div>
+      </div>
+    );
+  }
+  
+  if (source.category === EmissionCategory.UpstreamLeasedAssets || source.category === EmissionCategory.DownstreamLeasedAssets) {
+    return <LeasedAssetRow {...{ source, onUpdate, onRemove, onFuelTypeChange, fuels, facilities, calculateEmissions }} />;
+  }
+
+  if (source.category === EmissionCategory.ProcessingOfSoldProducts) {
+    // This is a simplified handler to fix the crash.
+     return (
+      <div className="flex flex-col gap-3 p-3 bg-gray-50 rounded-lg border dark:bg-gray-800 dark:border-gray-600">
+        <div className="flex justify-between items-start">
+            <p className="text-sm font-medium text-ghg-dark dark:text-gray-100">{source.description || t('processingOfSoldProductsPlaceholder')}</p>
+             <button onClick={onRemove} className="text-gray-400 hover:text-red-600 p-1 dark:text-gray-500 dark:hover:text-red-500" aria-label={t('removeSourceAria')}>
+                <IconTrash className="h-5 w-5" />
+            </button>
+        </div>
+        <p className='text-sm text-center p-4 bg-yellow-50 dark:bg-yellow-900/50 rounded-md'>{t('comingSoon')}</p>
         <div className="mt-2 p-2 bg-gray-100 dark:bg-gray-700 rounded-md text-right">
             <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{t('emissionsForSource')}: </span>
             <span className="text-sm font-bold text-ghg-dark dark:text-gray-100">{(totalEmissions / 1000).toLocaleString('en-US', {minimumFractionDigits: 3})} t CO₂e</span>
@@ -1870,380 +1667,145 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = ({ source, onUpdate
     );
   }
 
-  // == Advanced UI for Category 10 ==
-  if (source.category === EmissionCategory.ProcessingOfSoldProducts) {
-    const calculationMethod = (source.calculationMethod as Cat10CalculationMethod) || 'process_specific';
 
-    const methodTranslationMap: Record<Cat10CalculationMethod, TranslationKey> = {
-        'process_specific': 'processSpecificMethod',
-        'customer_specific': 'customerSpecificMethod',
-        'spend': 'spendMethod'
-    };
-
-    const handleMethodChange = (method: Cat10CalculationMethod) => {
-        let updates: Partial<EmissionSource> = { calculationMethod: method, monthlyQuantities: Array(12).fill(0) };
-        if (method === 'process_specific') {
-            const defaultProcess = fuels.activity[0];
-            updates = { ...updates, processingMethod: defaultProcess.name, unit: defaultProcess.units[0] };
-        } else if (method === 'spend') {
-            const defaultSpend = fuels.spend[0];
-            updates = { ...updates, fuelType: defaultSpend.name, unit: defaultSpend.units[0] };
-        } else if (method === 'customer_specific') {
-            updates = { ...updates, supplierDataType: 'total_co2e', supplierProvidedCO2e: 0, energyInputs: [] };
-        }
-        onUpdate(updates);
-    };
-
-    const handleProcessChange = (processName: string) => {
-        const processData = fuels.activity.find((p: any) => p.name === processName);
-        if (processData) {
-            onUpdate({ processingMethod: processName, unit: processData.units[0] });
-        }
-    };
-    
-    // Logic for energy inputs, copied from Cat 8
-    const allEnergyAndFuelFactors = useMemo(() => {
-        return [...STATIONARY_FUELS, ...MOBILE_FUELS, ...SCOPE2_ENERGY_SOURCES];
-    }, []);
-
-    const handleEnergyInputChange = (index: number, field: string, value: any) => {
-        const newInputs = [...(source.energyInputs || [])];
-        newInputs[index] = { ...newInputs[index], [field]: value };
-        onUpdate({ energyInputs: newInputs });
-    };
-
-    const handleEnergyInputTypeChange = (index: number, newType: string) => {
-        const newInputs = [...(source.energyInputs || [])];
-        const factorData = allEnergyAndFuelFactors.find(f => f.name === newType);
-        newInputs[index] = { ...newInputs[index], type: newType, unit: factorData?.units[0] || '' };
-        onUpdate({ energyInputs: newInputs });
-    };
-
-    const addEnergyInput = () => {
-        const newInputs = [...(source.energyInputs || [])];
-        const defaultFactor = allEnergyAndFuelFactors[0];
-        newInputs.push({
-            id: `energy-${Date.now()}`,
-            type: defaultFactor.name,
-            value: 0,
-            unit: defaultFactor.units[0],
-        });
-        onUpdate({ energyInputs: newInputs });
-    };
-
-    const removeEnergyInput = (index: number) => {
-        const newInputs = [...(source.energyInputs || [])];
-        newInputs.splice(index, 1);
-        onUpdate({ energyInputs: newInputs });
-    };
-
-    return (
-      <div className="flex flex-col gap-3 p-3 bg-gray-50 rounded-lg border dark:bg-gray-800 dark:border-gray-600">
-        {/* Method Switcher & Remove Button */}
-        <div className="flex justify-between items-start">
-            <div className='flex-grow pr-4'>
-                <label className={commonLabelClass}>{t('calculationMethod')}</label>
-                <div className="flex gap-1 rounded-md bg-gray-200 dark:bg-gray-900 p-1 text-xs">
-                    {(['process_specific', 'customer_specific', 'spend'] as Cat10CalculationMethod[]).map(method => (
-                        <button 
-                            key={method}
-                            onClick={() => handleMethodChange(method)}
-                            className={`flex-1 py-1 rounded-md transition-colors ${calculationMethod === method ? 'bg-white dark:bg-gray-700 shadow font-semibold' : 'hover:bg-gray-100 dark:hover:bg-gray-800'}`}>
-                            {t(methodTranslationMap[method])}
-                        </button>
-                    ))}
-                </div>
-            </div>
+  // Fallback to the default UI for all other categories
+  return (
+    <div className="flex flex-col gap-2 p-3 bg-gray-50 rounded-lg border dark:bg-gray-800 dark:border-gray-600">
+      <div className="flex items-start gap-2">
+        <div className="w-1/3">
+            <label className={commonLabelClass} htmlFor={`facility-${source.id}`}>{t('facility')}</label>
+            <select
+                id={`facility-${source.id}`}
+                value={source.facilityId}
+                onChange={(e) => onUpdate({ facilityId: e.target.value })}
+                className={commonSelectClass}
+            >
+                {Object.keys(groupedFacilities.groups).map(group => (
+                    <optgroup label={group} key={group}>
+                        {groupedFacilities.groups[group].map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+                    </optgroup>
+                ))}
+                {groupedFacilities.ungrouped.length > 0 && (
+                    <optgroup label={t('ungroupedFacilities')}>
+                        {groupedFacilities.ungrouped.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+                    </optgroup>
+                )}
+                 {groupedFacilities.corporate.length > 0 && (
+                     <optgroup label={t('corporateLevelFacility')}>
+                         {groupedFacilities.corporate.map(f => <option key={f.id} value={f.id}>{t('corporateLevelFacility')}</option>)}
+                     </optgroup>
+                 )}
+            </select>
+        </div>
+        <div className="flex-grow">
+          <label htmlFor={`description-${source.id}`} className={commonLabelClass}>{t('emissionSourceDescription')}</label>
+          <input
+            id={`description-${source.id}`}
+            type="text"
+            value={source.description}
+            onChange={(e) => onUpdate({ description: e.target.value })}
+            className={commonInputClass}
+            placeholder={t(placeholderKey)}
+          />
+        </div>
+        <div className="pt-5">
             <button onClick={onRemove} className="text-gray-400 hover:text-red-600 p-1 dark:text-gray-500 dark:hover:text-red-500" aria-label={t('removeSourceAria')}>
                 <IconTrash className="h-5 w-5" />
             </button>
         </div>
-        
-        {/* Common Inputs */}
-        <div>
-            <label htmlFor={`description-${source.id}`} className={commonLabelClass}>{t('emissionSourceDescription')}</label>
-            <div className="flex gap-2">
-                <input id={`description-${source.id}`} type="text" value={source.description || ''} onChange={(e) => onUpdate({ description: e.target.value })} className={commonSelectClass} placeholder={t(placeholderKey)} />
-                <button onClick={handleAnalyze} disabled={isLoadingAI || !source.description} className="px-3 py-2 bg-ghg-light-green text-white rounded-md hover:bg-ghg-green disabled:bg-gray-400 flex items-center gap-2">
-                    <IconSparkles className="w-4 h-4" />
-                    <span className="text-sm font-semibold">{isLoadingAI ? '...' : t('analyzeWithAI')}</span>
-                </button>
-            </div>
-        </div>
-         {aiAnalysisResult && !aiAnalysisResult.error && (
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-800 dark:bg-blue-900/30 dark:border-blue-700/50 text-xs space-y-2">
-                <h4 className="font-semibold text-sm mb-1">{t('aiAnalysis')}</h4>
-                <p><span className="font-semibold">{t('suggestedMethod')}:</span> {t(methodTranslationMap[aiAnalysisResult.suggested_calculation_method as Cat10CalculationMethod])}</p>
-                {aiAnalysisResult.suggested_process_name && <p><span className="font-semibold">{t('suggestedProcess')}:</span> {t((fuels.activity.find((f:any) => f.name === aiAnalysisResult.suggested_process_name)?.translationKey) as TranslationKey)}</p>}
-                <p><span className="font-semibold">{t('justification')}:</span> {aiAnalysisResult.justification}</p>
-                <div className="flex justify-between items-center mt-2 pt-2 border-t dark:border-blue-700/50">
-                    <p className="text-blue-600 dark:text-blue-300">{t('aiDisclaimer')}</p>
-                    <button onClick={handleApplyAISuggestion} className="bg-blue-500 text-white font-semibold py-1 px-3 rounded-md hover:bg-blue-600 text-xs">{t('applySuggestion')}</button>
-                </div>
-            </div>
-        )}
-         <div>
-            <label htmlFor={`activityDataSource-${source.id}`} className={commonLabelClass}>{t('activityDataSource')}</label>
-            <input id={`activityDataSource-${source.id}`} type="text" value={source.activityDataSource ?? ''} onChange={(e) => onUpdate({ activityDataSource: e.target.value })} className={commonSelectClass} placeholder={t('activityDataSourcePlaceholder')} />
-        </div>
-
-        {/* Process-specific Form */}
-        {calculationMethod === 'process_specific' && (
-            <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-2">
-                    <div>
-                        <label className={commonLabelClass}>{t('processingMethod')}</label>
-                        <select value={source.processingMethod} onChange={(e) => handleProcessChange(e.target.value)} className={commonSelectClass}>
-                            {fuels.activity.map((item: any) => (
-                                <option key={item.name} value={item.name}>{t(item.translationKey as TranslationKey)}</option>
-                            ))}
-                        </select>
-                    </div>
-                    <div>
-                         <label className={commonLabelClass}>{t('unit')}</label>
-                         <select value={source.unit} onChange={(e) => onUpdate({ unit: e.target.value })} className={commonSelectClass}>
-                            {(fuels.activity.find((f: any) => f.name === source.processingMethod) as any)?.units.map((unit: string) => (
-                                <option key={unit} value={unit}>{t(unit as TranslationKey) || unit}</option>
-                            ))}
-                        </select>
-                    </div>
-                </div>
-                 <div className="p-2 bg-gray-100 dark:bg-gray-700 rounded-md text-sm">
-                    <strong>{t('emissionFactor')}:</strong> {(fuels.activity.find((f: any) => f.name === source.processingMethod) as any)?.factors[source.unit] || 0} kg CO₂e / {renderUnit(source.unit)}
-                </div>
-
-                {/* Monthly Data */}
-                <div className="mt-2">
-                    <div className={`flex justify-between items-center bg-gray-100 dark:bg-gray-700 p-2 ${isEditing ? 'rounded-t-lg' : 'rounded-lg'}`}>
-                        <div>
-                            <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{t('totalProcessed')}: </span>
-                            <span className="text-sm font-bold text-ghg-dark dark:text-gray-100">{totalQuantity.toLocaleString()}&nbsp;{renderUnit(source.unit)}</span>
-                        </div>
-                        {!isEditing && (
-                        <button onClick={handleEdit} className="text-sm text-ghg-green font-semibold hover:underline">
-                            {t('editMonthly')}
-                        </button>
-                        )}
-                    </div>
-                     {isEditing && (
-                        <div className="p-3 bg-gray-100 dark:bg-gray-900/50 rounded-b-lg">
-                           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                                {monthKeys.map((monthKey, index) => (
-                                    <div key={monthKey}>
-                                        <label className={commonLabelClass} htmlFor={`quantity-${source.id}-${index}`}>{t(monthKey)}</label>
-                                        <div className={`flex items-center rounded-md shadow-sm border border-gray-300 dark:border-gray-500 bg-white dark:bg-gray-600 focus-within:ring-1 focus-within:ring-ghg-green focus-within:border-ghg-green overflow-hidden`}>
-                                            <input id={`quantity-${source.id}-${index}`} type="number" onKeyDown={preventNonNumericKeys} value={editedQuantities[index] === 0 ? '' : editedQuantities[index]} onChange={(e) => handleMonthlyChange(index, e.target.value)} className="w-0 flex-grow bg-transparent text-gray-900 dark:text-gray-200 py-1 px-2 text-sm text-right focus:outline-none" placeholder="0" />
-                                            <span className="pr-3 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{renderUnit(source.unit)}</span>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                            <div className="flex justify-end gap-2 mt-4">
-                                <button onClick={handleCancel} className="px-3 py-1 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 dark:bg-gray-600 dark:text-gray-200 dark:border-gray-500 dark:hover:bg-gray-500">{t('cancel')}</button>
-                                <button onClick={handleSave} className="px-3 py-1 text-sm font-medium text-white bg-ghg-green rounded-md shadow-sm hover:bg-ghg-dark">{t('save')}</button>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            </div>
-        )}
-        
-        {/* Customer-specific Form */}
-        {calculationMethod === 'customer_specific' && (
-            <div className="space-y-3">
-                <div className='flex-grow'>
-                    <label className={commonLabelClass}>{t('dataType')}</label>
-                    <div className="flex gap-1 rounded-md bg-gray-200 dark:bg-gray-900 p-1 text-xs">
-                        <button onClick={() => onUpdate({ supplierDataType: 'total_co2e' })} className={`flex-1 py-1 rounded-md transition-colors ${source.supplierDataType === 'total_co2e' ? 'bg-white dark:bg-gray-700 shadow font-semibold' : 'hover:bg-gray-100 dark:hover:bg-gray-800'}`}>{t('totalCO2e')}</button>
-                        <button onClick={() => onUpdate({ supplierDataType: 'energy_data' })} className={`flex-1 py-1 rounded-md transition-colors ${source.supplierDataType === 'energy_data' ? 'bg-white dark:bg-gray-700 shadow font-semibold' : 'hover:bg-gray-100 dark:hover:bg-gray-800'}`}>{t('energyConsumptionData')}</button>
-                    </div>
-                </div>
-
-                {source.supplierDataType === 'total_co2e' && (
-                    <div>
-                        <label htmlFor={`supplier-co2e-${source.id}`} className={commonLabelClass}>{t('supplierProvidedCO2e')}</label>
-                        <input id={`supplier-co2e-${source.id}`} type="number" step="any" value={source.supplierProvidedCO2e ?? ''} onChange={(e) => onUpdate({ supplierProvidedCO2e: parseFloat(e.target.value) || 0 })} className={commonSelectClass} placeholder="0" />
-                    </div>
-                )}
-                
-                {source.supplierDataType === 'energy_data' && (
-                     <div>
-                        <label className={commonLabelClass}>{t('energyInputs')}</label>
-                        <div className="space-y-2 p-2 bg-gray-100 dark:bg-gray-900/50 rounded-md">
-                            {(source.energyInputs || []).map((input, index) => {
-                                const factorData = allEnergyAndFuelFactors.find(f => f.name === input.type);
-                                return (
-                                    <div key={input.id} className="p-2 border rounded dark:border-gray-600 bg-white dark:bg-gray-800">
-                                        <div className="flex justify-end">
-                                            <button onClick={() => removeEnergyInput(index)} className="text-gray-400 hover:text-red-500"><IconTrash className="w-4 h-4" /></button>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <select value={input.type} onChange={(e) => handleEnergyInputTypeChange(index, e.target.value)} className={commonSelectClass}>
-                                                {allEnergyAndFuelFactors.map(f => <option key={f.name} value={f.name}>{language === 'ko' && f.translationKey ? t(f.translationKey as TranslationKey) : f.name}</option>)}
-                                            </select>
-                                            <select value={input.unit} onChange={(e) => handleEnergyInputChange(index, 'unit', e.target.value)} className={commonSelectClass}>
-                                                {factorData?.units.map((u: string) => <option key={u} value={u}>{t(u as TranslationKey) || u}</option>)}
-                                            </select>
-                                        </div>
-                                        <div className="mt-2">
-                                            <label className={commonLabelClass}>{t('annualConsumption')}</label>
-                                            <input type="number" value={input.value} onChange={(e) => handleEnergyInputChange(index, 'value', parseFloat(e.target.value) || 0)} className={commonSelectClass} placeholder="0" />
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                            <button onClick={addEnergyInput} className="w-full text-sm bg-ghg-light-green/50 text-ghg-dark font-semibold py-1 px-2 rounded-md hover:bg-ghg-light-green/80 transition-colors">{t('addEnergyInput')}</button>
-                        </div>
-                    </div>
-                )}
-            </div>
-        )}
-        
-        {/* Spend-based Form */}
-        {calculationMethod === 'spend' && (
-            <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-2">
-                    <select value={source.fuelType} onChange={(e) => onFuelTypeChange(e.target.value)} className={commonSelectClass} aria-label="Service Type">
-                        {fuels.spend.map((item: any) => (
-                            <option key={item.name} value={item.name}>{t(item.translationKey as TranslationKey)}</option>
-                        ))}
-                    </select>
-                     <select value={source.unit} onChange={(e) => onUpdate({ unit: e.target.value })} className={commonSelectClass} aria-label="Unit">
-                        {(fuels.spend.find((f: any) => f.name === source.fuelType) as any)?.units.map((unit: string) => (
-                            <option key={unit} value={unit}>{t(unit as TranslationKey) || unit}</option>
-                        ))}
-                    </select>
-                </div>
-                 <div className="p-2 bg-gray-100 dark:bg-gray-700 rounded-md text-sm">
-                    <strong>{t('emissionFactor')}:</strong> {(fuels.spend.find((f: any) => f.name === source.fuelType) as any)?.factors[source.unit] || 0} kg CO₂e / {renderUnit(source.unit)}
-                </div>
-                <div className="mt-2">
-                    <div className={`flex justify-between items-center bg-gray-100 dark:bg-gray-700 p-2 ${isEditing ? 'rounded-t-lg' : 'rounded-lg'}`}>
-                        <div>
-                            <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{t('totalYear')}: </span>
-                            <span className="text-sm font-bold text-ghg-dark dark:text-gray-100">{totalQuantity.toLocaleString()}&nbsp;{renderUnit(source.unit)}</span>
-                        </div>
-                        {!isEditing && (
-                        <button onClick={handleEdit} className="text-sm text-ghg-green font-semibold hover:underline">
-                            {t('editMonthly')}
-                        </button>
-                        )}
-                    </div>
-                    {isEditing && (
-                         <div className="p-3 bg-gray-100 dark:bg-gray-900/50 rounded-b-lg">
-                           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                                {monthKeys.map((monthKey, index) => (
-                                    <div key={monthKey}>
-                                        <label className={commonLabelClass} htmlFor={`quantity-${source.id}-${index}`}>{t(monthKey)}</label>
-                                        <div className={`flex items-center rounded-md shadow-sm border border-gray-300 dark:border-gray-500 bg-white dark:bg-gray-600 focus-within:ring-1 focus-within:ring-ghg-green focus-within:border-ghg-green overflow-hidden`}>
-                                            <input id={`quantity-${source.id}-${index}`} type="number" onKeyDown={preventNonNumericKeys} value={editedQuantities[index] === 0 ? '' : editedQuantities[index]} onChange={(e) => handleMonthlyChange(index, e.target.value)} className="w-0 flex-grow bg-transparent text-gray-900 dark:text-gray-200 py-1 px-2 text-sm text-right focus:outline-none" placeholder="0" />
-                                            <span className="pr-3 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{renderUnit(source.unit)}</span>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                            <div className="flex justify-end gap-2 mt-4">
-                                <button onClick={handleCancel} className="px-3 py-1 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 dark:bg-gray-600 dark:text-gray-200 dark:border-gray-500 dark:hover:bg-gray-500">{t('cancel')}</button>
-                                <button onClick={handleSave} className="px-3 py-1 text-sm font-medium text-white bg-ghg-green rounded-md shadow-sm hover:bg-ghg-dark">{t('save')}</button>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            </div>
-        )}
-
-        {/* Total emissions display */}
-        <div className="mt-2 p-2 bg-gray-100 dark:bg-gray-700 rounded-md text-right">
-            <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{t('emissionsForSource')}: </span>
-            <span className="text-sm font-bold text-ghg-dark dark:text-gray-100">{(totalEmissions / 1000).toLocaleString('en-US', {minimumFractionDigits: 3})} t CO₂e</span>
-        </div>
       </div>
-    );
-  }
-
-  // == Default UI for all other categories ==
-  const selectedFuel = Array.isArray(fuels) ? fuels.find((f: any) => f.name === source.fuelType) : null;
-  const isFugitive = selectedFuel && 'gwp' in selectedFuel;
-  
-  const getCalculationDetails = () => {
-      const totalEmissionsInTonnes = (totalEmissions / 1000).toLocaleString('en-US', {minimumFractionDigits: 3, maximumFractionDigits: 3});
-      if (isFugitive) {
-        const gwp = (selectedFuel as Refrigerant).gwp;
-        return (
-          <div className="p-1">
-            <p className="text-center font-bold mb-2 border-b border-gray-600 pb-1">{t('emissionsForSource')}</p>
-            <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-left items-center">
-                <span className="font-semibold">{t('activityData')}</span>
-                <span className="text-right">{totalQuantity.toLocaleString()} kg</span>
-                
-                <span className="font-semibold">GWP</span>
-                <span className="text-right">&times; {gwp.toLocaleString()}</span>
-                
-                <div className="col-span-2 my-1 border-t border-gray-500"></div>
-
-                <span className="font-bold text-base">{t('total')}</span>
-                <span className="font-bold text-base text-right">= {totalEmissionsInTonnes} t CO₂e</span>
-            </div>
-          </div>
-        );
-      }
-
-      const factor = selectedFuel && 'factors' in selectedFuel ? selectedFuel.factors[source.unit] || 0 : 0;
-      return (
-          <div className="p-1">
-            <p className="text-center font-bold mb-2 border-b border-gray-600 pb-1">{t('emissionsForSource')}</p>
-            <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-left items-center">
-                <span className="font-semibold">{t('activityData')}</span>
-                <span className="text-right">{totalQuantity.toLocaleString()}&nbsp;{renderUnit(source.unit)}</span>
-                
-                <span className="font-semibold">{t('emissionFactor')}</span>
-                <span className="text-right">&times; {factor.toLocaleString()} kg CO₂e</span>
-                
-                <div className="col-span-2 my-1 border-t border-gray-500"></div>
-
-                <span className="font-bold text-base">{t('total')}</span>
-                <span className="font-bold text-base text-right">= {totalEmissionsInTonnes} t CO₂e</span>
-            </div>
-          </div>
-      )
-  };
-
-  return (
-    <div className="flex flex-col gap-2 p-3 bg-gray-50 rounded-lg border dark:bg-gray-800 dark:border-gray-600">
-      <div className="grid grid-cols-[1fr_auto] gap-2 items-center">
-        <select
-          value={source.facilityId}
-          onChange={(e) => onUpdate({ facilityId: e.target.value })}
-          className={commonSelectClass}
-          aria-label={t('facility')}
-        >
-          {facilities.filter(f => f.isCorporate).map(f => (
-            <option key={f.id} value={f.id}>{t('corporateLevelFacility')}</option>
+      
+      <div className="grid grid-cols-2 gap-2">
+        <select value={source.fuelType} onChange={(e) => onFuelTypeChange(e.target.value)} className={commonSelectClass} aria-label="Fuel/Source">
+          {Array.isArray(fuels) && fuels.map((fuel: Refrigerant | CO2eFactorFuel) => (
+            <option key={fuel.name} value={fuel.name}>
+              {language === 'ko' && fuel.translationKey ? `${t(fuel.translationKey as TranslationKey)}` : fuel.name}
+            </option>
           ))}
-          {Object.entries(groupedFacilities.groups).map(([groupName, facilitiesInGroup]) => (
-              <optgroup key={groupName} label={groupName}>
-                  {(facilitiesInGroup as Facility[]).map((facility) => (
-                      <option key={facility.id} value={facility.id}>{facility.name}</option>
-                  ))}
-              </optgroup>
-          ))}
-          {groupedFacilities.ungrouped.length > 0 && (
-              <optgroup label={t('ungroupedFacilities')}>
-                  {groupedFacilities.ungrouped.map((facility) => (
-                      <option key={facility.id} value={facility.id}>{facility.name}</option>
-                  ))}
-              </optgroup>
-          )}
         </select>
-         <button onClick={onRemove} className="text-gray-400 hover:text-red-600 p-1 dark:text-gray-500 dark:hover:text-red-500" aria-label={t('removeSourceAria')}>
-          <IconTrash className="h-5 w-5" />
-        </button>
+        {Array.isArray(fuels) && 'units' in (fuels.find((f: CO2eFactorFuel | Refrigerant) => f.name === source.fuelType) || {}) &&
+          <select value={source.unit} onChange={(e) => onUpdate({ unit: e.target.value })} className={commonSelectClass} aria-label="Unit">
+            { (fuels.find((f: CO2eFactorFuel) => f.name === source.fuelType) as CO2eFactorFuel)?.units.map((unit) => (
+              <option key={unit} value={unit}>{t(unit as TranslationKey) || unit}</option>
+            ))}
+          </select>
+        }
       </div>
-      <div>
-        <label htmlFor={`description-${source.id}`} className={commonLabelClass}>{t('emissionSourceDescription')}</label>
-        <input
-            id={`description-${source.id}`}
-            type="text"
-            value={source.description || ''}
-            onChange={(e) => onUpdate({ description: e.target.value })}
-            className={commonSelectClass}--- END OF FILE components/SourceInputRow.tsx ---
+
+      {source.category === EmissionCategory.PurchasedEnergy && (
+          <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
+              <label className="flex items-center space-x-2 text-sm text-blue-800 dark:text-blue-200">
+                  <input type="checkbox" checked={provideMarketData} onChange={toggleMarketData} className="rounded text-ghg-green focus:ring-ghg-green" />
+                  <span>{t('provideMarketData')}</span>
+              </label>
+              {provideMarketData && (
+                  <div className="mt-2">
+                      <label htmlFor={`market-factor-${source.id}`} className="block text-xs font-medium text-blue-700 dark:text-blue-300">{t('marketFactor')}</label>
+                      <div className="flex items-center gap-2">
+                        <input
+                            id={`market-factor-${source.id}`}
+                            type="number"
+                            step="any"
+                            value={source.marketBasedFactor ?? ''}
+                            onChange={(e) => handleMarketFactorChange(e.target.value)}
+                            className={`${commonInputClass} mt-1`}
+                        />
+                         <span className="mt-1 text-xs text-blue-600 dark:text-blue-400 whitespace-nowrap">
+                            kg CO₂e / {renderUnit(source.unit)}
+                        </span>
+                      </div>
+                  </div>
+              )}
+          </div>
+      )}
+
+      <div className="mt-2">
+        <div className={`flex justify-between items-center bg-gray-100 dark:bg-gray-700 p-2 ${isEditing ? 'rounded-t-lg' : 'rounded-lg'}`}>
+            <div>
+                <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{t('totalYear')}: </span>
+                <span className="text-sm font-bold text-ghg-dark dark:text-gray-100">{totalQuantity.toLocaleString()}&nbsp;{renderUnit(source.unit)}</span>
+            </div>
+            <div className='flex items-center gap-4'>
+                 <span className="text-sm font-bold text-ghg-dark dark:text-gray-100">{(totalEmissions / 1000).toLocaleString('en-US', {minimumFractionDigits: 3})} t CO₂e</span>
+
+                {!isEditing && (
+                <button onClick={handleEdit} className="text-sm text-ghg-green font-semibold hover:underline">
+                    {t('editMonthly')}
+                </button>
+                )}
+            </div>
+        </div>
+
+        {isEditing && (
+          <div className="p-3 bg-gray-100 dark:bg-gray-900/50 rounded-b-lg">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+              {monthKeys.map((monthKey, index) => (
+                <div key={monthKey}>
+                  <label className={commonLabelClass} htmlFor={`quantity-${source.id}-${index}`}>{t(monthKey)}</label>
+                  <div className={`flex items-center rounded-md shadow-sm border border-gray-300 dark:border-gray-500 bg-white dark:bg-gray-600 focus-within:ring-1 focus-within:ring-ghg-green focus-within:border-ghg-green overflow-hidden`}>
+                     <input
+                      id={`quantity-${source.id}-${index}`}
+                      type="number"
+                      onKeyDown={preventNonNumericKeys}
+                      value={editedQuantities[index] === 0 ? '' : editedQuantities[index]}
+                      onChange={(e) => handleMonthlyChange(index, e.target.value)}
+                      className="w-0 flex-grow bg-transparent text-gray-900 dark:text-gray-200 py-1 px-2 text-sm text-right focus:outline-none"
+                      placeholder="0"
+                    />
+                    <span className="pr-3 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                        {renderUnit(source.unit)}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="flex justify-end gap-2 mt-4">
+              <button onClick={handleCancel} className="px-3 py-1 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 dark:bg-gray-600 dark:text-gray-200 dark:border-gray-500 dark:hover:bg-gray-500">{t('cancel')}</button>
+              <button onClick={handleSave} className="px-3 py-1 text-sm font-medium text-white bg-ghg-green rounded-md shadow-sm hover:bg-ghg-dark">{t('save')}</button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};

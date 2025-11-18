@@ -87,9 +87,16 @@ const factorConfig = {
 const getInitialFactors = () => {
     const loadedFactors: { [key in FactorCategoryKey]?: any } = {};
     for (const [categoryKey, config] of Object.entries(factorConfig)) {
-        const saved = localStorage.getItem(config.key);
-        const loaded = saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(config.default));
-        loadedFactors[categoryKey as FactorCategoryKey] = loaded;
+        try {
+            const saved = localStorage.getItem(config.key);
+            // Use structuredClone for a deep copy of defaults to prevent mutation
+            const loaded = saved ? JSON.parse(saved) : structuredClone(config.default);
+            loadedFactors[categoryKey as FactorCategoryKey] = loaded;
+        } catch (error) {
+            console.error(`Failed to load/parse factors for ${config.key} from localStorage. Falling back to default.`, error);
+            localStorage.removeItem(config.key);
+            loadedFactors[categoryKey as FactorCategoryKey] = structuredClone(config.default);
+        }
     }
     return loadedFactors as { [key in FactorCategoryKey]: any };
 };
@@ -99,6 +106,7 @@ export const MainCalculator: React.FC = () => {
   
   // State for data, initialized from localStorage or defaults
   const [sources, setSources] = useState<{ [key in EmissionCategory]: EmissionSource[] }>(() => {
+    try {
       const saved = localStorage.getItem('ghg-calc-sources');
       const loadedSources = saved ? JSON.parse(saved) : {};
       
@@ -116,34 +124,78 @@ export const MainCalculator: React.FC = () => {
       // Ensure all categories exist in the loaded data
       const fullSources = { ...initialSources, ...loadedSources };
       return fullSources;
+    } catch (error) {
+        console.error("Failed to parse 'sources' from localStorage. Resetting to initial state.", error);
+        localStorage.removeItem('ghg-calc-sources');
+        return initialSources;
+    }
   });
-  const [companyName, setCompanyName] = useState<string>(() => localStorage.getItem('ghg-calc-companyName') || 'My Company');
-  const [reportingYear, setReportingYear] = useState<string>(() => localStorage.getItem('ghg-calc-reportingYear') || new Date().getFullYear().toString());
+
+  const [companyName, setCompanyName] = useState<string>(() => {
+    try {
+        return localStorage.getItem('ghg-calc-companyName') || 'My Company';
+    } catch (error) {
+        return 'My Company';
+    }
+  });
+
+  const [reportingYear, setReportingYear] = useState<string>(() => {
+    try {
+        return localStorage.getItem('ghg-calc-reportingYear') || new Date().getFullYear().toString();
+    } catch (error) {
+        return new Date().getFullYear().toString();
+    }
+  });
+  
   const [facilities, setFacilities] = useState<Facility[]>(() => {
-    const saved = localStorage.getItem('ghg-calc-facilities');
-    let loadedFacilities: Facility[] = saved ? JSON.parse(saved) : [];
+    try {
+        const saved = localStorage.getItem('ghg-calc-facilities');
+        let loadedFacilities: Facility[] = saved ? JSON.parse(saved) : [];
 
-    if (!loadedFacilities.find(f => f.id === CORPORATE_FACILITY_ID)) {
-      loadedFacilities.unshift({ 
-        id: CORPORATE_FACILITY_ID, 
-        name: 'Corporate Level',
-        equityShare: 100,
-        isCorporate: true 
-      });
-    }
+        if (!Array.isArray(loadedFacilities)) loadedFacilities = [];
 
-    if (loadedFacilities.filter(f => !f.isCorporate).length === 0) {
-      if (!saved) { // Only add default facility for brand new users
-        loadedFacilities.push({ id: 'default', name: 'Default Facility', equityShare: 100 });
-      }
+        if (!loadedFacilities.find(f => f.id === CORPORATE_FACILITY_ID)) {
+          loadedFacilities.unshift({ 
+            id: CORPORATE_FACILITY_ID, 
+            name: 'Corporate Level',
+            equityShare: 100,
+            isCorporate: true 
+          });
+        }
+
+        if (loadedFacilities.filter(f => !f.isCorporate).length === 0) {
+          if (!saved) { // Only add default facility for brand new users
+            loadedFacilities.push({ id: 'default', name: 'Default Facility', equityShare: 100 });
+          }
+        }
+        
+        return loadedFacilities;
+    } catch(error) {
+        console.error("Failed to parse 'facilities' from localStorage. Resetting to initial state.", error);
+        localStorage.removeItem('ghg-calc-facilities');
+        return [
+            { id: CORPORATE_FACILITY_ID, name: 'Corporate Level', equityShare: 100, isCorporate: true },
+            { id: 'default', name: 'Default Facility', equityShare: 100 }
+        ];
     }
-    
-    return loadedFacilities;
   });
-  const [boundaryApproach, setBoundaryApproach] = useState<BoundaryApproach>(() => (localStorage.getItem('ghg-calc-boundaryApproach') as BoundaryApproach) || 'operational');
+
+  const [boundaryApproach, setBoundaryApproach] = useState<BoundaryApproach>(() => {
+    try {
+        return (localStorage.getItem('ghg-calc-boundaryApproach') as BoundaryApproach) || 'operational';
+    } catch(error) {
+        return 'operational';
+    }
+  });
   const [scope3Settings, setScope3Settings] = useState<Scope3Settings>(() => {
+    try {
       const saved = localStorage.getItem('ghg-calc-scope3Settings');
       return saved ? JSON.parse(saved) : { isEnabled: true, enabledCategories: [EmissionCategory.BusinessTravel, EmissionCategory.EmployeeCommuting, EmissionCategory.WasteGeneratedInOperations] };
+    } catch(error) {
+        console.error("Failed to parse 'scope3Settings' from localStorage. Resetting to initial state.", error);
+        localStorage.removeItem('ghg-calc-scope3Settings');
+        return { isEnabled: true, enabledCategories: [EmissionCategory.BusinessTravel, EmissionCategory.EmployeeCommuting, EmissionCategory.WasteGeneratedInOperations] };
+    }
   });
   
   // Centralized state for all emission factors, loaded without migration
@@ -154,7 +206,13 @@ export const MainCalculator: React.FC = () => {
   const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [wizardStartStep, setWizardStartStep] = useState(0);
   const [isReportOpen, setIsReportOpen] = useState(false);
-  const [isSetupComplete, setIsSetupComplete] = useState<boolean>(() => JSON.parse(localStorage.getItem('ghg-calc-isSetupComplete') || 'false'));
+  const [isSetupComplete, setIsSetupComplete] = useState<boolean>(() => {
+    try {
+        return JSON.parse(localStorage.getItem('ghg-calc-isSetupComplete') || 'false');
+    } catch(error) {
+        return false;
+    }
+  });
   const [activeTab, setActiveTab] = useState<ActiveTab>('scope1');
 
   // This effect runs once on mount to ensure legacy custom factors from localStorage have IDs.
@@ -268,7 +326,10 @@ export const MainCalculator: React.FC = () => {
     [EmissionCategory.CapitalGoods]: allFactors.capitalGoods,
     [EmissionCategory.FuelAndEnergyRelatedActivities]: allFactors.fuelEnergy,
     [EmissionCategory.UpstreamTransportationAndDistribution]: allFactors.upstreamTransport,
-    [EmissionCategory.DownstreamTransportationAndDistribution]: allFactors.downstreamTransport,
+    [EmissionCategory.DownstreamTransportationAndDistribution]: {
+      ...allFactors.downstreamTransport,
+      ...LEASED_ASSETS_FACTORS_DETAILED // For warehousing part
+    },
     [EmissionCategory.WasteGeneratedInOperations]: allFactors.scope3Waste,
     [EmissionCategory.BusinessTravel]: allFactors.businessTravel,
     [EmissionCategory.EmployeeCommuting]: allFactors.employeeCommuting,
@@ -439,13 +500,13 @@ export const MainCalculator: React.FC = () => {
             category,
             description: '',
             fuelType: '', // Not used directly, determined by sub-types
-            monthlyQuantities: [], // Not used for this complex type
+            monthlyQuantities: [], 
             unit: 'km',
             calculationMethod: 'activity',
             commutingMode: 'PersonalCar',
             personalCarType: 'Gasoline',
             distanceKm: 0,
-            daysPerYear: 0,
+            daysPerYear: 240,
             carpoolOccupancy: 1,
         };
         setSources(prev => ({...prev, [category]: [...prev[category], newSource]}));
@@ -563,82 +624,96 @@ export const MainCalculator: React.FC = () => {
         return { scope1: 0, scope2Location: 0, scope2Market: 0, scope3: emissions };
     }
 
-    if (source.category === EmissionCategory.UpstreamTransportationAndDistribution || source.category === EmissionCategory.DownstreamTransportationAndDistribution) {
-        if (source.downstreamActivityType === 'warehousing') {
-            let scope3 = 0;
-            const calcMethod = source.calculationMethod as Cat8CalculationMethod || 'area_based';
-            switch(calcMethod) {
-                case 'supplier_specific':
-                    scope3 = source.supplierProvidedCO2e || 0;
-                    break;
-                case 'spend_based':
-                    const totalSpend = source.monthlyQuantities.reduce((s, q) => s + q, 0);
-                    const spendFactorData = TRANSPORTATION_SPEND_FACTORS.find((f:any) => f.name === source.fuelType);
-                    const spendFactor = spendFactorData?.factors[source.unit] || 0;
-                    scope3 = totalSpend * spendFactor;
-                    break;
-                case 'area_based':
-                    const buildingType = source.buildingType || 'Office';
-                    const energyIntensityFactor = allFactors.upstreamLeased.area_based[buildingType]?.factor || 0; // kWh/m2/year
-                    const area = source.areaSqm || 0;
-                    const totalKwh = area * energyIntensityFactor;
-                    const gridFactor = (allFactors.scope2.find((f: any) => f.name === 'Grid Electricity') as CO2eFactorFuel)?.factors['kWh'] || 0;
-                    scope3 = totalKwh * gridFactor;
-                    break;
-                case 'asset_specific':
-                    let totalEmissions = 0;
-                    for (const input of source.energyInputs || []) {
-                        const allEnergyAndFuelFactors = [...allFactors.stationary, ...allFactors.mobile, ...allFactors.scope2];
-                        const factorData = allEnergyAndFuelFactors.find((f: any) => f.name === input.type) as CO2eFactorFuel | undefined;
-                        if (factorData) {
-                            const factor = factorData.factors[input.unit] || 0;
-                            totalEmissions += input.value * factor;
-                        }
+    if (
+        source.category === EmissionCategory.UpstreamLeasedAssets || 
+        source.category === EmissionCategory.DownstreamLeasedAssets || 
+        (source.category === EmissionCategory.DownstreamTransportationAndDistribution && source.downstreamActivityType === 'warehousing')
+    ) {
+        let scope3 = 0;
+        const calcMethod = (source.calculationMethod as Cat8CalculationMethod) || 'asset_specific';
+        
+        switch(calcMethod) {
+            case 'supplier_specific':
+                scope3 = source.supplierProvidedCO2e || 0; // Assumed annual
+                break;
+            case 'spend_based':
+                const totalSpend = source.monthlyQuantities.reduce((s, q) => s + q, 0);
+                const spendFactorData = allFactors.upstreamLeased.spend_based.find((f:any) => f.name === source.fuelType);
+                const spendFactor = spendFactorData?.factors[source.unit] || 0;
+                scope3 = totalSpend * spendFactor;
+                break;
+            case 'area_based':
+                const buildingType = source.buildingType || 'Office';
+                const energyIntensityFactor = allFactors.upstreamLeased.area_based[buildingType]?.factor || 0; // kWh/m2/year
+                const area = source.areaSqm || 0;
+                const totalKwh = area * energyIntensityFactor; // Already annual
+                const gridFactor = (allFactors.scope2.find((f: any) => f.name === 'Grid Electricity') as CO2eFactorFuel)?.factors['kWh'] || 0;
+                scope3 = totalKwh * gridFactor;
+                break;
+            case 'asset_specific':
+                let totalEmissions = 0;
+                const allEnergyAndFuelFactors = [...allFactors.stationary, ...allFactors.mobile, ...allFactors.scope2];
+                for (const input of source.energyInputs || []) {
+                    const factorData = allEnergyAndFuelFactors.find((f: any) => f.name === input.type) as CO2eFactorFuel | undefined;
+                    if (factorData) {
+                        const factor = factorData.factors[input.unit] || 0;
+                        totalEmissions += (input.value || 0) * factor; // Input value is annual
                     }
-                    scope3 = totalEmissions;
-                    break;
-            }
-            return { scope1: 0, scope2Location: 0, scope2Market: 0, scope3 };
-        } else { // Transportation
-             switch (source.calculationMethod as Cat4CalculationMethod) {
-                case 'activity':
-                    const mode = source.transportMode;
-                    const vehicle = source.vehicleType;
-                    const factors = source.category === EmissionCategory.UpstreamTransportationAndDistribution ? allFactors.upstreamTransport : allFactors.downstreamTransport;
-                    if (!mode || !vehicle || !factors[mode] || !factors[mode][vehicle]) {
-                        return { scope1: 0, scope2Location: 0, scope2Market: 0, scope3: 0 };
-                    }
-                    const factor = factors[mode][vehicle].factor;
-                    const tonneKm = (source.distanceKm || 0) * (source.weightTonnes || 0);
-                    
-                    let adjustmentMultiplier = 1.0;
-                    if (source.refrigerated) adjustmentMultiplier *= 1.2;
-                    if (source.emptyBackhaul) adjustmentMultiplier *= 2.0;
-                    if (source.loadFactor && source.loadFactor > 0 && source.loadFactor < 100) {
-                        adjustmentMultiplier *= (100 / source.loadFactor);
-                    }
+                }
+                scope3 = totalEmissions;
+                break;
+        }
 
-                    return { scope1: 0, scope2Location: 0, scope2Market: 0, scope3: tonneKm * factor * adjustmentMultiplier };
+        // Adjust for lease duration for annual calculation methods
+        if (calcMethod !== 'spend_based') {
+            const leaseDurationFactor = (source.leaseDurationMonths || 12) / 12;
+            scope3 *= leaseDurationFactor;
+        }
 
-                case 'fuel':
-                     const totalFuel = source.monthlyQuantities.reduce((sum, q) => sum + q, 0);
-                     const fuelData = allFactors.mobile.find((f: any) => f.name === source.fuelType) as CO2eFactorFuel | undefined;
-                     if (!fuelData) return { scope1: 0, scope2Location: 0, scope2Market: 0, scope3: 0 };
-                     const fuelFactor = fuelData.factors[source.unit] || 0;
-                     return { scope1: 0, scope2Location: 0, scope2Market: 0, scope3: totalFuel * fuelFactor };
+        return { scope1: 0, scope2Location: 0, scope2Market: 0, scope3 };
+    }
+
+
+    if (source.category === EmissionCategory.UpstreamTransportationAndDistribution || (source.category === EmissionCategory.DownstreamTransportationAndDistribution && source.downstreamActivityType !== 'warehousing')) {
+        switch (source.calculationMethod as Cat4CalculationMethod) {
+            case 'activity':
+                const mode = source.transportMode;
+                const vehicle = source.vehicleType;
+                const factors = source.category === EmissionCategory.UpstreamTransportationAndDistribution ? allFactors.upstreamTransport : allFactors.downstreamTransport;
+                if (!mode || !vehicle || !factors[mode] || !factors[mode][vehicle]) {
+                    return { scope1: 0, scope2Location: 0, scope2Market: 0, scope3: 0 };
+                }
+                const factor = factors[mode][vehicle].factor;
+                const tonneKm = (source.distanceKm || 0) * (source.weightTonnes || 0);
                 
-                case 'spend':
-                    const totalSpend = source.monthlyQuantities.reduce((sum, q) => sum + q, 0);
-                    const spendData = TRANSPORTATION_SPEND_FACTORS.find(f => f.name === source.fuelType);
-                    if (!spendData) return { scope1: 0, scope2Location: 0, scope2Market: 0, scope3: 0 };
-                    const spendFactor = spendData.factors[source.unit] || 0;
-                    return { scope1: 0, scope2Location: 0, scope2Market: 0, scope3: totalSpend * spendFactor };
+                let adjustmentMultiplier = 1.0;
+                if (source.refrigerated) adjustmentMultiplier *= 1.2;
+                if (source.emptyBackhaul) adjustmentMultiplier *= 2.0;
+                if (source.loadFactor && source.loadFactor > 0 && source.loadFactor < 100) {
+                    adjustmentMultiplier *= (100 / source.loadFactor);
+                }
 
-                case 'supplier_specific':
-                    return { scope1: 0, scope2Location: 0, scope2Market: 0, scope3: source.supplierProvidedCO2e || 0 };
-            }
+                return { scope1: 0, scope2Location: 0, scope2Market: 0, scope3: tonneKm * factor * adjustmentMultiplier };
+
+            case 'fuel':
+                    const totalFuel = source.monthlyQuantities.reduce((sum, q) => sum + q, 0);
+                    const fuelData = allFactors.mobile.find((f: any) => f.name === source.fuelType) as CO2eFactorFuel | undefined;
+                    if (!fuelData) return { scope1: 0, scope2Location: 0, scope2Market: 0, scope3: 0 };
+                    const fuelFactor = fuelData.factors[source.unit] || 0;
+                    return { scope1: 0, scope2Location: 0, scope2Market: 0, scope3: totalFuel * fuelFactor };
+            
+            case 'spend':
+                const totalSpend = source.monthlyQuantities.reduce((sum, q) => sum + q, 0);
+                const spendData = TRANSPORTATION_SPEND_FACTORS.find(f => f.name === source.fuelType);
+                if (!spendData) return { scope1: 0, scope2Location: 0, scope2Market: 0, scope3: 0 };
+                const spendFactor = spendData.factors[source.unit] || 0;
+                return { scope1: 0, scope2Location: 0, scope2Market: 0, scope3: totalSpend * spendFactor };
+
+            case 'supplier_specific':
+                return { scope1: 0, scope2Location: 0, scope2Market: 0, scope3: source.supplierProvidedCO2e || 0 };
         }
     }
+
 
     if (source.category === EmissionCategory.WasteGeneratedInOperations) {
         let scope3 = 0;
@@ -782,45 +857,6 @@ export const MainCalculator: React.FC = () => {
         return { scope1: 0, scope2Location: 0, scope2Market: 0, scope3 };
     }
 
-    if (source.category === EmissionCategory.UpstreamLeasedAssets || source.category === EmissionCategory.DownstreamLeasedAssets) {
-        let scope3 = 0;
-        const calcMethod = (source.calculationMethod as Cat8CalculationMethod) || 'asset_specific';
-        const leaseDurationFactor = (source.leaseDurationMonths || 12) / 12;
-
-        switch(calcMethod) {
-            case 'supplier_specific':
-                scope3 = (source.supplierProvidedCO2e || 0) * leaseDurationFactor;
-                break;
-            case 'spend_based':
-                const totalSpend = source.monthlyQuantities.reduce((s, q) => s + q, 0);
-                const spendFactorData = allFactors.upstreamLeased.spend_based.find((f:any) => f.name === source.fuelType);
-                const spendFactor = spendFactorData?.factors[source.unit] || 0;
-                scope3 = totalSpend * spendFactor; // Assuming spend data is already for the reporting period
-                break;
-            case 'area_based':
-                const buildingType = source.buildingType || 'Office';
-                const energyIntensityFactor = allFactors.upstreamLeased.area_based[buildingType]?.factor || 0; // kWh/m2/year
-                const area = source.areaSqm || 0;
-                const totalKwh = area * energyIntensityFactor * leaseDurationFactor;
-                const gridFactor = (allFactors.scope2.find((f: any) => f.name === 'Grid Electricity') as CO2eFactorFuel)?.factors['kWh'] || 0;
-                scope3 = totalKwh * gridFactor;
-                break;
-            case 'asset_specific':
-                let totalEmissions = 0;
-                for (const input of source.energyInputs || []) {
-                    const allEnergyAndFuelFactors = [...allFactors.stationary, ...allFactors.mobile, ...allFactors.scope2];
-                    const factorData = allEnergyAndFuelFactors.find((f: any) => f.name === input.type) as CO2eFactorFuel | undefined;
-                    if (factorData) {
-                        const factor = factorData.factors[input.unit] || 0;
-                        totalEmissions += input.value * factor;
-                    }
-                }
-                scope3 = totalEmissions * leaseDurationFactor;
-                break;
-        }
-        return { scope1: 0, scope2Location: 0, scope2Market: 0, scope3 };
-    }
-
     if (source.category === EmissionCategory.ProcessingOfSoldProducts) {
         let scope3 = 0;
         const calcMethod = (source.calculationMethod as Cat10CalculationMethod) || 'process_specific';
@@ -955,160 +991,109 @@ export const MainCalculator: React.FC = () => {
     return { totalEmissionsMarket, totalEmissionsLocation, scope1Total, scope2LocationTotal, scope2MarketTotal, scope3Total, facilityBreakdown, scope3CategoryBreakdown };
   }, [sources, facilities, boundaryApproach, scope3Settings, calculateSourceEmissions, getScopeForCategory]);
   
-  const boundaryApproachText = useMemo(() => ({
-      operational: t('operationalControl'),
-      financial: t('financialControl'),
-      equity: t('equityShare'),
-  }[boundaryApproach]), [boundaryApproach, t]);
-  
-  const handleWizardSave = useCallback((details: {
+  const boundaryApproachText = useMemo(() => {
+    return {
+        operational: t('operationalControl'),
+        financial: t('financialControl'),
+        equity: t('equityShare')
+    }[boundaryApproach];
+  }, [t, boundaryApproach]);
+
+  const handleSaveSetup = useCallback((details: {
     companyName: string;
     reportingYear: string;
     facilities: Facility[];
     boundaryApproach: BoundaryApproach;
     scope3Settings: Scope3Settings;
   }) => {
-    const corporateFacility = facilities.find(f => f.isCorporate);
-    let updatedFacilities = details.facilities;
-
-    if (corporateFacility && !updatedFacilities.find(f => f.id === corporateFacility.id)) {
-        updatedFacilities.unshift(corporateFacility);
-    }
-    
     setCompanyName(details.companyName);
     setReportingYear(details.reportingYear);
-    setFacilities(updatedFacilities);
+    setFacilities(details.facilities);
     setBoundaryApproach(details.boundaryApproach);
     setScope3Settings(details.scope3Settings);
     setIsSetupComplete(true);
     setIsWizardOpen(false);
-  }, [facilities]);
+  }, []);
 
-  const openWizard = useCallback((startStep: number) => {
-    setWizardStartStep(startStep);
+  const reconfigureBoundary = () => {
+    setWizardStartStep(1);
     setIsWizardOpen(true);
-  }, []);
+  };
+  
+  const openScope3Settings = () => {
+    setWizardStartStep(4);
+    setIsWizardOpen(true);
+  };
 
-  const handleProportionalFactorChange = useCallback((categoryKey: FactorCategoryKey, itemIndex: number, changedUnit: string, value: string) => {
+  const handleProportionalFactorChange = (categoryKey: FactorCategoryKey, itemIndex: number, unit: string, value: string) => {
     setAllFactors(prev => {
-        const factorsForCategory = prev[categoryKey] as EditableCO2eFactorFuel[];
-        if (!factorsForCategory) return prev;
-
-        const newFactorsState = { ...prev };
-        
-        const updatedFactors = factorsForCategory.map((item, index) => {
-            if (index !== itemIndex) return item;
-
-            const newValue = parseFloat(value) || 0;
-            const oldValue = item.factors[changedUnit];
-
-            let changeRatio: number | null = null;
-            // Establish ratio only if old value is a positive number
-            if (oldValue && oldValue > 0) {
-                changeRatio = newValue / oldValue;
-            }
-            
-            let newFactors: { [key: string]: number } = {};
-
-            if (changeRatio !== null) {
-                // Proportional update for all related units
-                for (const unit in item.factors) {
-                    if (unit === changedUnit) {
-                        newFactors[unit] = newValue;
-                    } else {
-                        const updatedValue = item.factors[unit] * changeRatio;
-                        // Use toPrecision to handle floating point inaccuracies and limit significant digits
-                        newFactors[unit] = parseFloat(updatedValue.toPrecision(7)); 
-                    }
-                }
-            } else {
-                // If no ratio can be calculated (e.g., old value was 0), just update the single value
-                newFactors = { ...item.factors, [changedUnit]: newValue };
-            }
-            
-            return { ...item, factors: newFactors };
-        });
-        
-        newFactorsState[categoryKey] = updatedFactors;
-        return newFactorsState;
+        const categoryFactors = [...(prev[categoryKey] as any[])];
+        const item = { ...categoryFactors[itemIndex] };
+        item.factors = { ...item.factors, [unit]: parseFloat(value) || 0 };
+        categoryFactors[itemIndex] = item;
+        return { ...prev, [categoryKey]: categoryFactors };
     });
-  }, []);
+  };
 
-  const handleFactorValueChange = useCallback((categoryKey: FactorCategoryKey, path: (string | number)[], value: string) => {
-    const numericValue = parseFloat(value) || 0;
-    setAllFactors(prevFactors => {
-        const newCategoryData = JSON.parse(JSON.stringify(prevFactors[categoryKey]));
-        
-        let current = newCategoryData;
+  const handleFactorValueChange = (categoryKey: FactorCategoryKey, path: (string|number)[], value: string) => {
+    setAllFactors(prev => {
+        const newFactors = JSON.parse(JSON.stringify(prev));
+        let current = newFactors[categoryKey];
         for (let i = 0; i < path.length - 1; i++) {
             current = current[path[i]];
         }
-        current[path[path.length - 1]] = numericValue;
-
-        return {
-            ...prevFactors,
-            [categoryKey]: newCategoryData,
-        };
+        current[path[path.length - 1]] = parseFloat(value) || 0;
+        return newFactors;
     });
-  }, []);
+  };
 
-
-  const handleGWPChange = useCallback((itemIndex: number, value: string) => {
-      handleFactorValueChange('fugitive', [itemIndex, 'gwp'], value);
-  }, [handleFactorValueChange]);
-
-  const handleRegionChange = useCallback((region: string) => {
-      if (region !== 'Custom' && SCOPE2_FACTORS_BY_REGION[region]) {
-          const newFactors = SCOPE2_FACTORS_BY_REGION[region].factors;
-          setAllFactors(prev => {
-              const updatedScope2 = (prev.scope2 as EditableCO2eFactorFuel[]).map(s => s.name === 'Grid Electricity' ? {...s, factors: newFactors} : s);
-              return {...prev, scope2: updatedScope2};
-          });
-      }
-  }, []);
-
-  const handleAddFactor = useCallback((categoryKey: FactorCategoryKey, newItemData: any) => {
+  const handleGWPChange = (itemIndex: number, value: string) => {
       setAllFactors(prev => {
-          const currentFactors = prev[categoryKey] || [];
-          const newFactor = {
-              ...newItemData,
-              id: `custom-${Date.now()}-${Math.random()}`,
-              isCustom: true,
-          };
-          const updatedFactors = [...currentFactors, newFactor] as (EditableCO2eFactorFuel | EditableRefrigerant)[];
-          return { ...prev, [categoryKey]: updatedFactors };
+          const fugitiveGases = [...(prev.fugitive as any[])];
+          fugitiveGases[itemIndex] = { ...fugitiveGases[itemIndex], gwp: parseFloat(value) || 0 };
+          return { ...prev, fugitive: fugitiveGases };
       });
-  }, []);
+  };
 
-  const handleEditFactor = useCallback((categoryKey: FactorCategoryKey, editedFactorData: any) => {
-      setAllFactors(prev => {
-          const currentFactors = prev[categoryKey] || [];
-          const updatedFactors = currentFactors.map((f: any) => f.id === editedFactorData.id ? editedFactorData : f);
-          return { ...prev, [categoryKey]: updatedFactors };
-      });
-  }, []);
+  const handleRegionChange = (region: string) => {
+    const newFactors = region === 'Custom' ? allFactors.scope2[0].factors : SCOPE2_FACTORS_BY_REGION[region].factors;
+    setAllFactors(prev => {
+        const scope2Sources = [...(prev.scope2 as any[])];
+        const gridIndex = scope2Sources.findIndex(s => s.name === 'Grid Electricity');
+        if (gridIndex !== -1) {
+            scope2Sources[gridIndex] = { ...scope2Sources[gridIndex], factors: newFactors };
+        }
+        return { ...prev, scope2: scope2Sources };
+    });
+  };
+  
+  const handleAddFactor = (categoryKey: FactorCategoryKey, itemData: any) => {
+      const newItem = {
+          ...itemData,
+          id: `custom-${Date.now()}`,
+          isCustom: true,
+      };
+      setAllFactors(prev => ({
+          ...prev,
+          [categoryKey]: [...(prev[categoryKey] as any[]), newItem]
+      }));
+  };
 
-  const handleDeleteFactor = useCallback((categoryKey: FactorCategoryKey, idToDelete: string) => {
-    if (window.confirm(t('confirmRemoveSource'))) {
-        setAllFactors(prevFactors => {
-            const currentFactors = prevFactors[categoryKey] as any[] || [];
-            const newFactors = currentFactors.filter((item: any) => item.id !== idToDelete);
-            return {
-                ...prevFactors,
-                [categoryKey]: newFactors
-            };
-        });
-    }
-  }, [t]);
+  const handleEditFactor = (categoryKey: FactorCategoryKey, itemData: any) => {
+      setAllFactors(prev => ({
+          ...prev,
+          [categoryKey]: (prev[categoryKey] as any[]).map(item => item.id === itemData.id ? itemData : item)
+      }));
+  };
 
-  const tabClasses = (tabName: ActiveTab) =>
-    `px-4 py-2 text-lg font-semibold rounded-t-lg transition-colors focus:outline-none ${
-      activeTab === tabName
-        ? 'border-b-4 border-ghg-accent text-ghg-dark dark:text-white'
-        : 'text-gray-500 hover:text-ghg-dark dark:hover:text-gray-300'
-    }`;
+  const handleDeleteFactor = (categoryKey: FactorCategoryKey, idToDelete: string) => {
+      setAllFactors(prev => ({
+          ...prev,
+          [categoryKey]: (prev[categoryKey] as any[]).filter(item => item.id !== idToDelete)
+      }));
+  };
 
-  const commonCalculatorProps = useMemo(() => ({
+  const scopeCalculatorProps = {
     sources,
     onAddSource: handleAddSource,
     onUpdateSource: handleUpdateSource,
@@ -1121,25 +1106,31 @@ export const MainCalculator: React.FC = () => {
     openCategory,
     onToggleCategory: handleToggleCategory,
     boundaryApproach,
-  }), [
-    sources, handleAddSource, handleUpdateSource, handleRemoveSource, handleFuelTypeChange,
-    FUELS_MAP, calculateSourceEmissions, categoryDescriptions, facilities, openCategory,
-    handleToggleCategory, boundaryApproach
-  ]);
+  };
+  
+  if (!isSetupComplete) {
+      return (
+          <BoundarySetupWizard 
+              isOpen={true}
+              onClose={() => {}}
+              onSave={handleSaveSetup}
+              initialData={{ companyName, reportingYear, facilities, boundaryApproach, scope3Settings }}
+              isCancellable={false}
+          />
+      )
+  }
 
   return (
-    <>
-      <BoundarySetupWizard 
-        isOpen={!isSetupComplete || isWizardOpen}
-        isCancellable={isSetupComplete}
-        onClose={() => setIsWizardOpen(false)}
-        onSave={handleWizardSave}
-        initialData={{companyName, reportingYear, facilities, boundaryApproach, scope3Settings}}
-        initialStep={wizardStartStep}
-      />
-      
-      {isReportOpen && (
-        <ReportGenerator
+    <div className="space-y-8">
+        <BoundarySetupWizard
+            isOpen={isWizardOpen}
+            onClose={() => setIsWizardOpen(false)}
+            onSave={handleSaveSetup}
+            initialData={{ companyName, reportingYear, facilities, boundaryApproach, scope3Settings }}
+            initialStep={wizardStartStep}
+        />
+
+        <ReportGenerator 
             isOpen={isReportOpen}
             onClose={() => setIsReportOpen(false)}
             companyName={companyName}
@@ -1152,66 +1143,43 @@ export const MainCalculator: React.FC = () => {
             allFactors={allFactors}
             scope3Settings={scope3Settings}
         />
-      )}
 
-      <div className={`space-y-8 ${!isSetupComplete ? 'blur-sm pointer-events-none' : ''}`}>
-        <div>
-          <button onClick={() => openWizard(0)} className="mb-6 bg-ghg-accent text-white font-semibold py-2 px-4 rounded-lg hover:bg-ghg-dark transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ghg-accent">
-              {t('reconfigureBoundary')}
-          </button>
-          
-          <ResultsDisplay 
-            totalEmissionsMarket={results.totalEmissionsMarket}
-            totalEmissionsLocation={results.totalEmissionsLocation}
-            scope1Total={results.scope1Total}
-            scope2LocationTotal={results.scope2LocationTotal}
-            scope2MarketTotal={results.scope2MarketTotal}
-            scope3Total={results.scope3Total}
-            facilityBreakdown={results.facilityBreakdown}
-            scope3CategoryBreakdown={results.scope3CategoryBreakdown}
+        <ResultsDisplay 
+            {...results}
             facilities={facilities}
             boundaryApproach={boundaryApproach}
             companyName={companyName}
             reportingYear={reportingYear}
             boundaryApproachText={boundaryApproachText}
             onGenerateReport={() => setIsReportOpen(true)}
-          />
-        </div>
-        
-        <div>
-            <div className="text-center my-8">
-                <h2 className="text-2xl font-bold text-ghg-dark dark:text-white">{t('operationalBoundaryTitle')}</h2>
-                <p className="mt-1 text-md text-gray-500 dark:text-gray-400">{t('operationalBoundarySubtitle')}</p>
-            </div>
-            <div className="border-b border-gray-200 dark:border-gray-600 mb-8">
-                <nav className="-mb-px flex space-x-6" aria-label="Tabs">
-                    <button className={tabClasses('scope1')} onClick={() => setActiveTab('scope1')}>
-                        {t('scope1')}
-                    </button>
-                    <button className={tabClasses('scope2')} onClick={() => setActiveTab('scope2')}>
-                        {t('scope2')}
-                    </button>
-                    {scope3Settings.isEnabled && (
-                        <button className={tabClasses('scope3')} onClick={() => setActiveTab('scope3')}>
-                            {t('scope3')}
-                        </button>
-                    )}
-                </nav>
+        />
+
+        <div className="bg-white rounded-xl shadow-lg p-6 md:p-8 border border-gray-200 dark:bg-gray-700 dark:border-gray-600">
+            <div className="flex flex-col sm:flex-row justify-between items-start mb-6">
+                <div>
+                    <h2 className="text-xl font-semibold text-ghg-dark dark:text-gray-100">{t('operationalBoundaryTitle')}</h2>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{t('operationalBoundarySubtitle')}</p>
+                </div>
+                <button onClick={reconfigureBoundary} className="mt-2 sm:mt-0 text-sm bg-white border border-ghg-green text-ghg-green font-semibold py-1 px-3 rounded-lg hover:bg-ghg-green hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ghg-green dark:bg-gray-700 dark:border-ghg-light-green dark:text-ghg-light-green dark:hover:bg-ghg-light-green dark:hover:text-ghg-dark">
+                    {t('reconfigureBoundary')}
+                </button>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {activeTab === 'scope1' && <Scope1Calculator {...commonCalculatorProps} />}
-                {activeTab === 'scope2' && <Scope2Calculator {...commonCalculatorProps} />}
-                {activeTab === 'scope3' && scope3Settings.isEnabled && (
-                    <Scope3Calculator 
-                        {...commonCalculatorProps} 
-                        enabledScope3Categories={scope3Settings.enabledCategories}
-                        onManageScope3={() => openWizard(4)}
-                    />
-                )}
+            <div className="border-b border-gray-200 dark:border-gray-600 mb-6">
+                <nav className="-mb-px flex space-x-6" aria-label="Tabs">
+                    <button onClick={() => setActiveTab('scope1')} className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'scope1' ? 'border-ghg-accent text-ghg-dark dark:text-ghg-light-green' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-500'}`}>{t('scope1Direct')}</button>
+                    <button onClick={() => setActiveTab('scope2')} className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'scope2' ? 'border-ghg-accent text-ghg-dark dark:text-ghg-light-green' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-500'}`}>{t('scope2Indirect')}</button>
+                    <button onClick={() => setActiveTab('scope3')} disabled={!scope3Settings.isEnabled} className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'scope3' ? 'border-ghg-accent text-ghg-dark dark:text-ghg-light-green' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-500'} disabled:opacity-50 disabled:cursor-not-allowed`}>{t('scope3OtherIndirect')}</button>
+                </nav>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {activeTab === 'scope1' && <Scope1Calculator {...scopeCalculatorProps} />}
+                {activeTab === 'scope2' && <Scope2Calculator {...scopeCalculatorProps} />}
+                {activeTab === 'scope3' && <Scope3Calculator {...scopeCalculatorProps} enabledScope3Categories={scope3Settings.enabledCategories} onManageScope3={openScope3Settings} />}
             </div>
         </div>
-
+        
         <FactorManager
             allFactors={allFactors}
             onProportionalFactorChange={handleProportionalFactorChange}
@@ -1223,7 +1191,6 @@ export const MainCalculator: React.FC = () => {
             onDeleteFactor={handleDeleteFactor}
             enabledScope3Categories={scope3Settings.enabledCategories}
         />
-      </div>
-    </>
+    </div>
   );
 };

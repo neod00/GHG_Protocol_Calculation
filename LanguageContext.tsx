@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, ReactNode, useCallback } from 'react';
-import { translations, Language, TranslationKey } from './translations';
+import { translations, Language, TranslationKey, Translations } from './translations';
 
 interface LanguageContextType {
   language: Language;
@@ -13,7 +13,9 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
   const [language, setLanguage] = useState<Language>('ko');
 
   const t = useCallback((key: TranslationKey | string): string => {
-    return translations[language][key as TranslationKey] || translations.en[key as TranslationKey] || key;
+    // Fix: Ensure fallback to English works correctly even with partial translations for 'ko'.
+    const typedKey = key as TranslationKey;
+    return (translations[language] as Translations)[typedKey] || translations.en[typedKey] || key;
   }, [language]);
 
   return (
