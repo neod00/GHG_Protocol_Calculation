@@ -1,4 +1,11 @@
 
+
+
+
+
+
+
+
 export const en = {
   // Main Calculator
   operationalBoundaryTitle: 'Operational Boundary',
@@ -86,7 +93,7 @@ export const en = {
   endOfLifePlaceholder: 'e.g., Disposal of sold batteries, Landfilling of sold packaging',
   downstreamLeasedAssetsPlaceholder: 'e.g., Office building owned by us, leased to Tenant Corp.',
   franchisesPlaceholder: 'e.g., Seoul Gangnam Franchise, New York 5th Ave Store',
-  investmentsPlaceholder: 'e.g., Investment in Supplier Inc., Project financing for solar farm',
+  investmentsPlaceholder: 'e.g., Equity in Tech Startup Inc., Solar Project Debt',
   corporateLevelFacility: 'Corporate Level',
   noSources: 'No emission sources added for this category yet.',
   noSourcesHelp: 'Click "Add New Emission Source" to begin.',
@@ -290,6 +297,59 @@ export const en = {
   suggestedSpendCategory: 'Suggested Service Category',
   suggestedFactor: 'Suggested Emission Factor',
   
+  // Category 11 Advanced UI
+  energy_consumptionMethod: 'Energy Consumption (Indirect)',
+  fuel_consumptionMethod: 'Fuel Consumption (Direct)',
+  ghg_dataMethod: 'GHG Data',
+  usePhaseType: 'Use Phase Type',
+  estimatedLifetime: 'Estimated Lifetime',
+  gridRegion: 'Grid Region (for Electricity)',
+  unitsSoldTotal: 'Total Units Sold',
+  years: 'years',
+  year: 'year',
+  indirectUsePhaseInfo: 'Indirect use-phase emissions come from the use of products that consume energy (e.g., electricity) during use.',
+  directUsePhaseInfo: 'Direct use-phase emissions come from products that directly burn fuels (e.g., vehicles, furnaces) or emit GHGs during use.',
+  lifetimeEmissionsPerUnit: 'Lifetime Emissions per Unit',
+  unitsSold: 'Units Sold',
+
+  // Category 12 Advanced UI
+  waste_streamMethod: 'Waste Stream (Activity)',
+  units_soldMethod: 'Units Sold',
+  disposalScenario: 'Disposal Scenario (Ratios %)',
+  materialType: 'Material Type',
+  totalWeightSold: 'Total Weight Sold',
+  weightPerUnit: 'Weight per Unit',
+  suggestedMaterial: 'Suggested Material',
+  totalSpendYear: 'Total Annual Spend',
+  ratioError: 'Ratios must sum to 100%',
+  cat12SpendNote: 'Only use if the company pays for disposal/take-back.',
+
+  // Category 14 Advanced UI
+  franchise_specificMethod: 'Franchise-specific (Energy)',
+  average_dataMethod: 'Average Data (Per Store)',
+  franchiseType: 'Franchise Type',
+  franchiseRestaurant: 'Restaurant / Fast Food',
+  franchiseRetail: 'Retail Store',
+  franchiseService: 'Service (Salon, Agency)',
+  franchiseConvenience: 'Convenience Store',
+  franchiseCoffee: 'Coffee Shop',
+  numberOfStores: 'Number of Stores',
+  totalArea: 'Total Floor Area',
+  avgEnergyIntensity: 'Avg. Energy Intensity',
+  gridFactor: 'Grid Factor',
+  avgEmissionsPerStore: 'Avg. Emissions per Store',
+  franchiseSpend: 'Franchise Operations (spend)',
+
+  // Category 15 Advanced UI
+  investment_specificMethod: 'Investment-specific (PCAF)',
+  average_dataMethod_Invest: 'Average-data (Sector)',
+  investmentType: 'Investment Type',
+  investeeSector: 'Investee Sector',
+  investmentValue: 'Investment Amount',
+  companyValue: 'Company Value (EVIC)',
+  attributionFactor: 'Attribution Factor',
+  investeeEmissions: 'Investee Emissions',
+
   // Factor Manager
   manageFactors: 'Manage Emission Factors & GWPs',
   manageFactorsSubtitle: 'Customize emission factors for fuels, materials, and refrigerants, or add your own.',
@@ -402,7 +462,7 @@ export const ko = {
   endOfLifePlaceholder: '예: 판매된 배터리 폐기, 판매된 포장재 매립',
   downstreamLeasedAssetsPlaceholder: '예: 당사 소유, Tenant사에 임대한 사무실 건물',
   franchisesPlaceholder: '예: 서울 강남 프랜차이즈, 뉴욕 5번가 매장',
-  investmentsPlaceholder: '예: Supplier사에 대한 투자, 태양광 발전소 프로젝트 파이낸싱',
+  investmentsPlaceholder: '예: 스타트업 지분 투자, 태양광 프로젝트 PF',
   corporateLevelFacility: '전사 수준',
   noSources: '이 카테고리에 추가된 배출원이 아직 없습니다.',
   noSourcesHelp: '"새 배출원 추가"를 클릭하여 시작하세요.',
@@ -605,6 +665,59 @@ export const ko = {
   suggestedProcess: '추천 공정',
   suggestedSpendCategory: '추천 서비스 카테고리',
   suggestedFactor: '추천 배출 계수',
+  
+  // Category 11 Advanced UI
+  energy_consumptionMethod: '에너지 소비 (간접)',
+  fuel_consumptionMethod: '연료 소비 (직접)',
+  ghg_dataMethod: 'GHG 데이터 (수명주기)',
+  usePhaseType: '사용 단계 유형',
+  estimatedLifetime: '예상 수명',
+  gridRegion: '전력망 지역 (전기)',
+  unitsSoldTotal: '총 판매 수량',
+  years: '년',
+  year: '년',
+  indirectUsePhaseInfo: '간접 사용 단계 배출은 제품 사용 중 에너지(예: 전기)를 소비하는 경우 발생합니다.',
+  directUsePhaseInfo: '직접 사용 단계 배출은 제품이 직접 연료를 연소하거나(예: 자동차, 보일러) 온실가스를 배출하는 경우 발생합니다.',
+  lifetimeEmissionsPerUnit: '대당 수명주기 배출량',
+  unitsSold: '판매 수량',
+
+  // Category 12 Advanced UI
+  waste_streamMethod: '폐기물 흐름 (활동 기반)',
+  units_soldMethod: '판매 수량 기반',
+  disposalScenario: '폐기 시나리오 (비율 %)',
+  materialType: '소재 유형',
+  totalWeightSold: '총 판매 중량',
+  weightPerUnit: '개당 무게',
+  suggestedMaterial: '추천 소재',
+  totalSpendYear: '연간 총 지출',
+  ratioError: '비율 합계는 100%여야 합니다.',
+  cat12SpendNote: '회사가 폐기/회수 비용을 지불하는 경우에만 사용하십시오.',
+
+  // Category 14 Advanced UI
+  franchise_specificMethod: '프랜차이즈별 (에너지)',
+  average_dataMethod: '평균 데이터 (매장당)',
+  franchiseType: '프랜차이즈 유형',
+  franchiseRestaurant: '레스토랑 / 패스트푸드',
+  franchiseRetail: '소매점',
+  franchiseService: '서비스 (미용실, 대리점)',
+  franchiseConvenience: '편의점',
+  franchiseCoffee: '카페',
+  numberOfStores: '매장 수',
+  totalArea: '총 바닥 면적',
+  avgEnergyIntensity: '평균 에너지 집약도',
+  gridFactor: '전력망 계수',
+  avgEmissionsPerStore: '매장당 평균 배출량',
+  franchiseSpend: '프랜차이즈 운영 (지출)',
+
+  // Category 15 Advanced UI
+  investment_specificMethod: '투자별 (PCAF)',
+  average_dataMethod_Invest: '평균 데이터 (산업 섹터)',
+  investmentType: '투자 유형',
+  investeeSector: '피투자 기업 섹터',
+  investmentValue: '투자 금액',
+  companyValue: '기업 가치 (EVIC)',
+  attributionFactor: '귀속 계수',
+  investeeEmissions: '피투자 기업 배출량',
   
   // Factor Manager
   manageFactors: '배출 계수 및 GWP 관리',

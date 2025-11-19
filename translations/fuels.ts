@@ -1,3 +1,4 @@
+
 export const en = {
   // Fuel names - Stationary
   naturalGas: 'Natural Gas',
@@ -142,6 +143,14 @@ export const en = {
   restaurantFranchise: 'Restaurant Franchise',
   investTech: 'Investment in Tech Sector',
   investManufacturing: 'Investment in Manufacturing',
+  sectorTech: 'Tech Sector',
+  sectorManufacturing: 'Manufacturing',
+  sectorEnergy: 'Energy/Utilities',
+  sectorFinance: 'Financial Services',
+  sectorRealEstate: 'Real Estate',
+  sectorTransport: 'Transport',
+  sectorAgriculture: 'Agriculture',
+  sectorConstruction: 'Construction',
 };
 
 export const ko = {
@@ -288,4 +297,12 @@ export const ko = {
   restaurantFranchise: '레스토랑 프랜차이즈',
   investTech: '기술 분야 투자',
   investManufacturing: '제조업 투자',
+  sectorTech: '기술 섹터',
+  sectorManufacturing: '제조업',
+  sectorEnergy: '에너지/유틸리티',
+  sectorFinance: '금융 서비스',
+  sectorRealEstate: '부동산',
+  sectorTransport: '운송',
+  sectorAgriculture: '농업',
+  sectorConstruction: '건설',
 };

@@ -70,6 +70,11 @@ export type Cat6CalculationMethod = 'activity' | 'spend' | 'supplier_specific';
 export type Cat7CalculationMethod = 'activity' | 'average' | 'spend';
 export type Cat8CalculationMethod = 'asset_specific' | 'area_based' | 'spend_based' | 'supplier_specific';
 export type Cat10CalculationMethod = 'process_specific' | 'customer_specific' | 'spend';
+export type Cat11CalculationMethod = 'energy_consumption' | 'fuel_consumption' | 'ghg_data';
+export type Cat12CalculationMethod = 'waste_stream' | 'units_sold' | 'spend';
+export type Cat14CalculationMethod = 'franchise_specific' | 'area_based' | 'average_data';
+export type Cat15CalculationMethod = 'investment_specific' | 'average_data';
+
 export type LeasedAssetType = 'Building' | 'Vehicle' | 'Equipment';
 export type BuildingType = 'Office' | 'Warehouse' | 'Factory' | 'Retail' | 'DataCenter';
 export type BusinessTravelMode = 'Air' | 'Rail' | 'Bus' | 'RentalCar' | 'PersonalCar' | 'Hotel';
@@ -81,6 +86,8 @@ export type TreatmentMethod = 'Landfill' | 'Incineration' | 'Recycling' | 'Compo
 export type EmployeeCommutingMode = 'PersonalCar' | 'PublicTransport' | 'Motorbike' | 'Carpool' | 'BicycleWalking';
 export type PersonalCarType = 'Gasoline' | 'Diesel' | 'Hybrid' | 'Electric' | 'LPG';
 export type PublicTransportType = 'Bus' | 'Subway';
+export type FranchiseType = 'Restaurant' | 'Retail' | 'Service' | 'ConvenienceStore' | 'CoffeeShop';
+export type InvestmentType = 'Equity' | 'Debt' | 'ProjectFinance' | 'RealEstate' | 'Other';
 
 
 export interface EmissionSource {
@@ -94,7 +101,7 @@ export interface EmissionSource {
   marketBasedFactor?: number;
   
   // New fields for advanced Scope 3 calculation
-  calculationMethod?: CalculationMethod | Cat4CalculationMethod | Cat5CalculationMethod | Cat6CalculationMethod | Cat7CalculationMethod | Cat8CalculationMethod | Cat10CalculationMethod;
+  calculationMethod?: CalculationMethod | Cat4CalculationMethod | Cat5CalculationMethod | Cat6CalculationMethod | Cat7CalculationMethod | Cat8CalculationMethod | Cat10CalculationMethod | Cat11CalculationMethod | Cat12CalculationMethod | Cat14CalculationMethod | Cat15CalculationMethod;
   supplierProvidedCO2e?: number; // Total annual kg CO2e from supplier
   factor?: number; // kg CO2e per unit
   factorUnit?: string; // e.g., kg CO2e / KRW, kg CO2e / tonne
@@ -159,4 +166,22 @@ export interface EmissionSource {
   // New fields for advanced Scope 3 Category 10 calculation
   processingMethod?: string;
   supplierDataType?: 'total_co2e' | 'energy_data';
+
+  // New fields for advanced Scope 3 Category 11 calculation
+  productLifetime?: number; // Years
+  annualEnergyConsumption?: number; // value per unit per year
+  energyRegion?: string; // For grid electricity
+
+  // New fields for advanced Scope 3 Category 12 calculation
+  disposalRatios?: { landfill: number; incineration: number; recycling: number }; // Percentages (0-100)
+  soldProductWeight?: number; // kg per unit
+
+  // New fields for advanced Scope 3 Category 14 calculation
+  franchiseType?: FranchiseType;
+
+  // New fields for advanced Scope 3 Category 15 calculation
+  investmentType?: InvestmentType;
+  investeeSector?: string;
+  investmentValue?: number; // Amount invested
+  companyValue?: number; // EVIC or Total Project Cost
 }

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { EmissionSource, EmissionCategory } from '../types';
 import { DefaultRow } from './source_rows/DefaultRow';
@@ -9,6 +10,10 @@ import { Category6Row } from './source_rows/Category6Row';
 import { Category7Row } from './source_rows/Category7Row';
 import { Category8_13Row } from './source_rows/Category8_13Row';
 import { Category10Row } from './source_rows/Category10Row';
+import { Category11Row } from './source_rows/Category11Row';
+import { Category12Row } from './source_rows/Category12Row';
+import { Category14Row } from './source_rows/Category14Row';
+import { Category15Row } from './source_rows/Category15Row';
 import { SimpleScope3Row } from './source_rows/SimpleScope3Row';
 
 // The props are unchanged and will be passed down to the specialized components.
@@ -52,12 +57,18 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = (props) => {
       
     case EmissionCategory.ProcessingOfSoldProducts:
       return <Category10Row {...props} />;
-
+    
     case EmissionCategory.UseOfSoldProducts:
+      return <Category11Row {...props} />;
+
     case EmissionCategory.EndOfLifeTreatmentOfSoldProducts:
+      return <Category12Row {...props} />;
+
     case EmissionCategory.Franchises:
+      return <Category14Row {...props} />;
+
     case EmissionCategory.Investments:
-      return <SimpleScope3Row {...props} />;
+      return <Category15Row {...props} />;
 
     case EmissionCategory.StationaryCombustion:
     case EmissionCategory.MobileCombustion:

@@ -2,7 +2,7 @@
 // Fix: Corrected typo in React import
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 // Fix: Import 'EditableCO2eFactorFuel' to resolve type error.
-import { EmissionCategory, EmissionSource, Refrigerant, Facility, BoundaryApproach, EditableRefrigerant, EditableCO2eFactorFuel, CO2eFactorFuel, TransportMode, Cat5CalculationMethod, WasteType, TreatmentMethod, Cat6CalculationMethod, BusinessTravelMode, EmployeeCommutingMode, PersonalCarType, PublicTransportType, Cat7CalculationMethod, Cat8CalculationMethod, BuildingType, LeasedAssetType, Cat4CalculationMethod, Cat10CalculationMethod } from '../types';
+import { EmissionCategory, EmissionSource, Refrigerant, Facility, BoundaryApproach, EditableRefrigerant, EditableCO2eFactorFuel, CO2eFactorFuel, TransportMode, Cat5CalculationMethod, WasteType, TreatmentMethod, Cat6CalculationMethod, BusinessTravelMode, EmployeeCommutingMode, PersonalCarType, PublicTransportType, Cat7CalculationMethod, Cat8CalculationMethod, BuildingType, LeasedAssetType, Cat4CalculationMethod, Cat10CalculationMethod, Cat11CalculationMethod, Cat12CalculationMethod, Cat14CalculationMethod, Cat15CalculationMethod } from '../types';
 import { 
     STATIONARY_FUELS, MOBILE_FUELS, PROCESS_MATERIALS, FUGITIVE_GASES, WASTE_SOURCES, 
     SCOPE2_ENERGY_SOURCES, SCOPE2_FACTORS_BY_REGION,
@@ -14,6 +14,7 @@ import {
     LEASED_ASSETS_FACTORS_DETAILED,
     PROCESSING_SOLD_PRODUCTS_FACTORS_DETAILED,
     USE_SOLD_PRODUCTS_FACTORS, END_OF_LIFE_TREATMENT_OF_SOLD_PRODUCTS, FRANCHISES_FACTORS, INVESTMENTS_FACTORS,
+    FRANCHISES_FACTORS_DETAILED,
 } from '../constants/index';
 import { ResultsDisplay } from './ResultsDisplay';
 import { useTranslation } from '../LanguageContext';
@@ -81,7 +82,7 @@ const factorConfig = {
     processingSold: { key: 'ghg-calc-processingSoldProductsFactors', default: PROCESSING_SOLD_PRODUCTS_FACTORS_DETAILED },
     useSold: { key: 'ghg-calc-useSoldProductsFactors', default: USE_SOLD_PRODUCTS_FACTORS },
     endOfLife: { key: 'ghg-calc-endOfLifeTreatmentFactors', default: END_OF_LIFE_TREATMENT_OF_SOLD_PRODUCTS },
-    franchises: { key: 'ghg-calc-franchisesFactors', default: FRANCHISES_FACTORS },
+    franchises: { key: 'ghg-calc-franchisesFactors', default: FRANCHISES_FACTORS_DETAILED },
     investments: { key: 'ghg-calc-investmentsFactors', default: INVESTMENTS_FACTORS },
 };
 
@@ -220,7 +221,7 @@ export const MainCalculator: React.FC = () => {
   useEffect(() => {
     let needsMigration = false;
     for (const key of Object.keys(factorConfig)) {
-        if (['upstreamTransport', 'downstreamTransport', 'businessTravel', 'scope3Waste', 'employeeCommuting', 'upstreamLeased', 'downstreamLeased', 'processingSold'].includes(key)) continue; // Skip nested objects
+        if (['upstreamTransport', 'downstreamTransport', 'businessTravel', 'scope3Waste', 'employeeCommuting', 'upstreamLeased', 'downstreamLeased', 'processingSold', 'franchises'].includes(key)) continue; // Skip nested objects
         const factors = allFactors[key as FactorCategoryKey];
         if (factors && Array.isArray(factors) && factors.some((f: any) => f.isCustom && !f.id)) {
             needsMigration = true;
@@ -232,7 +233,7 @@ export const MainCalculator: React.FC = () => {
         setAllFactors(currentFactors => {
             const migratedFactors = { ...currentFactors };
             for (const key of Object.keys(factorConfig)) {
-                 if (['upstreamTransport', 'downstreamTransport', 'businessTravel', 'scope3Waste', 'employeeCommuting', 'upstreamLeased', 'downstreamLeased', 'processingSold'].includes(key)) continue;
+                 if (['upstreamTransport', 'downstreamTransport', 'businessTravel', 'scope3Waste', 'employeeCommuting', 'upstreamLeased', 'downstreamLeased', 'processingSold', 'franchises'].includes(key)) continue;
                 const categoryKey = key as FactorCategoryKey;
                 migratedFactors[categoryKey] = ensureIdsForCustomFactors(currentFactors[categoryKey] as any[]);
             }
@@ -341,7 +342,7 @@ export const MainCalculator: React.FC = () => {
     [EmissionCategory.DownstreamLeasedAssets]: allFactors.downstreamLeased,
     [EmissionCategory.ProcessingOfSoldProducts]: allFactors.processingSold,
     [EmissionCategory.UseOfSoldProducts]: allFactors.useSold,
-    [EmissionCategory.EndOfLifeTreatmentOfSoldProducts]: allFactors.endOfLife,
+    [EmissionCategory.EndOfLifeTreatmentOfSoldProducts]: allFactors.scope3Waste, // Reuse detailed waste factors
     [EmissionCategory.Franchises]: allFactors.franchises,
     [EmissionCategory.Investments]: allFactors.investments,
   }), [allFactors]);
@@ -556,6 +557,74 @@ export const MainCalculator: React.FC = () => {
         return;
     }
 
+    if (category === EmissionCategory.UseOfSoldProducts) {
+        const newSource: EmissionSource = {
+            id: `source-${Date.now()}`,
+            facilityId: CORPORATE_FACILITY_ID,
+            category,
+            description: '',
+            fuelType: 'Grid Electricity',
+            monthlyQuantities: Array(12).fill(0),
+            unit: 'kWh',
+            calculationMethod: 'energy_consumption',
+            productLifetime: 5,
+            annualEnergyConsumption: 0,
+            energyRegion: 'South Korea'
+        };
+        setSources(prev => ({ ...prev, [category]: [...prev[category], newSource] }));
+        return;
+    }
+
+    if (category === EmissionCategory.EndOfLifeTreatmentOfSoldProducts) {
+        const newSource: EmissionSource = {
+            id: `source-${Date.now()}`,
+            facilityId: CORPORATE_FACILITY_ID,
+            category,
+            description: '',
+            fuelType: '',
+            monthlyQuantities: Array(12).fill(0),
+            unit: 'tonnes',
+            calculationMethod: 'waste_stream',
+            wasteType: 'Plastics',
+            disposalRatios: { landfill: 50, incineration: 20, recycling: 30 },
+            soldProductWeight: 0
+        };
+        setSources(prev => ({ ...prev, [category]: [...prev[category], newSource] }));
+        return;
+    }
+
+    if (category === EmissionCategory.Franchises) {
+        const newSource: EmissionSource = {
+            id: `source-${Date.now()}`,
+            facilityId: CORPORATE_FACILITY_ID,
+            category,
+            description: '',
+            fuelType: '',
+            monthlyQuantities: Array(12).fill(0),
+            unit: 'kg CO₂e',
+            calculationMethod: 'franchise_specific',
+            energyInputs: [],
+            franchiseType: 'Restaurant'
+        };
+        setSources(prev => ({ ...prev, [category]: [...prev[category], newSource] }));
+        return;
+    }
+
+    if (category === EmissionCategory.Investments) {
+        const newSource: EmissionSource = {
+            id: `source-${Date.now()}`,
+            facilityId: CORPORATE_FACILITY_ID,
+            category,
+            description: '',
+            fuelType: '',
+            monthlyQuantities: Array(12).fill(0),
+            unit: 'kg CO₂e',
+            calculationMethod: 'investment_specific',
+            investmentType: 'Equity',
+        };
+        setSources(prev => ({ ...prev, [category]: [...prev[category], newSource] }));
+        return;
+    }
 
     if (!fuelsForCategory || fuelsForCategory.length === 0) return;
 
@@ -595,12 +664,15 @@ export const MainCalculator: React.FC = () => {
 
     // Find the new fuel/service item from the constants
     let newFuel: any;
-    if (category === EmissionCategory.BusinessTravel || category === EmissionCategory.EmployeeCommuting || category === EmissionCategory.UpstreamLeasedAssets || category === EmissionCategory.DownstreamLeasedAssets) {
+    if (category === EmissionCategory.BusinessTravel || category === EmissionCategory.EmployeeCommuting || category === EmissionCategory.UpstreamLeasedAssets || category === EmissionCategory.DownstreamLeasedAssets || category === EmissionCategory.Franchises) {
         newFuel = (fuelsForCategory as any)?.spend_based?.find((f: any) => f.name === newFuelType);
     } else if (category === EmissionCategory.UpstreamTransportationAndDistribution || category === EmissionCategory.DownstreamTransportationAndDistribution) {
         newFuel = [...MOBILE_FUELS, ...TRANSPORTATION_SPEND_FACTORS].find(f => f.name === newFuelType);
     } else if (category === EmissionCategory.ProcessingOfSoldProducts) {
         newFuel = fuelsForCategory.spend.find((f:any) => f.name === newFuelType);
+    } else if (category === EmissionCategory.EndOfLifeTreatmentOfSoldProducts) {
+         // No single fuel list for activity/spend mixed, handle manually if needed or rely on standard logic
+         if ((fuelsForCategory as any)?.spend) newFuel = (fuelsForCategory as any).spend.find((f:any) => f.name === newFuelType);
     } else if (Array.isArray(fuelsForCategory)) {
         newFuel = fuelsForCategory.find((f: any) => f.name === newFuelType);
     }
@@ -886,8 +958,6 @@ export const MainCalculator: React.FC = () => {
         const calcMethod = (source.calculationMethod as Cat10CalculationMethod) || 'process_specific';
 
         switch(calcMethod) {
-            // FIX: The calculation method 'supplier_specific' is not valid for Cat10.
-            // It should be 'customer_specific' to match the type definition and UI logic.
             case 'customer_specific':
                 if (source.supplierDataType === 'total_co2e') {
                     scope3 = source.supplierProvidedCO2e || 0;
@@ -916,6 +986,151 @@ export const MainCalculator: React.FC = () => {
                 const processFactorData = allFactors.processingSold.activity.find((f: any) => f.name === source.processingMethod);
                 const processFactor = processFactorData ? processFactorData.factors[source.unit] : 0;
                 scope3 = totalActivity * processFactor;
+                break;
+        }
+        return { scope1: 0, scope2Location: 0, scope2Market: 0, scope3 };
+    }
+
+    if (source.category === EmissionCategory.UseOfSoldProducts) {
+        let scope3 = 0;
+        const calcMethod = (source.calculationMethod as Cat11CalculationMethod) || 'energy_consumption';
+        const unitsSold = source.monthlyQuantities.reduce((a, b) => a + b, 0);
+        const lifetime = source.productLifetime || 1;
+        
+        switch(calcMethod) {
+            case 'ghg_data':
+                scope3 = unitsSold * (source.factor || 0);
+                break;
+            case 'fuel_consumption':
+                const annualFuel = source.annualEnergyConsumption || 0;
+                // Find fuel factor
+                const allDirectFuels = [...allFactors.mobile, ...allFactors.stationary];
+                const fuelData = allDirectFuels.find((f: any) => f.name === source.fuelType) as CO2eFactorFuel;
+                if (fuelData) {
+                    const factor = fuelData.factors[source.unit] || 0;
+                    scope3 = unitsSold * lifetime * annualFuel * factor;
+                }
+                break;
+            case 'energy_consumption':
+            default:
+                const annualKwh = source.annualEnergyConsumption || 0;
+                // Find grid factor
+                let gridFactor = 0;
+                if (source.energyRegion === 'Custom') {
+                     // Fallback or specific handling if custom factor needs to be retrieved differently, using 'South Korea' default for now if custom is weird
+                     gridFactor = SCOPE2_FACTORS_BY_REGION['South Korea'].factors['kWh'];
+                } else {
+                     gridFactor = SCOPE2_FACTORS_BY_REGION[source.energyRegion || 'South Korea'].factors['kWh'];
+                }
+                
+                scope3 = unitsSold * lifetime * annualKwh * gridFactor;
+                break;
+        }
+        return { scope1: 0, scope2Location: 0, scope2Market: 0, scope3 };
+    }
+
+    if (source.category === EmissionCategory.EndOfLifeTreatmentOfSoldProducts) {
+        let scope3 = 0;
+        const calcMethod = (source.calculationMethod as Cat12CalculationMethod) || 'waste_stream';
+        
+        // Get total weight (tonnes)
+        let totalWeight = 0;
+        if (calcMethod === 'units_sold') {
+            const units = source.monthlyQuantities.reduce((a, b) => a + b, 0);
+            const weightPerUnit = (source.soldProductWeight || 0) * 0.001; // convert kg to tonnes
+            totalWeight = units * weightPerUnit;
+        } else {
+             totalWeight = source.monthlyQuantities.reduce((a, b) => a + b, 0) * (source.unit === 'kg' ? 0.001 : 1);
+        }
+
+        switch(calcMethod) {
+            case 'spend':
+                 const totalSpend = source.monthlyQuantities.reduce((a, b) => a + b, 0);
+                 // Assuming 'spend' logic uses spend factors from waste constant (reusing Cat 5)
+                 // Note: In UI, 'fuelType' holds service name, 'unit' holds currency
+                 const spendFactorData = allFactors.scope3Waste.spend.find((f: any) => f.name === source.fuelType); // Reusing Cat 5 spend factors for now
+                 const spendFactor = spendFactorData?.factors[source.unit] || 0;
+                 scope3 = totalSpend * spendFactor;
+                break;
+            case 'waste_stream':
+            case 'units_sold':
+            default:
+                const ratios = source.disposalRatios || { landfill: 0, incineration: 0, recycling: 0 };
+                const wasteType = source.wasteType || 'MSW';
+                const wasteFactors = allFactors.scope3Waste.activity[wasteType] || {}; // Reusing Cat 5 factors
+                
+                const landfillFactor = wasteFactors['Landfill']?.factor || 0;
+                const incinerationFactor = wasteFactors['Incineration']?.factor || 0;
+                const recyclingFactor = wasteFactors['Recycling']?.factor || 0;
+                
+                const e_landfill = totalWeight * (ratios.landfill / 100) * landfillFactor;
+                const e_incineration = totalWeight * (ratios.incineration / 100) * incinerationFactor;
+                const e_recycling = totalWeight * (ratios.recycling / 100) * recyclingFactor;
+                
+                scope3 = e_landfill + e_incineration + e_recycling;
+                break;
+        }
+        return { scope1: 0, scope2Location: 0, scope2Market: 0, scope3 };
+    }
+
+    if (source.category === EmissionCategory.Franchises) {
+        let scope3 = 0;
+        const calcMethod = (source.calculationMethod as Cat14CalculationMethod) || 'franchise_specific';
+        
+        switch(calcMethod) {
+            case 'franchise_specific':
+                let totalEmissions = 0;
+                const allEnergyAndFuelFactors = [...allFactors.stationary, ...allFactors.mobile, ...allFactors.scope2];
+                for (const input of source.energyInputs || []) {
+                    const factorData = allEnergyAndFuelFactors.find((f: any) => f.name === input.type) as CO2eFactorFuel | undefined;
+                    if (factorData) {
+                        const factor = factorData.factors[input.unit] || 0;
+                        totalEmissions += (input.value || 0) * factor; // Input value is annual
+                    }
+                }
+                scope3 = totalEmissions;
+                break;
+            case 'area_based':
+                const area = source.monthlyQuantities.reduce((a, b) => a + b, 0); // Assumed single total or avg
+                const franchiseType = source.franchiseType || 'Restaurant';
+                const intensityFactor = allFactors.franchises.area_based[franchiseType]?.factor || 0; // kWh/m2
+                // Use default grid factor if not customized
+                const gridFactor = (allFactors.scope2.find((f: any) => f.name === 'Grid Electricity') as CO2eFactorFuel)?.factors['kWh'] || 0;
+                scope3 = area * intensityFactor * gridFactor;
+                break;
+            case 'average_data':
+                const stores = source.monthlyQuantities.reduce((a, b) => a + b, 0);
+                const fType = source.franchiseType || 'Restaurant';
+                const avgFactor = allFactors.franchises.average_data[fType]?.factor || 0; // kgCO2e per store
+                scope3 = stores * avgFactor;
+                break;
+        }
+        return { scope1: 0, scope2Location: 0, scope2Market: 0, scope3 };
+    }
+
+    if (source.category === EmissionCategory.Investments) {
+        let scope3 = 0;
+        const calcMethod = (source.calculationMethod as Cat15CalculationMethod) || 'investment_specific';
+
+        switch(calcMethod) {
+            case 'investment_specific':
+                // PCAF Method: Emissions x Attribution Factor
+                // Attribution Factor = Outstanding Investment / (EVIC or Total Equity + Debt)
+                const investeeEmissions = source.supplierProvidedCO2e || 0;
+                const investmentValue = source.investmentValue || 0;
+                const companyValue = source.companyValue || 0;
+                
+                if (companyValue > 0) {
+                    const attributionFactor = investmentValue / companyValue;
+                    scope3 = investeeEmissions * attributionFactor;
+                }
+                break;
+            case 'average_data':
+                // EEIO Method: Investment Value * Sector Intensity
+                const investmentVal = source.investmentValue || 0;
+                const sectorFactorData = allFactors.investments.find((f: any) => f.name === source.fuelType); // fuelType holds sector name
+                const sectorFactor = sectorFactorData?.factors[source.unit] || 0;
+                scope3 = investmentVal * sectorFactor;
                 break;
         }
         return { scope1: 0, scope2Location: 0, scope2Market: 0, scope3 };
