@@ -58,7 +58,7 @@ export async function saveProjectData(projectId: string, sources: FrontendEmissi
             // (Though if facilities are passed correctly, this shouldn't happen)
             let fallbackFacilityId = '';
             if (idMap.size > 0) {
-                fallbackFacilityId = idMap.values().next().value;
+                fallbackFacilityId = idMap.values().next().value || '';
             } else {
                 // If no facilities provided, create a default one
                 const defaultFac = await tx.facility.create({
