@@ -1,0 +1,31 @@
+export const en = {
+    settings: 'Settings',
+    preferences: 'Preferences',
+    language: 'Language',
+    select_language: 'Select your preferred language',
+    theme: 'Theme',
+    toggle_theme: 'Toggle dark/light mode',
+    switch_to_dark: 'Switch to Dark Mode',
+    switch_to_light: 'Switch to Light Mode',
+    profile_settings: 'Profile Settings',
+    email: 'Email',
+    managed_by_supabase: 'Managed by Supabase Auth',
+    organization_settings: 'Organization Settings',
+    org_features_coming_soon: 'Organization management features are coming soon. You will be able to manage team members and billing here.',
+};
+
+export const ko = {
+    settings: '설정',
+    preferences: '환경 설정',
+    language: '언어',
+    select_language: '선호하는 언어를 선택하세요',
+    theme: '테마',
+    toggle_theme: '다크/라이트 모드 전환',
+    switch_to_dark: '다크 모드로 전환',
+    switch_to_light: '라이트 모드로 전환',
+    profile_settings: '프로필 설정',
+    email: '이메일',
+    managed_by_supabase: 'Supabase Auth에서 관리됨',
+    organization_settings: '조직 설정',
+    org_features_coming_soon: '조직 관리 기능이 곧 제공될 예정입니다. 여기서 팀원 및 결제 관리를 할 수 있습니다.',
+};
