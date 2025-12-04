@@ -101,7 +101,7 @@ export const Category4_9Row: React.FC<SourceInputRowProps> = ({ source, onUpdate
                 config: {
                     responseMimeType: "application/json",
                     responseSchema,
-                    tools: [{ googleMaps: {} }] // Enable Maps grounding for distance
+                    // tools: [{ googleMaps: {} }] // Enable Maps grounding for distance - Temporarily disabled due to type error
                 },
             });
             const result = JSON.parse(response.text || '{}');
