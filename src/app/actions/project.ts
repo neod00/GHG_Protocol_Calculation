@@ -93,6 +93,9 @@ export async function saveProjectData(projectId: string, sources: FrontendEmissi
                     },
                 });
             }
+        }, {
+            maxWait: 5000, // default: 2000
+            timeout: 20000, // default: 5000
         });
 
         return { success: true };
