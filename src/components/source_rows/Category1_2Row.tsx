@@ -185,6 +185,7 @@ export const Category1_2Row: React.FC<SourceInputRowProps> = ({ source, onUpdate
                             <li dangerouslySetInnerHTML={{ __html: t('capitalGoodsInfoDepreciation') }}></li>
                             <li dangerouslySetInnerHTML={{ __html: t('capitalGoodsInfoCategorization') }}></li>
                             <li>{t('capitalGoodsInfoScope')}</li>
+                            <li dangerouslySetInnerHTML={{ __html: t('capitalGoodsInfoDistinction') }}></li>
                         </ul>
                     </div>
                 )}
@@ -257,30 +258,63 @@ export const Category1_2Row: React.FC<SourceInputRowProps> = ({ source, onUpdate
                             </button>
                         ))}
                     </div>
-                    {source.category === EmissionCategory.PurchasedGoodsAndServices && source.calculationMethod && (
+                    {source.calculationMethod && (
                         <div className="mt-2 p-2 bg-gray-50 dark:bg-gray-800/50 rounded text-xs text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700">
                             {source.calculationMethod === 'supplier_co2e' && (
                                 <p className="flex items-start gap-2">
                                     <IconInfo className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                                    <span>{t('cat1MethodSupplier')}</span>
+                                    <span>{source.category === EmissionCategory.PurchasedGoodsAndServices ? t('cat1MethodSupplier') : t('cat2MethodSupplier')}</span>
                                 </p>
                             )}
                             {source.calculationMethod === 'activity' && (
                                 <p className="flex items-start gap-2">
                                     <IconInfo className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                                    <span>{t('cat1MethodActivity')}</span>
+                                    <span>{source.category === EmissionCategory.PurchasedGoodsAndServices ? t('cat1MethodActivity') : t('cat2MethodActivity')}</span>
                                 </p>
                             )}
                             {source.calculationMethod === 'spend' && (
                                 <p className="flex items-start gap-2">
                                     <IconInfo className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                                    <span>{t('cat1MethodSpend')}</span>
+                                    <span>{source.category === EmissionCategory.PurchasedGoodsAndServices ? t('cat1MethodSpend') : t('cat2MethodSpend')}</span>
                                 </p>
                             )}
                         </div>
                     )}
                 </div>
 
+                {source.category === EmissionCategory.CapitalGoods && (
+                    <>
+                        <div>
+                            <label htmlFor={`capital-goods-type-${source.id}`} className={commonLabelClass}>{t('capitalGoodsType')}</label>
+                            <select
+                                id={`capital-goods-type-${source.id}`}
+                                value={source.capitalGoodsType || ''}
+                                onChange={(e) => onUpdate({ capitalGoodsType: e.target.value as any || undefined })}
+                                className={commonSelectClass}
+                            >
+                                <option value="">Select...</option>
+                                <option value="Building">{t('capitalGoodsTypeBuilding')}</option>
+                                <option value="Vehicle">{t('capitalGoodsTypeVehicle')}</option>
+                                <option value="ManufacturingEquipment">{t('capitalGoodsTypeManufacturingEquipment')}</option>
+                                <option value="ITEquipment">{t('capitalGoodsTypeITEquipment')}</option>
+                                <option value="OfficeEquipment">{t('capitalGoodsTypeOfficeEquipment')}</option>
+                                <option value="Other">{t('capitalGoodsTypeOther')}</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label htmlFor={`acquisition-year-${source.id}`} className={commonLabelClass}>{t('acquisitionYear')}</label>
+                            <input
+                                id={`acquisition-year-${source.id}`}
+                                type="text"
+                                value={source.acquisitionYear || ''}
+                                onChange={(e) => onUpdate({ acquisitionYear: e.target.value })}
+                                className={commonSelectClass}
+                                placeholder={t('acquisitionYearPlaceholder')}
+                            />
+                            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{t('acquisitionYearNote')}</p>
+                        </div>
+                    </>
+                )}
                 {source.calculationMethod === 'supplier_co2e' && (
                     <div>
                         <label htmlFor={`supplier-co2e-${source.id}`} className={commonLabelClass}>{t('supplierProvidedCO2e')}</label>

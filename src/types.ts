@@ -88,6 +88,7 @@ export type PersonalCarType = 'Gasoline' | 'Diesel' | 'Hybrid' | 'Electric' | 'L
 export type PublicTransportType = 'Bus' | 'Subway';
 export type FranchiseType = 'Restaurant' | 'Retail' | 'Service' | 'ConvenienceStore' | 'CoffeeShop';
 export type InvestmentType = 'Equity' | 'Debt' | 'ProjectFinance' | 'RealEstate' | 'Other';
+export type CapitalGoodsType = 'Building' | 'Vehicle' | 'ManufacturingEquipment' | 'ITEquipment' | 'OfficeEquipment' | 'Other';
 
 
 export interface EmissionSource {
@@ -184,4 +185,8 @@ export interface EmissionSource {
   investeeSector?: string;
   investmentValue?: number; // Amount invested
   companyValue?: number; // EVIC or Total Project Cost
+
+  // New fields for advanced Scope 3 Category 2 calculation
+  capitalGoodsType?: CapitalGoodsType;
+  acquisitionYear?: string; // Year of acquisition for capital goods
 }
