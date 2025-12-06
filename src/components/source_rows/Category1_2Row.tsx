@@ -168,6 +168,16 @@ export const Category1_2Row: React.FC<SourceInputRowProps> = ({ source, onUpdate
             </div>
 
             {isExpanded && <div className="flex flex-col gap-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                {source.category === EmissionCategory.PurchasedGoodsAndServices && (
+                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-800 dark:bg-blue-900/30 dark:border-blue-700/50 dark:text-blue-200 text-xs space-y-2">
+                        <h4 className="font-semibold text-sm flex items-center gap-2"><IconInfo className="w-4 h-4" /> {t('cat1GuidanceTitle')}</h4>
+                        <ul className="list-disc pl-5 space-y-1">
+                            <li>{t('cat1GuidanceText')}</li>
+                            <li dangerouslySetInnerHTML={{ __html: t('cat1BoundaryNote') }}></li>
+                            <li dangerouslySetInnerHTML={{ __html: t('cat1CalculationMethods') }}></li>
+                        </ul>
+                    </div>
+                )}
                 {source.category === EmissionCategory.CapitalGoods && (
                     <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800 dark:bg-yellow-900/30 dark:border-yellow-700/50 dark:text-yellow-200 text-xs space-y-2">
                         <h4 className="font-semibold text-sm flex items-center gap-2"><IconInfo className="w-4 h-4" /> {t('capitalGoodsInfoTitle')}</h4>
@@ -198,7 +208,8 @@ export const Category1_2Row: React.FC<SourceInputRowProps> = ({ source, onUpdate
                 </div>
                 {aiAnalysisResult && (
                     <div className={`p-3 border rounded-lg text-xs ${(aiAnalysisResult.suggested_category?.includes('2.') && source.category === EmissionCategory.PurchasedGoodsAndServices) ||
-                        (aiAnalysisResult.suggested_category?.includes('1.') && source.category === EmissionCategory.CapitalGoods)
+                        (aiAnalysisResult.suggested_category?.includes('1.') && source.category === EmissionCategory.CapitalGoods) ||
+                        (aiAnalysisResult.suggested_category?.includes('4.') && source.category === EmissionCategory.PurchasedGoodsAndServices)
                         ? 'bg-yellow-50 border-yellow-200 text-yellow-800 dark:bg-yellow-900/30 dark:border-yellow-700 dark:text-yellow-200'
                         : 'bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/30 dark:border-blue-700 dark:text-blue-200'
                         }`}>
@@ -209,6 +220,15 @@ export const Category1_2Row: React.FC<SourceInputRowProps> = ({ source, onUpdate
                                     {t('categoryMismatch')}: {aiAnalysisResult.suggested_category}
                                 </div>
                             )}
+                        {aiAnalysisResult.suggested_category?.includes('4.') && source.category === EmissionCategory.PurchasedGoodsAndServices && (
+                            <div className="flex items-start gap-2 font-bold mb-2 text-yellow-800 dark:text-yellow-200">
+                                <IconInfo className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                                <div>
+                                    <p>{t('categoryMismatch')}: {aiAnalysisResult.suggested_category}</p>
+                                    <p className="text-xs font-normal mt-1" dangerouslySetInnerHTML={{ __html: t('cat1TransportWarning') }}></p>
+                                </div>
+                            </div>
+                        )}
                         <p className="text-xs mb-1"><span className="font-semibold">{t('suggestedCategory')}:</span> {aiAnalysisResult.suggested_category}</p>
                         <p className="text-xs"><span className="font-semibold">{t('justification')}:</span> {aiAnalysisResult.justification}</p>
                         <p className="text-xs text-blue-600 dark:text-blue-300 mt-2 italic">{t('aiDisclaimer')}</p>
@@ -237,6 +257,28 @@ export const Category1_2Row: React.FC<SourceInputRowProps> = ({ source, onUpdate
                             </button>
                         ))}
                     </div>
+                    {source.category === EmissionCategory.PurchasedGoodsAndServices && source.calculationMethod && (
+                        <div className="mt-2 p-2 bg-gray-50 dark:bg-gray-800/50 rounded text-xs text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700">
+                            {source.calculationMethod === 'supplier_co2e' && (
+                                <p className="flex items-start gap-2">
+                                    <IconInfo className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                                    <span>{t('cat1MethodSupplier')}</span>
+                                </p>
+                            )}
+                            {source.calculationMethod === 'activity' && (
+                                <p className="flex items-start gap-2">
+                                    <IconInfo className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                                    <span>{t('cat1MethodActivity')}</span>
+                                </p>
+                            )}
+                            {source.calculationMethod === 'spend' && (
+                                <p className="flex items-start gap-2">
+                                    <IconInfo className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                                    <span>{t('cat1MethodSpend')}</span>
+                                </p>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 {source.calculationMethod === 'supplier_co2e' && (
@@ -284,6 +326,14 @@ export const Category1_2Row: React.FC<SourceInputRowProps> = ({ source, onUpdate
                             className={commonSelectClass} placeholder={t('factorSourcePlaceholder')}
                         />
                     </div>
+                    {source.category === EmissionCategory.PurchasedGoodsAndServices && (
+                        <div className="p-2 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800 dark:bg-yellow-900/30 dark:border-yellow-700 dark:text-yellow-200 text-xs">
+                            <p className="flex items-start gap-2">
+                                <IconInfo className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                                <span dangerouslySetInnerHTML={{ __html: t('cat1TransportWarning') }}></span>
+                            </p>
+                        </div>
+                    )}
                 </>)}
 
                 <div>
