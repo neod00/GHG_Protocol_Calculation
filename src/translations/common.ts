@@ -34,6 +34,13 @@ export const en = {
   notSpecified: 'Not specified',
   comingSoon: 'Coming Soon',
   apiKeyMissing: 'API Key is missing. Please check your .env file.',
+
+  // Guest Mode
+  guestModeActive: 'Guest Mode Active',
+  guestModeDataLossWarning: 'Your data will be permanently lost if you refresh or leave this page.',
+  signUpToSave: 'Sign Up to Save',
+  guestModeDataNotSaved: 'Guest Mode: Data not saved',
+  signUp: 'Sign Up',
 };
 
 export const ko = {
@@ -72,4 +79,11 @@ export const ko = {
   notSpecified: '명시되지 않음',
   comingSoon: '준비 중',
   apiKeyMissing: 'API 키가 누락되었습니다. .env 파일을 확인해주세요.',
+
+  // Guest Mode
+  guestModeActive: '게스트 모드 활성화됨',
+  guestModeDataLossWarning: '페이지를 새로고침하거나 떠나면 데이터가 영구적으로 손실됩니다.',
+  signUpToSave: '저장하려면 가입하세요',
+  guestModeDataNotSaved: '게스트 모드: 데이터가 저장되지 않음',
+  signUp: '가입하기',
 };

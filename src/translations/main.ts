@@ -10,10 +10,16 @@ export const en = {
   // Main Calculator
   operationalBoundaryTitle: 'Operational Boundary',
   operationalBoundarySubtitle: 'Add and manage emission sources for each scope.',
+  calculatorTitle: 'Operational Boundary',
+  calculatorDescription: 'Add and manage emission sources for each scope.',
   reconfigureBoundary: 'Reconfigure Boundary & Scope 3',
   scope1Direct: 'Scope 1: Direct Emissions',
   scope2Indirect: 'Scope 2: Indirect Emissions (from Energy)',
   scope3OtherIndirect: 'Scope 3: Other Indirect Emissions',
+
+  // Results Display
+  resultsTitle: 'Emissions Summary',
+  resultsSubtitle: 'Report generated for: {{companyName}} ({{reportingYear}})',
 
   // UX Guidance
   processEmissionsInfoTitle: 'What are Process Emissions?',
@@ -452,12 +458,18 @@ export const en = {
 
 export const ko = {
   // Main Calculator
-  operationalBoundaryTitle: '운영 경계',
+  operationalBoundaryTitle: '운영 경계', // Kept for safety if used elsewhere
   operationalBoundarySubtitle: '각 스코프별 배출원을 추가하고 관리합니다.',
+  calculatorTitle: '운영 경계',
+  calculatorDescription: '각 스코프별 배출원을 추가하고 관리합니다.',
   reconfigureBoundary: '경계 및 Scope 3 재설정',
   scope1Direct: 'Scope 1: 직접 배출',
   scope2Indirect: 'Scope 2: 간접 배출 (에너지)',
   scope3OtherIndirect: 'Scope 3: 기타 간접 배출',
+
+  // Results Display
+  resultsTitle: '배출량 요약',
+  resultsSubtitle: '보고서 생성 대상: {{companyName}} ({{reportingYear}})',
 
   // UX Guidance
   processEmissionsInfoTitle: '공정 배출이란?',

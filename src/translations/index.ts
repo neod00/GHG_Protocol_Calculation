@@ -7,6 +7,7 @@ import { en as enUnits, ko as koUnits } from './units';
 import { en as enWizard, ko as koWizard } from './wizard';
 
 import { en as enSettings, ko as koSettings } from './settings';
+import { en as enAuth, ko as koAuth } from './auth';
 
 const en = {
   ...enCategories,
@@ -17,6 +18,7 @@ const en = {
   ...enUnits,
   ...enWizard,
   ...enSettings,
+  ...enAuth,
 };
 
 const ko = {
@@ -28,6 +30,7 @@ const ko = {
   ...koUnits,
   ...koWizard,
   ...koSettings,
+  ...koAuth,
 };
 
 export type Language = 'en' | 'ko';

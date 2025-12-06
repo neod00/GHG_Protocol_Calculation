@@ -5,7 +5,7 @@ import { translations, Language, TranslationKey, Translations } from '../transla
 interface LanguageContextType {
   language: Language;
   setLanguage: (language: Language) => void;
-  t: (key: TranslationKey | string) => string;
+  t: (key: TranslationKey | string, params?: Record<string, string | number>) => string;
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
@@ -34,10 +34,18 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
     }
   }, [language]);
 
-  const t = useCallback((key: TranslationKey | string): string => {
+  const t = useCallback((key: TranslationKey | string, params?: Record<string, string | number>): string => {
     // Fix: Ensure fallback to English works correctly even with partial translations for 'ko'.
     const typedKey = key as TranslationKey;
-    return (translations[language] as Translations)[typedKey] || translations.en[typedKey] || key;
+    let translation = (translations[language] as Translations)[typedKey] || translations.en[typedKey] || key;
+
+    if (params) {
+      Object.entries(params).forEach(([paramKey, paramValue]) => {
+        translation = translation.replace(new RegExp(`{{\\s*${paramKey}\\s*}}`, 'g'), String(paramValue));
+      });
+    }
+
+    return translation;
   }, [language]);
 
   return (

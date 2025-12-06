@@ -20,6 +20,7 @@ interface ResultsDisplayProps {
   reportingYear: string;
   boundaryApproachText: string;
   onGenerateReport: () => void;
+  isAuthenticated?: boolean;
 }
 
 const COLORS = {
@@ -64,7 +65,8 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
   companyName,
   reportingYear,
   boundaryApproachText,
-  onGenerateReport
+  onGenerateReport,
+  isAuthenticated = false
 }) => {
   const { t } = useTranslation();
   const { theme } = useTheme();
@@ -131,7 +133,7 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{t('resultsTitle')}</h2>
-          <p className="text-gray-600 dark:text-gray-400">{t('resultsSubtitle')}</p>
+          <p className="text-gray-600 dark:text-gray-400">{t('resultsSubtitle', { companyName, reportingYear })}</p>
         </div>
         <button
           onClick={onGenerateReport}

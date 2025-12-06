@@ -5,7 +5,7 @@ import { useTranslation } from '../../context/LanguageContext';
 // FIX: Changed import path to be more explicit.
 import { TranslationKey } from '../../translations/index';
 import { IconTrash, IconX, IconSparkles, IconCheck, IconAlertTriangle, IconBuilding, IconCar, IconFactory } from '../IconComponents';
-import { GoogleGenAI, Type } from '@google/genai';
+
 
 interface SourceInputRowProps {
     source: EmissionSource;
@@ -20,8 +20,7 @@ interface SourceInputRowProps {
 export const Category8_13Row: React.FC<SourceInputRowProps> = ({ source, onUpdate, onRemove, fuels, calculateEmissions }) => {
     const { t, language } = useTranslation();
     const [isExpanded, setIsExpanded] = useState(false);
-    const [isLoadingAI, setIsLoadingAI] = useState(false);
-    const [aiAnalysisResult, setAiAnalysisResult] = useState<any>(null);
+
 
     const totalEmissions = calculateEmissions(source).scope3;
     const commonSelectClass = "w-full bg-white text-gray-900 dark:bg-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-500 rounded-md shadow-sm py-2 px-3 text-sm focus:outline-none focus:ring-ghg-green focus:border-ghg-green";
@@ -81,80 +80,7 @@ export const Category8_13Row: React.FC<SourceInputRowProps> = ({ source, onUpdat
         onUpdate({ energyInputs: newInputs });
     };
 
-    const handleAnalyze = async () => {
-        if (!source.description) return;
-        setIsLoadingAI(true);
-        setAiAnalysisResult(null);
 
-        try {
-            const apiKey = process.env.NEXT_PUBLIC_GOOGLE_API_KEY;
-            if (!apiKey) {
-                alert(t('apiKeyMissing')); // Ensure this translation key exists or use a hardcoded message for now
-                setIsLoadingAI(false);
-                return;
-            }
-            const ai = new GoogleGenAI({ apiKey: apiKey as string });
-            const promptText = `You are a GHG Protocol Scope 3 expert. Analyze this leased asset description: "${source.description}".
-            
-            1. Classification: Identify Asset Type (Building, Vehicle, Equipment) and detailed Building Type if applicable (Office, Warehouse, Factory, Retail, DataCenter).
-            2. Quantification: Estimate Area (sqm) or Spend, and Lease Duration (months).
-            
-            IMPORTANT: Respond in ${language === 'ko' ? 'Korean' : 'English'}.
-            3. Boundary Check (CRITICAL):
-               - If the company has "Operational Control" over this asset (e.g., pays utility bills directly, controls thermostat), flag as 'Scope 1 & 2' overlap.
-               - If it's a leased vehicle for logistics, flag as 'Category 4'.
-               - If it's a rental car for business travel, flag as 'Category 6'.
-               - Category 8 applies only to upstream leased assets NOT included in Scope 1 or 2.
-            
-            Return structured JSON.`;
-
-            const responseSchema = {
-                type: Type.OBJECT,
-                properties: {
-                    asset_type: { type: Type.STRING, description: 'Building, Vehicle, Equipment' },
-                    building_type: { type: Type.STRING, description: 'Office, Warehouse, Factory, Retail, DataCenter' },
-                    estimated_area_sqm: { type: Type.NUMBER },
-                    lease_duration_months: { type: Type.NUMBER },
-                    boundary_warning: { type: Type.STRING, description: "'Scope 1 & 2', 'Category 4', 'Category 6', or null" },
-                    reasoning: { type: Type.STRING },
-                }
-            };
-
-            const response = await ai.models.generateContent({
-                model: 'gemini-2.5-flash',
-                contents: promptText,
-                config: { responseMimeType: "application/json", responseSchema },
-            });
-            const result = JSON.parse(response.text || '{}');
-            setAiAnalysisResult(result);
-        } catch (error) {
-            console.error("AI analysis failed:", error);
-            setAiAnalysisResult({ error: "Failed to analyze." });
-        } finally {
-            setIsLoadingAI(false);
-        }
-    };
-
-    const applyAiResult = () => {
-        if (!aiAnalysisResult) return;
-        const updates: Partial<EmissionSource> = {};
-
-        if (aiAnalysisResult.asset_type && ['Building', 'Vehicle', 'Equipment'].includes(aiAnalysisResult.asset_type)) {
-            updates.leasedAssetType = aiAnalysisResult.asset_type as LeasedAssetType;
-        }
-        if (aiAnalysisResult.building_type && ['Office', 'Warehouse', 'Factory', 'Retail', 'DataCenter'].includes(aiAnalysisResult.building_type)) {
-            updates.buildingType = aiAnalysisResult.building_type as BuildingType;
-        }
-        if (aiAnalysisResult.estimated_area_sqm) {
-            updates.areaSqm = aiAnalysisResult.estimated_area_sqm;
-            if (!source.calculationMethod || source.calculationMethod === 'spend_based') {
-                updates.calculationMethod = 'area_based';
-            }
-        }
-        if (aiAnalysisResult.lease_duration_months) updates.leaseDurationMonths = aiAnalysisResult.lease_duration_months;
-
-        onUpdate(updates);
-    };
 
     const preventNonNumericKeys = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (['e', 'E', '+', '-'].includes(e.key)) {
@@ -217,38 +143,8 @@ export const Category8_13Row: React.FC<SourceInputRowProps> = ({ source, onUpdat
                                 className={commonInputClass}
                                 placeholder={t('upstreamLeasedAssetsPlaceholder')}
                             />
-                            <button onClick={handleAnalyze} disabled={isLoadingAI || !source.description} className="px-3 py-1 bg-ghg-light-green text-white rounded-md hover:bg-ghg-green disabled:bg-gray-400 flex items-center gap-2 text-sm whitespace-nowrap">
-                                <IconSparkles className="w-4 h-4" />
-                                <span>{isLoadingAI ? '...' : t('analyzeWithAI')}</span>
-                            </button>
                         </div>
                     </div>
-
-                    {/* AI Result Panel */}
-                    {aiAnalysisResult && (
-                        <div className={`p-3 border rounded-lg text-xs ${aiAnalysisResult.boundary_warning && aiAnalysisResult.boundary_warning !== 'null' ? 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/30 dark:border-red-700 dark:text-red-200' : 'bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/30 dark:border-blue-700 dark:text-blue-200'}`}>
-                            {aiAnalysisResult.boundary_warning && aiAnalysisResult.boundary_warning !== 'null' && (
-                                <div className="flex items-center gap-2 font-bold mb-2">
-                                    <IconAlertTriangle className="w-4 h-4" />
-                                    {t('boundaryWarning')}: {aiAnalysisResult.boundary_warning}
-                                </div>
-                            )}
-
-                            <div className="grid grid-cols-2 gap-1">
-                                <p><span className="font-semibold">{t('suggestedAssetType')}:</span> {aiAnalysisResult.asset_type}</p>
-                                {aiAnalysisResult.asset_type === 'Building' && <p><span className="font-semibold">{t('suggestedBuildingType')}:</span> {aiAnalysisResult.building_type}</p>}
-                                {aiAnalysisResult.estimated_area_sqm && <p><span className="font-semibold">{t('areaSqm')}:</span> {aiAnalysisResult.estimated_area_sqm}</p>}
-                                <p><span className="font-semibold">{t('leaseDurationMonths')}:</span> {aiAnalysisResult.lease_duration_months}</p>
-                            </div>
-                            <p className="mt-2 italic opacity-80">{aiAnalysisResult.reasoning}</p>
-
-                            <div className="flex justify-end mt-2">
-                                <button onClick={applyAiResult} className="px-2 py-1 bg-white dark:bg-gray-700 border rounded hover:bg-gray-100 dark:hover:bg-gray-600 font-semibold flex items-center gap-1">
-                                    <IconCheck className="w-3 h-3" /> {t('applySuggestion')}
-                                </button>
-                            </div>
-                        </div>
-                    )}
 
                     {/* Method Selector */}
                     <div>

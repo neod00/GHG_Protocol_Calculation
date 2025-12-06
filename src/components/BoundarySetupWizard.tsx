@@ -125,11 +125,12 @@ interface BoundarySetupWizardProps {
   };
   isCancellable?: boolean;
   initialStep?: number;
+  isAuthenticated?: boolean;
 }
 
 type AnswerKey = 'q1' | 'q2' | 'q3';
 
-export const BoundarySetupWizard: React.FC<BoundarySetupWizardProps> = ({ isOpen, onClose, onSave, initialData, isCancellable = true, initialStep = 0 }) => {
+export const BoundarySetupWizard: React.FC<BoundarySetupWizardProps> = ({ isOpen, onClose, onSave, initialData, isCancellable = true, initialStep = 0, isAuthenticated = false }) => {
   const { t, language } = useTranslation();
   const [step, setStep] = useState(initialStep);
 
@@ -215,8 +216,14 @@ export const BoundarySetupWizard: React.FC<BoundarySetupWizardProps> = ({ isOpen
     setAnswers(prev => ({ ...prev, [question]: answer }));
   }, []);
 
-
   const handleAddFacility = useCallback(() => {
+    if (!isAuthenticated && facilities.length >= 1) {
+      if (confirm("Guest users can only manage 1 facility. Sign up to add unlimited facilities and manage complex organizations.")) {
+        window.location.href = '/signup';
+      }
+      return;
+    }
+
     if (newFacilityIdentifier.trim()) {
       const newFacility: Facility = {
         id: `facility-${Date.now()}`,
@@ -229,7 +236,7 @@ export const BoundarySetupWizard: React.FC<BoundarySetupWizardProps> = ({ isOpen
       setNewFacilityEquity('');
       setNewFacilityGroup('');
     }
-  }, [newFacilityIdentifier, newFacilityGroup, newFacilityEquity]);
+  }, [newFacilityIdentifier, newFacilityGroup, newFacilityEquity, isAuthenticated, facilities.length]);
 
 
   const handleRemoveFacility = useCallback((id: string) => {
@@ -542,6 +549,19 @@ export const BoundarySetupWizard: React.FC<BoundarySetupWizardProps> = ({ isOpen
             <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-slate-500 dark:text-slate-400"><IconX className="w-5 h-5" /></button>
           )}
         </div>
+
+        {!isAuthenticated && (
+          <div className="bg-amber-50 border-b border-amber-200 px-6 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-2 text-amber-800">
+              <span className="text-lg">⚠️</span>
+              <p className="text-sm font-medium">{t('guestModeDataNotSaved')}</p>
+            </div>
+            <a href="/signup" className="text-xs font-bold text-amber-600 hover:text-amber-800 bg-white px-3 py-1 rounded border border-amber-200 shadow-sm">
+              {t('signUp')}
+            </a>
+          </div>
+        )}
+
         <div className="p-6 md:p-8 flex-grow overflow-y-auto custom-scrollbar">
           {renderStepContent()}
         </div>

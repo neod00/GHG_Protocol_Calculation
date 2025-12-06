@@ -126,6 +126,7 @@ interface FactorManagerProps {
     onEditFactor: (categoryKey: FactorCategoryKey, itemData: any) => void;
     onDeleteFactor: (categoryKey: FactorCategoryKey, idToDelete: string) => void;
     enabledScope3Categories: EmissionCategory[];
+    onRequireAuth?: () => boolean;
 }
 
 type ActiveTab = 'Scope 1 - Stationary' | 'Scope 1 - Mobile' | 'Scope 1 - Process' | 'Scope 1 - Fugitive' | 'Scope 1 - Waste' | 'Scope 2' | 'Scope 3';
@@ -461,7 +462,8 @@ export const FactorManager: React.FC<FactorManagerProps> = ({
     onAddFactor,
     onEditFactor,
     onDeleteFactor,
-    enabledScope3Categories
+    enabledScope3Categories,
+    onRequireAuth
 }) => {
     const { t, language } = useTranslation();
     const [isOpen, setIsOpen] = useState(false);
@@ -564,8 +566,8 @@ export const FactorManager: React.FC<FactorManagerProps> = ({
                             </h3>
                             {item.isCustom && (
                                 <div className="flex gap-2">
-                                    <button onClick={() => setFormState({ mode: 'edit', item, categoryKey })} className="text-gray-500 hover:text-ghg-green"><IconPencil className="w-4 h-4" /></button>
-                                    <button onClick={() => onDeleteFactor(categoryKey, item.id)} className="text-gray-400 hover:text-red-500"><IconTrash className="w-4 h-4" /></button>
+                                    <button onClick={() => { if (onRequireAuth && !onRequireAuth()) return; setFormState({ mode: 'edit', item, categoryKey }) }} className="text-gray-500 hover:text-ghg-green"><IconPencil className="w-4 h-4" /></button>
+                                    <button onClick={() => { if (onRequireAuth && !onRequireAuth()) return; onDeleteFactor(categoryKey, item.id) }} className="text-gray-400 hover:text-red-500"><IconTrash className="w-4 h-4" /></button>
                                 </div>
                             )}
                         </div>
@@ -591,7 +593,7 @@ export const FactorManager: React.FC<FactorManagerProps> = ({
                         </div>
                     </div>
                 ))}
-                {formState.mode === 'hidden' && <button onClick={() => setFormState({ mode: 'add', categoryKey })} className="mt-4 w-full text-sm bg-ghg-light-green text-white font-semibold py-2 px-4 rounded-lg hover:bg-ghg-green transition-colors">{t('addNewSource')}</button>}
+                {formState.mode === 'hidden' && <button onClick={() => { if (onRequireAuth && !onRequireAuth()) return; setFormState({ mode: 'add', categoryKey }) }} className="mt-4 w-full text-sm bg-ghg-light-green text-white font-semibold py-2 px-4 rounded-lg hover:bg-ghg-green transition-colors">{t('addNewSource')}</button>}
                 {formState.mode !== 'hidden' && formState.categoryKey === categoryKey && (
                     <AddEditForm
                         isEditing={formState.mode === 'edit'}

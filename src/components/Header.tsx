@@ -29,6 +29,7 @@ export const Header: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-6">
+            <AuthButtons />
             <div className="flex p-1.5 bg-slate-100/80 backdrop-blur-sm rounded-full border border-slate-200 dark:bg-slate-800/80 dark:border-slate-700 shadow-inner">
               <button onClick={() => setLanguage('en')} className={buttonClasses('en')}>
                 EN
@@ -47,3 +48,58 @@ export const Header: React.FC = () => {
     </header>
   );
 };
+
+function AuthButtons() {
+  const [user, setUser] = React.useState<any>(null);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    const fetchUser = async () => {
+      const { createClient } = await import('@/utils/supabase/client');
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+      setLoading(false);
+    };
+    fetchUser();
+  }, []);
+
+  if (loading) return null;
+
+  const isAdmin = user?.email?.startsWith('neod00') || user?.email === 'neod00@naver.com';
+
+  if (user) {
+    return (
+      <div className="flex items-center gap-4">
+        {isAdmin && (
+          <a href="/admin" className="text-sm font-semibold text-slate-600 dark:text-slate-400 hover:text-emerald-500">
+            Admin
+          </a>
+        )}
+        <div className="text-sm font-medium text-slate-600 dark:text-slate-400">
+          {user.email}
+        </div>
+        <form action="/auth/signout" method="post" onSubmit={async (e) => {
+          e.preventDefault();
+          const { logout } = await import('@/app/auth/actions');
+          await logout();
+        }}>
+          <button type="submit" className="text-sm font-semibold text-red-500 hover:text-red-400">
+            Sign Out
+          </button>
+        </form>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-4">
+      <a href="/login" className="text-sm font-semibold text-slate-600 dark:text-slate-400 hover:text-emerald-500">
+        Log In
+      </a>
+      <a href="/signup" className="text-sm font-semibold text-white bg-emerald-500 hover:bg-emerald-600 px-4 py-2 rounded-full">
+        Sign Up
+      </a>
+    </div>
+  );
+}

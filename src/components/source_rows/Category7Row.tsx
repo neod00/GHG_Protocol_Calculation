@@ -4,7 +4,7 @@ import { EmissionSource, Cat7CalculationMethod, EmployeeCommutingMode, PersonalC
 import { useTranslation } from '../../context/LanguageContext';
 import { TranslationKey } from '../../translations/index';
 import { IconTrash, IconSparkles, IconCheck, IconAlertTriangle, IconInfo, IconUsers } from '../IconComponents';
-import { GoogleGenAI, Type } from '@google/genai';
+
 
 interface SourceInputRowProps {
     source: EmissionSource;
@@ -19,8 +19,7 @@ interface SourceInputRowProps {
 export const Category7Row: React.FC<SourceInputRowProps> = ({ source, onUpdate, onRemove, fuels, calculateEmissions }) => {
     const { t, language } = useTranslation();
     const [isExpanded, setIsExpanded] = useState(false);
-    const [isLoadingAI, setIsLoadingAI] = useState(false);
-    const [aiAnalysisResult, setAiAnalysisResult] = useState<any>(null);
+
 
     const totalEmissions = calculateEmissions(source).scope3;
     const commonSelectClass = "w-full bg-white text-gray-900 dark:bg-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-500 rounded-md shadow-sm py-2 px-3 text-sm focus:outline-none focus:ring-ghg-green focus:border-ghg-green";
@@ -111,119 +110,7 @@ export const Category7Row: React.FC<SourceInputRowProps> = ({ source, onUpdate, 
         onUpdate({ monthlyQuantities: newQuantities });
     };
 
-    const handleAnalyze = async () => {
-        if (!source.description) return;
-        setIsLoadingAI(true);
-        setAiAnalysisResult(null);
 
-        try {
-            const apiKey = process.env.NEXT_PUBLIC_GOOGLE_API_KEY;
-            if (!apiKey) {
-                alert(t('apiKeyMissing'));
-                setIsLoadingAI(false);
-                return;
-            }
-            const ai = new GoogleGenAI({ apiKey: apiKey as string });
-            const promptText = `You are a GHG Protocol Scope 3 expert. Analyze this employee commuting description: "${source.description}".
-            
-            1. Extract Data: Total Employees, Commuting Mode (PersonalCar, Carpool, PublicTransport, Motorbike, BicycleWalking), Vehicle Type (Gasoline, Diesel, EV, Hybrid, Bus, Subway), One-way Distance (km), Days per Year, Teleworking Percentage (0-100), Carpool Occupancy.
-            2. Boundary Check (CRITICAL):
-            IMPORTANT: Respond in ${language === 'ko' ? 'Korean' : 'English'}.
-               - If it sounds like business travel (e.g., "client meeting", "sales trip"), flag as 'Category 6'.
-               - If it implies company-owned vehicles (e.g., "company shuttle", "fleet"), flag as 'Scope 1'.
-            
-            Return structured JSON.`;
-
-            const responseSchema = {
-                type: Type.OBJECT,
-                properties: {
-                    total_employees: { type: Type.NUMBER },
-                    mode: { type: Type.STRING },
-                    vehicle_type: { type: Type.STRING },
-                    one_way_km: { type: Type.NUMBER },
-                    days_per_year: { type: Type.NUMBER },
-                    teleworking_percent: { type: Type.NUMBER },
-                    carpool_occupancy: { type: Type.NUMBER },
-                    boundary_warning: { type: Type.STRING, description: "'Category 6' or 'Scope 1' or null" },
-                    reasoning: { type: Type.STRING },
-                }
-            };
-
-            const response = await ai.models.generateContent({
-                model: 'gemini-2.5-flash',
-                contents: promptText,
-                config: { responseMimeType: "application/json", responseSchema },
-            });
-            const result = JSON.parse(response.text || '{}');
-
-            // Sanitize "null" strings from AI response
-            if (result.boundary_warning === 'null') result.boundary_warning = null;
-            if (result.mode === 'null') result.mode = null;
-
-            setAiAnalysisResult(result);
-        } catch (error) {
-            console.error("AI analysis failed:", error);
-            setAiAnalysisResult({ error: "Failed to analyze." });
-        } finally {
-            setIsLoadingAI(false);
-        }
-    };
-
-    const applyAiResult = () => {
-        if (!aiAnalysisResult) return;
-        const updates: Partial<EmissionSource> = {};
-
-        if (aiAnalysisResult.total_employees) {
-            updates.totalEmployees = aiAnalysisResult.total_employees;
-            updates.calculationMethod = 'average'; // Switch to average if employee count detected
-        }
-        if (aiAnalysisResult.one_way_km) updates.distanceKm = aiAnalysisResult.one_way_km;
-        if (aiAnalysisResult.days_per_year) updates.daysPerYear = aiAnalysisResult.days_per_year;
-        if (aiAnalysisResult.teleworking_percent !== undefined) updates.percentTeleworking = aiAnalysisResult.teleworking_percent;
-        if (aiAnalysisResult.carpool_occupancy) updates.carpoolOccupancy = aiAnalysisResult.carpool_occupancy;
-
-        // Mode Mapping
-        const modeMap: Record<string, EmployeeCommutingMode> = {
-            'PersonalCar': 'PersonalCar', 'Carpool': 'Carpool',
-            'PublicTransport': 'PublicTransport', 'Motorbike': 'Motorbike',
-            'BicycleWalking': 'BicycleWalking'
-        };
-        if (aiAnalysisResult.mode && modeMap[aiAnalysisResult.mode]) {
-            updates.commutingMode = modeMap[aiAnalysisResult.mode];
-        }
-
-        // Sub-type Mapping Logic (Simplified)
-        if (aiAnalysisResult.vehicle_type) {
-            if (updates.commutingMode === 'PersonalCar' || updates.commutingMode === 'Carpool') {
-                // Try to match Gasoline, Diesel, etc.
-                const type = aiAnalysisResult.vehicle_type.replace('Car', '').trim();
-                if (['Gasoline', 'Diesel', 'Hybrid', 'Electric', 'LPG'].includes(type)) {
-                    updates.personalCarType = type as PersonalCarType;
-                }
-            } else if (updates.commutingMode === 'PublicTransport') {
-                if (['Bus', 'Subway'].includes(aiAnalysisResult.vehicle_type)) {
-                    updates.publicTransportType = aiAnalysisResult.vehicle_type as PublicTransportType;
-                }
-            }
-        }
-
-        // Ensure distribution matches for Average method
-        if (updates.calculationMethod === 'average' || calculationMethod === 'average') {
-            const mode = updates.commutingMode || source.commutingMode || 'PersonalCar';
-            const type = updates.personalCarType || source.personalCarType || 'Gasoline';
-            // Public Transport logic
-            const ptType = updates.publicTransportType || source.publicTransportType || 'Bus';
-
-            let subType: string = type;
-            if (mode === 'PublicTransport') subType = ptType;
-            if (mode === 'Motorbike') subType = 'Average Motorbike';
-            if (mode === 'BicycleWalking') subType = 'Active Commute';
-
-            updates.modeDistribution = { [`${mode}_${subType}`]: 100 };
-        }
-
-        onUpdate(updates);
-    };
 
     const preventNonNumericKeys = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (['e', 'E', '+', '-'].includes(e.key)) {
@@ -288,37 +175,9 @@ export const Category7Row: React.FC<SourceInputRowProps> = ({ source, onUpdate, 
                                 className={commonInputClass}
                                 placeholder={t('employeeCommutingPlaceholder')}
                             />
-                            <button onClick={handleAnalyze} disabled={isLoadingAI || !source.description} className="px-3 py-1 bg-ghg-light-green text-white rounded-md hover:bg-ghg-green disabled:bg-gray-400 flex items-center gap-2 text-sm whitespace-nowrap">
-                                <IconSparkles className="w-4 h-4" />
-                                <span>{isLoadingAI ? '...' : t('analyzeWithAI')}</span>
-                            </button>
+
                         </div>
                     </div>
-
-                    {/* AI Result Panel */}
-                    {aiAnalysisResult && (
-                        <div className={`p-3 border rounded-lg text-xs ${aiAnalysisResult.boundary_warning && aiAnalysisResult.boundary_warning !== 'null' ? 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/30 dark:border-red-700 dark:text-red-200' : 'bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/30 dark:border-blue-700 dark:text-blue-200'}`}>
-                            {aiAnalysisResult.boundary_warning && aiAnalysisResult.boundary_warning !== 'null' && (
-                                <div className="flex items-center gap-2 font-bold mb-2">
-                                    <IconAlertTriangle className="w-4 h-4" />
-                                    {t('boundaryWarning')}: {aiAnalysisResult.boundary_warning}
-                                </div>
-                            )}
-
-                            <div className="grid grid-cols-2 gap-1">
-                                <p><span className="font-semibold">{t('totalEmployees')}:</span> {aiAnalysisResult.total_employees}</p>
-                                <p><span className="font-semibold">{t('percentTeleworking')}:</span> {aiAnalysisResult.teleworking_percent}%</p>
-                                <p><span className="font-semibold">{t('oneWayCommuteDistance')}:</span> {aiAnalysisResult.one_way_km} km</p>
-                                <p><span className="font-semibold">{t('suggestedCommutingMode')}:</span> {aiAnalysisResult.mode === 'null' ? '-' : aiAnalysisResult.mode}</p>
-                            </div>
-
-                            <div className="flex justify-end mt-2">
-                                <button onClick={applyAiResult} className="px-2 py-1 bg-white dark:bg-gray-700 border rounded hover:bg-gray-100 dark:hover:bg-gray-600 font-semibold flex items-center gap-1">
-                                    <IconCheck className="w-3 h-3" /> {t('applySuggestion')}
-                                </button>
-                            </div>
-                        </div>
-                    )}
 
                     {/* Method Selector */}
                     <div>

@@ -46,12 +46,21 @@ export async function updateSession(request: NextRequest) {
         !user &&
         !request.nextUrl.pathname.startsWith('/login') &&
         !request.nextUrl.pathname.startsWith('/auth') &&
+        !request.nextUrl.pathname.startsWith('/signup') &&
         request.nextUrl.pathname.startsWith('/dashboard')
     ) {
         // no user, potentially respond by redirecting the user to the login page
         const url = request.nextUrl.clone()
         url.pathname = '/login'
         return NextResponse.redirect(url)
+    }
+
+    if (request.nextUrl.pathname.startsWith('/admin')) {
+        if (!user || (user.email && !user.email.startsWith('neod00') && user.email !== 'neod00@naver.com')) {
+            const url = request.nextUrl.clone()
+            url.pathname = '/'
+            return NextResponse.redirect(url)
+        }
     }
 
     return supabaseResponse
