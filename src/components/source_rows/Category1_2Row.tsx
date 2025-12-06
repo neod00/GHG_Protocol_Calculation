@@ -176,12 +176,19 @@ export const Category1_2Row: React.FC<SourceInputRowProps> = ({ source, onUpdate
                             <li dangerouslySetInnerHTML={{ __html: t('cat1BoundaryNote') }}></li>
                             <li dangerouslySetInnerHTML={{ __html: t('cat1CalculationMethods') }}></li>
                         </ul>
+                        <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-yellow-800 dark:bg-yellow-900/30 dark:border-yellow-700 dark:text-yellow-200">
+                            <p className="flex items-start gap-2">
+                                <IconInfo className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                                <span dangerouslySetInnerHTML={{ __html: t('cat1TransportWarning') }}></span>
+                            </p>
+                        </div>
                     </div>
                 )}
                 {source.category === EmissionCategory.CapitalGoods && (
                     <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800 dark:bg-yellow-900/30 dark:border-yellow-700/50 dark:text-yellow-200 text-xs space-y-2">
-                        <h4 className="font-semibold text-sm flex items-center gap-2"><IconInfo className="w-4 h-4" /> {t('capitalGoodsInfoTitle')}</h4>
+                        <h4 className="font-semibold text-sm flex items-center gap-2"><IconInfo className="w-4 h-4" /> {t('cat2GuidanceTitle')}</h4>
                         <ul className="list-disc pl-5 space-y-1">
+                            <li>{t('cat2GuidanceText')}</li>
                             <li dangerouslySetInnerHTML={{ __html: t('capitalGoodsInfoDepreciation') }}></li>
                             <li dangerouslySetInnerHTML={{ __html: t('capitalGoodsInfoCategorization') }}></li>
                             <li>{t('capitalGoodsInfoScope')}</li>

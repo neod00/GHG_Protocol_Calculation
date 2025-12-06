@@ -190,6 +190,25 @@ export const Category5Row: React.FC<SourceInputRowProps> = ({ source, onUpdate, 
             {isExpanded && (
                 <div className="flex flex-col gap-3 pt-3 border-t dark:border-gray-600">
 
+                    {/* Category 5 Guidance Box */}
+                    <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg text-orange-800 dark:bg-orange-900/30 dark:border-orange-700/50 dark:text-orange-200 text-xs space-y-2">
+                        <h4 className="font-semibold text-sm flex items-center gap-2"><IconInfo className="w-4 h-4" /> {t('cat5GuidanceTitle')}</h4>
+                        <ul className="list-disc pl-5 space-y-1">
+                            <li>{t('cat5GuidanceText')}</li>
+                            <li dangerouslySetInnerHTML={{ __html: t('cat5BoundaryNote') }}></li>
+                            <li dangerouslySetInnerHTML={{ __html: t('cat5CalculationMethods') }}></li>
+                        </ul>
+                        <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-blue-800 dark:bg-blue-900/30 dark:border-blue-700 dark:text-blue-200 text-xs">
+                            <p dangerouslySetInnerHTML={{ __html: t('cat5EmissionFactorSource') }}></p>
+                        </div>
+                        <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-yellow-800 dark:bg-yellow-900/30 dark:border-yellow-700 dark:text-yellow-200">
+                            <p className="flex items-start gap-2">
+                                <IconInfo className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                                <span dangerouslySetInnerHTML={{ __html: t('cat5Scope1Warning') }}></span>
+                            </p>
+                        </div>
+                    </div>
+
                     {/* Description & AI */}
                     <div>
                         <label htmlFor={`description-${source.id}`} className={commonLabelClass}>{t('emissionSourceDescription')}</label>
@@ -214,9 +233,17 @@ export const Category5Row: React.FC<SourceInputRowProps> = ({ source, onUpdate, 
                         <div className={`p-3 border rounded-lg text-xs ${aiAnalysisResult.boundary_warning ? 'bg-yellow-50 border-yellow-200 text-yellow-800 dark:bg-yellow-900/30 dark:border-yellow-700 dark:text-yellow-200' : 'bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/30 dark:border-blue-700 dark:text-blue-200'}`}>
                             {/* Boundary Warning Header */}
                             {aiAnalysisResult.boundary_warning && (
-                                <div className="flex items-center gap-2 font-bold mb-2 text-yellow-700 dark:text-yellow-400">
-                                    <IconAlertTriangle className="w-4 h-4" />
-                                    {t('boundaryWarning')}: {aiAnalysisResult.boundary_warning}
+                                <div className="space-y-2 mb-2">
+                                    <div className="flex items-center gap-2 font-bold text-yellow-700 dark:text-yellow-400">
+                                        <IconAlertTriangle className="w-4 h-4" />
+                                        {t('boundaryWarning')}: {aiAnalysisResult.boundary_warning}
+                                    </div>
+                                    {aiAnalysisResult.boundary_warning?.includes('Category 2') && (
+                                        <p className="text-xs" dangerouslySetInnerHTML={{ __html: t('cat5Category2Warning') }}></p>
+                                    )}
+                                    {aiAnalysisResult.boundary_warning?.includes('Category 12') && (
+                                        <p className="text-xs" dangerouslySetInnerHTML={{ __html: t('cat5Category12Warning') }}></p>
+                                    )}
                                 </div>
                             )}
 
@@ -255,6 +282,12 @@ export const Category5Row: React.FC<SourceInputRowProps> = ({ source, onUpdate, 
                                     {t(`${method}Method` as TranslationKey)}
                                 </button>
                             ))}
+                        </div>
+                        {/* Calculation Method Descriptions */}
+                        <div className="mt-2 p-2 bg-gray-50 dark:bg-gray-800/50 rounded text-xs text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700">
+                            {calculationMethod === 'activity' && <p dangerouslySetInnerHTML={{ __html: t('cat5MethodActivity') }}></p>}
+                            {calculationMethod === 'spend' && <p dangerouslySetInnerHTML={{ __html: t('cat5MethodSpend') }}></p>}
+                            {calculationMethod === 'supplier_specific' && <p dangerouslySetInnerHTML={{ __html: t('cat5MethodSupplier') }}></p>}
                         </div>
                     </div>
 
@@ -295,6 +328,11 @@ export const Category5Row: React.FC<SourceInputRowProps> = ({ source, onUpdate, 
                                 />
                             </div>
 
+                            {/* Activity-based Calculation Details */}
+                            <div className="p-2 bg-blue-50 border border-blue-200 rounded-md text-blue-800 dark:bg-blue-900/30 dark:border-blue-700/50 dark:text-blue-200 text-xs">
+                                <p className="font-semibold mb-1" dangerouslySetInnerHTML={{ __html: t('cat5ActivityCalculation') }}></p>
+                            </div>
+
                             {/* Transport Integration */}
                             <div className="p-3 border border-dashed border-gray-300 rounded-md dark:border-gray-600 bg-gray-50 dark:bg-gray-800/30">
                                 <label className="flex items-center space-x-2 text-sm cursor-pointer mb-2">
@@ -308,7 +346,7 @@ export const Category5Row: React.FC<SourceInputRowProps> = ({ source, onUpdate, 
                                     <div className="space-y-3 pl-2 border-l-2 border-gray-300 dark:border-gray-600 ml-1">
                                         <div className="p-2 bg-yellow-50 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-200 text-xs rounded flex items-start gap-2">
                                             <IconInfo className="w-4 h-4 flex-shrink-0" />
-                                            {t('transportOverlapWarning')}
+                                            <span dangerouslySetInnerHTML={{ __html: t('cat5TransportWarning') }}></span>
                                         </div>
                                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                                             <div>
@@ -382,6 +420,12 @@ export const Category5Row: React.FC<SourceInputRowProps> = ({ source, onUpdate, 
                                 placeholder="0"
                             />
                             <p className="text-xs text-gray-500 mt-1">{t('supplierDataNote')}</p>
+                            <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-yellow-800 dark:bg-yellow-900/30 dark:border-yellow-700 dark:text-yellow-200 text-xs">
+                                <p className="flex items-start gap-2">
+                                    <IconInfo className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                                    <span dangerouslySetInnerHTML={{ __html: t('cat5TransportWarning') }}></span>
+                                </p>
+                            </div>
                         </div>
                     )}
                 </div>
