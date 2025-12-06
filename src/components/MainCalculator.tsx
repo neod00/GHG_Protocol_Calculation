@@ -1434,11 +1434,13 @@ export const MainCalculator: React.FC<MainCalculatorProps> = ({
     }, []);
 
     const reconfigureBoundary = () => {
+        if (!checkAuth()) return;
         setWizardStartStep(1);
         setIsWizardOpen(true);
     };
 
     const openScope3Settings = () => {
+        if (!checkAuth()) return;
         setWizardStartStep(4);
         setIsWizardOpen(true);
     };
