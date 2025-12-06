@@ -12,11 +12,32 @@ export default async function AdminPage() {
         redirect("/");
     }
 
-    const supabaseAdmin = await createAdminClient();
-    const {
-        data: { users },
-        error,
-    } = await supabaseAdmin.auth.admin.listUsers();
+    // Check for Service Role Key
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+        return (
+            <div className="container mx-auto p-8 text-black dark:text-white">
+                <h1 className="text-3xl font-bold mb-8 text-red-500">Configuration Error</h1>
+                <p>The <code>SUPABASE_SERVICE_ROLE_KEY</code> environment variable is missing.</p>
+                <p>Please add it to your <code>.env</code> file or Vercel project settings to access the Admin Dashboard.</p>
+            </div>
+        );
+    }
+
+    let users: any[] = [];
+    let fetchError = null;
+
+    try {
+        const supabaseAdmin = await createAdminClient();
+        const { data, error } = await supabaseAdmin.auth.admin.listUsers();
+        if (error) throw error;
+        users = data.users || [];
+    } catch (err: any) {
+        console.error("Admin Page Error:", err);
+        fetchError = err;
+    }
+
+    // Handle fetch error display below in the return
+
 
     async function deleteUser(formData: FormData) {
         "use server";
@@ -48,7 +69,7 @@ export default async function AdminPage() {
                         </tr>
                     </thead>
                     <tbody className="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-gray-700">
-                        {users?.map((u) => (
+                        {users.map((u) => (
                             <tr key={u.id}>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                                     {u.email}
@@ -80,7 +101,7 @@ export default async function AdminPage() {
                         ))}
                     </tbody>
                 </table>
-                {error && <div className="p-4 text-red-500">Error loading users: {error.message}</div>}
+                {fetchError && <div className="p-4 text-red-500">Error loading users: {fetchError.message || JSON.stringify(fetchError)}</div>}
             </div>
         </div>
     );
