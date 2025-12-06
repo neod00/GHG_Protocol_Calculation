@@ -1550,13 +1550,13 @@ export const MainCalculator: React.FC<MainCalculatorProps> = ({
 
             <div className="relative">
                 {/* Decorative background elements */}
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-64 bg-gradient-to-b from-emerald-50/50 to-transparent dark:from-emerald-900/10 pointer-events-none -z-10"></div>
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-64 bg-gradient-to-b from-teal-50/50 to-transparent dark:from-teal-900/10 pointer-events-none -z-10"></div>
 
                 <div className="flex justify-end mb-4">
                     <button
                         onClick={handleSaveToCloud}
                         disabled={isSaving}
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded inline-flex items-center transition-colors shadow-sm"
+                        className="bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-4 rounded inline-flex items-center transition-colors shadow-sm"
                     >
                         {isSaving ? (
                             <>
@@ -1586,14 +1586,14 @@ export const MainCalculator: React.FC<MainCalculatorProps> = ({
                     />
                 </div>
 
-                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden transition-all duration-300">
-                    <div className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-6 md:p-10">
+                <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden transition-all duration-300">
+                    <div className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 p-6 md:p-10">
                         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                             <div>
-                                <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white tracking-tight">
+                                <h2 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white tracking-tight">
                                     {t('calculatorTitle')}
                                 </h2>
-                                <p className="mt-2 text-gray-600 dark:text-gray-400 max-w-2xl leading-relaxed">
+                                <p className="mt-2 text-slate-600 dark:text-slate-400 max-w-2xl leading-relaxed">
                                     {t('calculatorDescription')}
                                 </p>
                             </div>

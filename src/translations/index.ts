@@ -8,6 +8,7 @@ import { en as enWizard, ko as koWizard } from './wizard';
 
 import { en as enSettings, ko as koSettings } from './settings';
 import { en as enAuth, ko as koAuth } from './auth';
+import { en as enLanding, ko as koLanding } from './landing';
 
 const en = {
   ...enCategories,
@@ -19,6 +20,7 @@ const en = {
   ...enWizard,
   ...enSettings,
   ...enAuth,
+  ...enLanding,
 };
 
 const ko = {
@@ -31,6 +33,7 @@ const ko = {
   ...koWizard,
   ...koSettings,
   ...koAuth,
+  ...koLanding,
 };
 
 export type Language = 'en' | 'ko';
