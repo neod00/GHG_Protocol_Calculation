@@ -30,12 +30,17 @@ export function Header({ user }: HeaderProps = {}) {
         {/* Navigation - Desktop */}
         <nav className="hidden md:flex items-center space-x-8">
           {user ? (
-            <Link
-              href="/dashboard"
-              className="text-sm font-medium text-slate-600 hover:text-teal-600 dark:text-slate-300 dark:hover:text-teal-400 transition-colors"
-            >
-              Dashboard
-            </Link>
+            (() => {
+              const isAdmin = user.email?.startsWith('neod00') || user.email === 'neod00@naver.com';
+              return (
+                <Link
+                  href={isAdmin ? "/admin" : "/dashboard"}
+                  className="text-sm font-medium text-slate-600 hover:text-teal-600 dark:text-slate-300 dark:hover:text-teal-400 transition-colors"
+                >
+                  Dashboard
+                </Link>
+              );
+            })()
           ) : (
             ['Features', 'How it Works', 'Calculator', 'About'].map((item) => (
               <Link
