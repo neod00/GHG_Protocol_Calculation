@@ -1,21 +1,32 @@
 'use client'
 
-import { useActionState, Suspense } from 'react'
+import { useActionState, Suspense, useEffect } from 'react'
 import { login } from '../auth/actions'
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { IconShieldCheck } from '@/components/IconComponents'
 import { useTranslation } from '@/context/LanguageContext'
 
 const initialState = {
     error: '',
+    success: false,
+    redirect: null as string | null,
 }
 
 function LoginContent() {
     const searchParams = useSearchParams()
     const message = searchParams.get('message')
+    const router = useRouter()
     const [state, formAction] = useActionState(login, initialState)
     const { t } = useTranslation()
+
+    // Handle successful login redirect
+    useEffect(() => {
+        if (state?.success && state?.redirect) {
+            // Use window.location for full page reload to ensure cookies are set
+            window.location.href = state.redirect
+        }
+    }, [state?.success, state?.redirect])
 
     return (
         <div className="flex min-h-screen items-center justify-center bg-slate-950 relative overflow-hidden font-sans">

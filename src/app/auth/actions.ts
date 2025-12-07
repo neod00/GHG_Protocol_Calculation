@@ -27,7 +27,7 @@ export async function login(prevState: any, formData: FormData) {
         return { error: 'Please enter a valid email address.' }
     }
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
     })
@@ -36,8 +36,20 @@ export async function login(prevState: any, formData: FormData) {
         return { error: 'Invalid credentials. Please try again.' }
     }
 
+    // Verify session was created
+    if (!data.session) {
+        return { error: 'Failed to create session. Please try again.' }
+    }
+
+    // Verify user exists
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+        return { error: 'Failed to authenticate. Please try again.' }
+    }
+
     revalidatePath('/', 'layout')
-    redirect('/dashboard')
+    // Return success state - client will handle redirect
+    return { success: true, redirect: '/dashboard' }
 }
 
 export async function signup(prevState: any, formData: FormData) {
