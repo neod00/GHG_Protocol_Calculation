@@ -4,6 +4,23 @@ import { revalidatePath } from "next/cache";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 
+async function deleteUser(formData: FormData) {
+    "use server";
+    const userId = formData.get("userId") as string;
+    if (!userId) {
+        return;
+    }
+    
+    try {
+        const supabaseAdmin = await createAdminClient();
+        await supabaseAdmin.auth.admin.deleteUser(userId);
+        revalidatePath("/admin");
+    } catch (error) {
+        console.error("Error deleting user:", error);
+        throw error;
+    }
+}
+
 export default async function AdminPage() {
     const supabase = await createClient();
     const {
@@ -17,36 +34,36 @@ export default async function AdminPage() {
     // Check for Service Role Key
     if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
         return (
-            <div className="container mx-auto p-8 text-black dark:text-white">
-                <h1 className="text-3xl font-bold mb-8 text-red-500">Configuration Error</h1>
-                <p>The <code>SUPABASE_SERVICE_ROLE_KEY</code> environment variable is missing.</p>
-                <p>Please add it to your <code>.env</code> file or Vercel project settings to access the Admin Dashboard.</p>
+            <div className="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300">
+                <Header user={user} />
+                <main className="container mx-auto px-4 py-8 max-w-7xl">
+                    <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-8">
+                        <h1 className="text-3xl font-bold mb-4 text-red-600 dark:text-red-400">Configuration Error</h1>
+                        <p className="text-gray-700 dark:text-gray-300 mb-2">The <code className="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">SUPABASE_SERVICE_ROLE_KEY</code> environment variable is missing.</p>
+                        <p className="text-gray-700 dark:text-gray-300">Please add it to your Vercel project settings to access the Admin Dashboard.</p>
+                    </div>
+                </main>
+                <Footer />
             </div>
         );
     }
 
     let users: any[] = [];
-    let fetchError = null;
+    let fetchError: Error | null = null;
 
     try {
         const supabaseAdmin = await createAdminClient();
+        if (!supabaseAdmin) {
+            throw new Error("Failed to create admin client");
+        }
         const { data, error } = await supabaseAdmin.auth.admin.listUsers();
-        if (error) throw error;
-        users = data.users || [];
+        if (error) {
+            throw error;
+        }
+        users = data?.users || [];
     } catch (err: any) {
         console.error("Admin Page Error:", err);
-        fetchError = err;
-    }
-
-    // Handle fetch error display below in the return
-
-
-    async function deleteUser(formData: FormData) {
-        "use server";
-        const userId = formData.get("userId") as string;
-        const supabaseAdmin = await createAdminClient();
-        await supabaseAdmin.auth.admin.deleteUser(userId);
-        revalidatePath("/admin");
+        fetchError = err instanceof Error ? err : new Error(String(err));
     }
 
     return (
@@ -60,8 +77,11 @@ export default async function AdminPage() {
                 
                 {fetchError ? (
                     <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 text-red-600 dark:text-red-400">
-                        <p className="font-semibold">Error loading users:</p>
-                        <p>{fetchError.message || JSON.stringify(fetchError)}</p>
+                        <p className="font-semibold mb-2">Error loading users:</p>
+                        <p className="text-sm">{fetchError.message || String(fetchError)}</p>
+                        <p className="text-xs mt-2 text-gray-500 dark:text-gray-400">
+                            Please check that SUPABASE_SERVICE_ROLE_KEY is correctly set in your Vercel environment variables.
+                        </p>
                     </div>
                 ) : (
                     <div className="bg-white dark:bg-slate-800 shadow rounded-lg overflow-hidden">
