@@ -131,6 +131,15 @@ export const en = {
   cat10Scope1Warning: '⚠️ Boundary Warning: If processing happens *before* your company sells the product (in your factory), those emissions belong in Scope 1 & 2, not Category 10.',
   cat10Category11Warning: '⚠️ Boundary Warning: Emissions from product *use* (e.g., electricity consumption when customers use your products) belong in Category 11, not Category 10. Category 10 is only for processing emissions.',
   cat10Category12Warning: '⚠️ Boundary Warning: Emissions from product *disposal* (e.g., end-of-life treatment, recycling) belong in Category 12, not Category 10. Category 10 is only for processing emissions.',
+  cat11GuidanceTitle: 'How to report Category 11',
+  cat11GuidanceText: 'This category covers emissions from the use phase of sold products by end users. This includes electricity consumption, fuel consumption, and other energy use during the product lifetime.',
+  cat11BoundaryNote: '<strong>Boundary:</strong> Only include emissions from the use phase of sold products by end users. <br> - <strong>Final Products:</strong> This applies to final products that are used by end users (e.g., electronics, vehicles, appliances). <br> - <strong>Intermediate Products:</strong> If you sell intermediate products that require further processing, those processing emissions belong in Category 10, not here. <br> - <strong>Category 10:</strong> Do not include emissions from processing of intermediate products. That is Category 10. <br> - <strong>Category 12:</strong> Do not include emissions from product disposal (end-of-life treatment). That is Category 12. <br> - <strong>No Use Phase:</strong> If your products do not consume energy or emit GHGs during use (e.g., furniture, clothing), Category 11 is 0 (or N/A).',
+  cat11CalculationMethods: '<strong>Calculation Methods:</strong> Use Energy consumption for products that use electricity/heat (most common). Use Fuel consumption for products that burn fuel directly. Use GHG data when customers provide lifetime CO2e data.',
+  cat11MethodEnergyConsumption: 'Use when: Products consume electricity or heat during use (e.g., electronics, appliances, HVAC systems). Formula: Units Sold × Product Lifetime (years) × Annual Energy Consumption (kWh/year) × Grid Emission Factor. Select the appropriate grid region for accurate calculations.',
+  cat11MethodFuelConsumption: 'Use when: Products burn fuel directly during use (e.g., vehicles, gas stoves, diesel generators). Formula: Units Sold × Product Lifetime (years) × Annual Fuel Consumption × Fuel Emission Factor.',
+  cat11MethodGhgData: 'Use when: Customers provide lifetime CO2e emissions data per unit. Most reliable if available. Formula: Units Sold × Lifetime CO2e per Unit.',
+  cat11Category10Warning: '⚠️ Boundary Warning: If you sell intermediate products that require further processing, those processing emissions belong in Category 10, not Category 11. Category 11 is only for use phase emissions of final products.',
+  cat11Category12Warning: '⚠️ Boundary Warning: Emissions from product disposal (end-of-life treatment, recycling, landfill) belong in Category 12, not Category 11. Category 11 is only for use phase emissions.',
 
   // Results Display
   emissionsSummary: 'Emissions Summary',
@@ -630,6 +639,15 @@ export const ko = {
   cat10Scope1Warning: '⚠️ 경계 경고: 회사가 제품을 판매하기 *전에* 가공이 발생하는 경우(귀사 공장에서), 해당 배출은 Scope 1 & 2에 속하며 카테고리 10이 아닙니다.',
   cat10Category11Warning: '⚠️ 경계 경고: 제품 *사용*으로 인한 배출(예: 고객이 귀사 제품을 사용할 때 전력 소비)은 카테고리 11에 속하며 카테고리 10이 아닙니다. 카테고리 10은 가공 배출만을 위한 것입니다.',
   cat10Category12Warning: '⚠️ 경계 경고: 제품 *폐기*로 인한 배출(예: 폐기물 처리, 재활용)은 카테고리 12에 속하며 카테고리 10이 아닙니다. 카테고리 10은 가공 배출만을 위한 것입니다.',
+  cat11GuidanceTitle: '카테고리 11 보고 방법',
+  cat11GuidanceText: '이 카테고리는 최종 사용자가 판매된 제품을 사용하는 단계에서 발생하는 배출을 포함합니다. 제품 수명 동안 전력 소비, 연료 소비 및 기타 에너지 사용을 포함합니다.',
+  cat11BoundaryNote: '<strong>경계:</strong> 최종 사용자가 판매된 제품을 사용하는 단계에서 발생하는 배출만 포함하세요. <br> - <strong>최종 제품:</strong> 최종 사용자가 사용하는 최종 제품에 적용됩니다(예: 전자제품, 차량, 가전제품). <br> - <strong>중간 제품:</strong> 추가 가공이 필요한 중간 제품을 판매하는 경우, 해당 가공 배출은 카테고리 10에 속하며 여기에 속하지 않습니다. <br> - <strong>카테고리 10:</strong> 중간 제품의 가공 배출은 포함하지 마십시오. 이는 카테고리 10입니다. <br> - <strong>카테고리 12:</strong> 제품 폐기 배출(폐기물 처리)은 포함하지 마십시오. 이는 카테고리 12입니다. <br> - <strong>사용 단계 없음:</strong> 제품이 사용 중 에너지를 소비하지 않거나 온실가스를 배출하지 않는 경우(예: 가구, 의류), 카테고리 11은 0(또는 해당 없음)입니다.',
+  cat11CalculationMethods: '<strong>계산 방법:</strong> 전력/열을 사용하는 제품의 경우 Energy consumption을 사용하세요(가장 일반적). 직접 연료를 연소하는 제품의 경우 Fuel consumption을 사용하세요. 고객이 수명주기 CO2e 데이터를 제공하는 경우 GHG data를 사용하세요.',
+  cat11MethodEnergyConsumption: '사용 시점: 제품이 사용 중 전력 또는 열을 소비하는 경우(예: 전자제품, 가전제품, HVAC 시스템). 공식: 판매 단위 × 제품 수명(년) × 연간 에너지 소비(kWh/년) × 전력망 배출계수. 정확한 계산을 위해 적절한 전력망 지역을 선택하세요.',
+  cat11MethodFuelConsumption: '사용 시점: 제품이 사용 중 직접 연료를 연소하는 경우(예: 차량, 가스 스토브, 디젤 발전기). 공식: 판매 단위 × 제품 수명(년) × 연간 연료 소비 × 연료 배출계수.',
+  cat11MethodGhgData: '사용 시점: 고객이 단위당 수명주기 CO2e 배출 데이터를 제공하는 경우. 가능하면 가장 신뢰할 수 있는 방법입니다. 공식: 판매 단위 × 단위당 수명주기 CO2e.',
+  cat11Category10Warning: '⚠️ 경계 경고: 추가 가공이 필요한 중간 제품을 판매하는 경우, 해당 가공 배출은 카테고리 10에 속하며 카테고리 11이 아닙니다. 카테고리 11은 최종 제품의 사용 단계 배출만을 위한 것입니다.',
+  cat11Category12Warning: '⚠️ 경계 경고: 제품 폐기 배출(폐기물 처리, 재활용, 매립)은 카테고리 12에 속하며 카테고리 11이 아닙니다. 카테고리 11은 사용 단계 배출만을 위한 것입니다.',
 
   // Results Display
   emissionsSummary: '배출량 요약',
