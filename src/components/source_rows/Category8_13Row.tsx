@@ -5,6 +5,7 @@ import { useTranslation } from '../../context/LanguageContext';
 // FIX: Changed import path to be more explicit.
 import { TranslationKey } from '../../translations/index';
 import { IconTrash, IconX, IconSparkles, IconCheck, IconAlertTriangle, IconBuilding, IconCar, IconFactory, IconInfo } from '../IconComponents';
+import { GoogleGenAI, Type } from '@google/genai';
 
 
 interface SourceInputRowProps {
@@ -20,6 +21,8 @@ interface SourceInputRowProps {
 export const Category8_13Row: React.FC<SourceInputRowProps> = ({ source, onUpdate, onRemove, fuels, calculateEmissions }) => {
     const { t, language } = useTranslation();
     const [isExpanded, setIsExpanded] = useState(false);
+    const [isLoadingAI, setIsLoadingAI] = useState(false);
+    const [aiAnalysisResult, setAiAnalysisResult] = useState<any>(null);
 
 
     const totalEmissions = calculateEmissions(source).scope3;
@@ -80,7 +83,80 @@ export const Category8_13Row: React.FC<SourceInputRowProps> = ({ source, onUpdat
         onUpdate({ energyInputs: newInputs });
     };
 
+    const handleAnalyze = async () => {
+        if (!source.description) return;
+        setIsLoadingAI(true);
+        setAiAnalysisResult(null);
 
+        try {
+            const apiKey = process.env.NEXT_PUBLIC_GOOGLE_API_KEY;
+            if (!apiKey) {
+                alert(t('apiKeyMissing'));
+                setIsLoadingAI(false);
+                return;
+            }
+            const ai = new GoogleGenAI({ apiKey: apiKey as string });
+            const promptText = `You are a GHG Protocol Scope 3 expert. Analyze this leased asset description: "${source.description}".
+            
+            1. Extract Asset Details: Asset type (Building, Vehicle, Equipment), location, size/area if mentioned.
+            2. Determine Asset Type:
+               - Building: Type (Office, Warehouse, Factory, Retail, DataCenter).
+               - Vehicle: Type and fuel.
+               - Equipment: Type and energy consumption.
+            3. Estimate Area: If building, estimate area in m² if mentioned.
+            4. Boundary Check (CRITICAL): 
+               - If the company has operational control over the asset (controls how it's used, maintained, operated), flag as 'Scope 1/2'.
+               - Operational control means the company controls day-to-day operations, not just financial ownership.
+            
+            Return structured JSON.
+            
+            IMPORTANT: Respond in ${language === 'ko' ? 'Korean' : 'English'}.`;
+
+            const responseSchema = {
+                type: Type.OBJECT,
+                properties: {
+                    asset_type: { type: Type.STRING, description: 'Building, Vehicle, or Equipment' },
+                    building_type: { type: Type.STRING, description: 'Office, Warehouse, Factory, Retail, DataCenter' },
+                    estimated_area_sqm: { type: Type.NUMBER, description: 'Estimated area in square meters' },
+                    location: { type: Type.STRING },
+                    boundary_warning: { type: Type.STRING, description: "'Scope 1/2' if operational control, or null" },
+                    reasoning: { type: Type.STRING },
+                }
+            };
+
+            const response = await ai.models.generateContent({
+                model: 'gemini-2.5-flash',
+                contents: promptText,
+                config: { responseMimeType: "application/json", responseSchema },
+            });
+            const result = JSON.parse(response.text || '{}');
+            setAiAnalysisResult(result);
+        } catch (error) {
+            console.error("AI analysis failed:", error);
+            setAiAnalysisResult({ error: "Failed to analyze." });
+        } finally {
+            setIsLoadingAI(false);
+        }
+    };
+
+    const applyAiResult = () => {
+        if (!aiAnalysisResult) return;
+        const updates: Partial<EmissionSource> = {};
+
+        if (aiAnalysisResult.asset_type && ['Building', 'Vehicle', 'Equipment'].includes(aiAnalysisResult.asset_type)) {
+            updates.leasedAssetType = aiAnalysisResult.asset_type as LeasedAssetType;
+        }
+
+        if (aiAnalysisResult.building_type && ['Office', 'Warehouse', 'Factory', 'Retail', 'DataCenter'].includes(aiAnalysisResult.building_type)) {
+            updates.buildingType = aiAnalysisResult.building_type as BuildingType;
+        }
+
+        if (aiAnalysisResult.estimated_area_sqm) {
+            updates.areaSqm = aiAnalysisResult.estimated_area_sqm;
+        }
+
+        onUpdate(updates);
+    };
 
     const preventNonNumericKeys = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (['e', 'E', '+', '-'].includes(e.key)) {
@@ -170,8 +246,39 @@ export const Category8_13Row: React.FC<SourceInputRowProps> = ({ source, onUpdat
                                 className={commonInputClass}
                                 placeholder={t('upstreamLeasedAssetsPlaceholder')}
                             />
+                            {source.category === EmissionCategory.UpstreamLeasedAssets && (
+                                <button onClick={handleAnalyze} disabled={isLoadingAI || !source.description} className="px-3 py-1 bg-ghg-light-green text-white rounded-md hover:bg-ghg-green disabled:bg-gray-400 flex items-center gap-2 text-sm whitespace-nowrap">
+                                    <IconSparkles className="w-4 h-4" />
+                                    <span>{isLoadingAI ? '...' : t('analyzeWithAI')}</span>
+                                </button>
+                            )}
                         </div>
                     </div>
+
+                    {/* AI Result Panel */}
+                    {aiAnalysisResult && source.category === EmissionCategory.UpstreamLeasedAssets && (
+                        <div className={`p-3 border rounded-lg text-xs ${aiAnalysisResult.boundary_warning ? 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/30 dark:border-red-700 dark:text-red-200' : 'bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/30 dark:border-blue-700 dark:text-blue-200'}`}>
+                            {aiAnalysisResult.boundary_warning && (
+                                <div className="flex items-center gap-2 font-bold mb-2">
+                                    <IconAlertTriangle className="w-4 h-4" />
+                                    {t('boundaryWarning')}: {aiAnalysisResult.boundary_warning}
+                                </div>
+                            )}
+
+                            <div className="grid grid-cols-2 gap-1">
+                                {aiAnalysisResult.asset_type && <p><span className="font-semibold">{t('leasedAssetType')}:</span> {aiAnalysisResult.asset_type}</p>}
+                                {aiAnalysisResult.building_type && <p><span className="font-semibold">{t('buildingType')}:</span> {aiAnalysisResult.building_type}</p>}
+                                {aiAnalysisResult.estimated_area_sqm && <p><span className="font-semibold">{t('areaSqm')}:</span> {aiAnalysisResult.estimated_area_sqm} m²</p>}
+                                {aiAnalysisResult.location && <p><span className="font-semibold">{t('location') || '위치'}:</span> {aiAnalysisResult.location}</p>}
+                            </div>
+
+                            <div className="flex justify-end mt-2">
+                                <button onClick={applyAiResult} className="px-2 py-1 bg-white dark:bg-gray-700 border rounded hover:bg-gray-100 dark:hover:bg-gray-600 font-semibold flex items-center gap-1">
+                                    <IconCheck className="w-3 h-3" /> {t('applySuggestion')}
+                                </button>
+                            </div>
+                        </div>
+                    )}
 
                     {/* Method Selector */}
                     <div>

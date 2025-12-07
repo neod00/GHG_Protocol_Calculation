@@ -4,6 +4,7 @@ import { EmissionSource, Cat7CalculationMethod, EmployeeCommutingMode, PersonalC
 import { useTranslation } from '../../context/LanguageContext';
 import { TranslationKey } from '../../translations/index';
 import { IconTrash, IconSparkles, IconCheck, IconAlertTriangle, IconInfo, IconUsers } from '../IconComponents';
+import { GoogleGenAI, Type } from '@google/genai';
 
 
 interface SourceInputRowProps {
@@ -19,6 +20,8 @@ interface SourceInputRowProps {
 export const Category7Row: React.FC<SourceInputRowProps> = ({ source, onUpdate, onRemove, fuels, calculateEmissions }) => {
     const { t, language } = useTranslation();
     const [isExpanded, setIsExpanded] = useState(false);
+    const [isLoadingAI, setIsLoadingAI] = useState(false);
+    const [aiAnalysisResult, setAiAnalysisResult] = useState<any>(null);
 
 
     const totalEmissions = calculateEmissions(source).scope3;
@@ -110,7 +113,102 @@ export const Category7Row: React.FC<SourceInputRowProps> = ({ source, onUpdate, 
         onUpdate({ monthlyQuantities: newQuantities });
     };
 
+    const handleAnalyze = async () => {
+        if (!source.description) return;
+        setIsLoadingAI(true);
+        setAiAnalysisResult(null);
 
+        try {
+            const apiKey = process.env.NEXT_PUBLIC_GOOGLE_API_KEY;
+            if (!apiKey) {
+                alert(t('apiKeyMissing'));
+                setIsLoadingAI(false);
+                return;
+            }
+            const ai = new GoogleGenAI({ apiKey: apiKey as string });
+            const promptText = `You are a GHG Protocol Scope 3 expert. Analyze this employee commuting description: "${source.description}".
+            
+            1. Extract Commuting Details: Home location, Workplace location, Mode (PersonalCar, Carpool, PublicTransport, Motorbike, BicycleWalking).
+            2. Determine Sub-type:
+               - If PersonalCar/Carpool: Fuel type (Gasoline, Diesel, Electric, Hybrid, LPG).
+               - If PublicTransport: Type (Bus, Subway).
+            3. Estimate Distance: Calculate the estimated one-way distance in km.
+            4. Boundary Check (CRITICAL): 
+               - If it describes business travel (e.g., client meetings, conferences), flag as 'Category 6'.
+               - If it implies a company-owned vehicle where company pays for fuel, flag as 'Scope 1'.
+               - If it describes teleworking/working from home, note that it should be excluded.
+            
+            Return structured JSON.
+            
+            IMPORTANT: Respond in ${language === 'ko' ? 'Korean' : 'English'}.`;
+
+            const responseSchema = {
+                type: Type.OBJECT,
+                properties: {
+                    mode: { type: Type.STRING, description: 'PersonalCar, Carpool, PublicTransport, Motorbike, BicycleWalking' },
+                    sub_type: { type: Type.STRING, description: 'Specific fuel or type (e.g., Gasoline, Bus)' },
+                    home_location: { type: Type.STRING },
+                    workplace_location: { type: Type.STRING },
+                    estimated_distance_km: { type: Type.NUMBER },
+                    carpool_occupancy: { type: Type.NUMBER, description: 'Number of people per vehicle for carpool' },
+                    boundary_warning: { type: Type.STRING, description: "'Category 6' or 'Scope 1' or null" },
+                    reasoning: { type: Type.STRING },
+                }
+            };
+
+            const response = await ai.models.generateContent({
+                model: 'gemini-2.5-flash',
+                contents: promptText,
+                config: { responseMimeType: "application/json", responseSchema },
+            });
+            const result = JSON.parse(response.text || '{}');
+            setAiAnalysisResult(result);
+        } catch (error) {
+            console.error("AI analysis failed:", error);
+            setAiAnalysisResult({ error: "Failed to analyze." });
+        } finally {
+            setIsLoadingAI(false);
+        }
+    };
+
+    const applyAiResult = () => {
+        if (!aiAnalysisResult) return;
+        const updates: Partial<EmissionSource> = {};
+
+        if (aiAnalysisResult.home_location) updates.origin = aiAnalysisResult.home_location;
+        if (aiAnalysisResult.workplace_location) updates.destination = aiAnalysisResult.workplace_location;
+        if (aiAnalysisResult.estimated_distance_km) updates.distanceKm = aiAnalysisResult.estimated_distance_km;
+        if (aiAnalysisResult.carpool_occupancy) updates.carpoolOccupancy = aiAnalysisResult.carpool_occupancy;
+
+        if (aiAnalysisResult.mode && Object.keys(fuels.activity).includes(aiAnalysisResult.mode)) {
+            updates.commutingMode = aiAnalysisResult.mode as EmployeeCommutingMode;
+
+            // Auto-select sub-type based on AI suggestion
+            if (aiAnalysisResult.mode === 'PersonalCar' || aiAnalysisResult.mode === 'Carpool') {
+                const availableTypes = Object.keys(fuels.activity.PersonalCar || {});
+                if (availableTypes.length > 0) {
+                    let matchedType = availableTypes[0];
+                    if (aiAnalysisResult.sub_type) {
+                        const found = availableTypes.find(t => t.toLowerCase().includes(aiAnalysisResult.sub_type.toLowerCase()) || aiAnalysisResult.sub_type.toLowerCase().includes(t.toLowerCase()));
+                        if (found) matchedType = found;
+                    }
+                    updates.personalCarType = matchedType as PersonalCarType;
+                }
+            } else if (aiAnalysisResult.mode === 'PublicTransport') {
+                const availableTypes = Object.keys(fuels.activity.PublicTransport || {});
+                if (availableTypes.length > 0) {
+                    let matchedType = availableTypes[0];
+                    if (aiAnalysisResult.sub_type) {
+                        const found = availableTypes.find(t => t.toLowerCase().includes(aiAnalysisResult.sub_type.toLowerCase()) || aiAnalysisResult.sub_type.toLowerCase().includes(t.toLowerCase()));
+                        if (found) matchedType = found;
+                    }
+                    updates.publicTransportType = matchedType as PublicTransportType;
+                }
+            }
+        }
+
+        onUpdate(updates);
+    };
 
     const preventNonNumericKeys = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (['e', 'E', '+', '-'].includes(e.key)) {
@@ -205,9 +303,39 @@ export const Category7Row: React.FC<SourceInputRowProps> = ({ source, onUpdate, 
                                 className={commonInputClass}
                                 placeholder={t('employeeCommutingPlaceholder')}
                             />
-
+                            <button onClick={handleAnalyze} disabled={isLoadingAI || !source.description} className="px-3 py-1 bg-ghg-light-green text-white rounded-md hover:bg-ghg-green disabled:bg-gray-400 flex items-center gap-2 text-sm whitespace-nowrap">
+                                <IconSparkles className="w-4 h-4" />
+                                <span>{isLoadingAI ? '...' : t('analyzeWithAI')}</span>
+                            </button>
                         </div>
                     </div>
+
+                    {/* AI Result Panel */}
+                    {aiAnalysisResult && (
+                        <div className={`p-3 border rounded-lg text-xs ${aiAnalysisResult.boundary_warning ? 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/30 dark:border-red-700 dark:text-red-200' : 'bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/30 dark:border-blue-700 dark:text-blue-200'}`}>
+                            {aiAnalysisResult.boundary_warning && (
+                                <div className="flex items-center gap-2 font-bold mb-2">
+                                    <IconAlertTriangle className="w-4 h-4" />
+                                    {t('boundaryWarning')}: {aiAnalysisResult.boundary_warning}
+                                </div>
+                            )}
+
+                            <div className="grid grid-cols-2 gap-1">
+                                {aiAnalysisResult.home_location && <p><span className="font-semibold">{t('origin')}:</span> {aiAnalysisResult.home_location}</p>}
+                                {aiAnalysisResult.workplace_location && <p><span className="font-semibold">{t('destination')}:</span> {aiAnalysisResult.workplace_location}</p>}
+                                {aiAnalysisResult.mode && <p><span className="font-semibold">{t('commutingMode')}:</span> {aiAnalysisResult.mode}</p>}
+                                {aiAnalysisResult.estimated_distance_km && <p><span className="font-semibold">{t('estimatedDistance')}:</span> {aiAnalysisResult.estimated_distance_km} km</p>}
+                                {aiAnalysisResult.sub_type && <p><span className="font-semibold">{t('type')}:</span> {aiAnalysisResult.sub_type}</p>}
+                                {aiAnalysisResult.carpool_occupancy && <p><span className="font-semibold">{t('carpoolOccupancy')}:</span> {aiAnalysisResult.carpool_occupancy}</p>}
+                            </div>
+
+                            <div className="flex justify-end mt-2">
+                                <button onClick={applyAiResult} className="px-2 py-1 bg-white dark:bg-gray-700 border rounded hover:bg-gray-100 dark:hover:bg-gray-600 font-semibold flex items-center gap-1">
+                                    <IconCheck className="w-3 h-3" /> {t('applySuggestion')}
+                                </button>
+                            </div>
+                        </div>
+                    )}
 
                     {/* Method Selector */}
                     <div>
