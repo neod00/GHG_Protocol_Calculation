@@ -26,17 +26,10 @@ export function HeaderActions({ user }: HeaderActionsProps) {
     
     return (
       <>
-        {isAdmin ? (
+        {isAdmin && (
           <Link
             href="/admin"
             className="hidden sm:inline-flex px-4 py-2 text-sm font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors dark:bg-slate-800 dark:text-purple-400 dark:hover:bg-slate-700"
-          >
-            Dashboard
-          </Link>
-        ) : (
-          <Link
-            href="/dashboard"
-            className="hidden sm:inline-flex px-4 py-2 text-sm font-semibold text-teal-700 bg-teal-50 hover:bg-teal-100 rounded-lg transition-colors dark:bg-slate-800 dark:text-teal-400 dark:hover:bg-slate-700"
           >
             Dashboard
           </Link>

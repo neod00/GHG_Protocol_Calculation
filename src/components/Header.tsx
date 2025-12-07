@@ -32,14 +32,14 @@ export function Header({ user }: HeaderProps = {}) {
           {user ? (
             (() => {
               const isAdmin = user.email?.startsWith('neod00') || user.email === 'neod00@naver.com';
-              return (
+              return isAdmin ? (
                 <Link
-                  href={isAdmin ? "/admin" : "/dashboard"}
+                  href="/admin"
                   className="text-sm font-medium text-slate-600 hover:text-teal-600 dark:text-slate-300 dark:hover:text-teal-400 transition-colors"
                 >
                   Dashboard
                 </Link>
-              );
+              ) : null;
             })()
           ) : (
             ['Features', 'How it Works', 'Calculator', 'About'].map((item) => (
@@ -56,6 +56,11 @@ export function Header({ user }: HeaderProps = {}) {
 
         {/* Actions */}
         <div className="flex items-center space-x-4">
+          {user && user.email && (
+            <div className="hidden sm:flex items-center px-3 py-1.5 text-sm font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 rounded-lg">
+              {user.email}
+            </div>
+          )}
           <LanguageToggle />
           <ThemeToggle />
           <HeaderActions user={user} />
