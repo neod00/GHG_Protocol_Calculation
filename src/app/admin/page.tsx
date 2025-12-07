@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
+import { DeleteUserButton } from "@/components/DeleteUserButton";
 
 async function deleteUser(formData: FormData) {
     "use server";
@@ -129,20 +130,11 @@ export default async function AdminPage() {
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                                     {u.email !== "neod00@ghg-saas.com" && !u.email?.startsWith('neod00') ? (
-                                                        <form action={deleteUser}>
-                                                            <input type="hidden" name="userId" value={u.id} />
-                                                            <button
-                                                                type="submit"
-                                                                className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 font-medium"
-                                                                onClick={(e) => {
-                                                                    if (!confirm(`정말로 ${u.email} 사용자를 삭제하시겠습니까?`)) {
-                                                                        e.preventDefault();
-                                                                    }
-                                                                }}
-                                                            >
-                                                                Delete
-                                                            </button>
-                                                        </form>
+                                                        <DeleteUserButton
+                                                            userId={u.id}
+                                                            userEmail={u.email}
+                                                            deleteAction={deleteUser}
+                                                        />
                                                     ) : (
                                                         <span className="text-gray-400 cursor-not-allowed">Admin</span>
                                                     )}
