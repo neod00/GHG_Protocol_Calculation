@@ -7,10 +7,12 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import { IconShieldCheck } from '@/components/IconComponents'
 import { useTranslation } from '@/context/LanguageContext'
 
-const initialState = {
+type LoginState = 
+    | { error: string }
+    | { success: boolean; redirect: string }
+
+const initialState: LoginState = {
     error: '',
-    success: false,
-    redirect: null as string | null,
 }
 
 function LoginContent() {
@@ -22,11 +24,11 @@ function LoginContent() {
 
     // Handle successful login redirect
     useEffect(() => {
-        if (state?.success && state?.redirect) {
+        if ('success' in state && state.success && 'redirect' in state && state.redirect) {
             // Use window.location for full page reload to ensure cookies are set
             window.location.href = state.redirect
         }
-    }, [state?.success, state?.redirect])
+    }, [state])
 
     return (
         <div className="flex min-h-screen items-center justify-center bg-slate-950 relative overflow-hidden font-sans">
@@ -56,7 +58,7 @@ function LoginContent() {
                     </div>
                 )}
 
-                {state?.error && (
+                {'error' in state && state.error && (
                     <div className="mb-6 bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-lg text-sm flex items-center gap-2" role="alert">
                         <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />

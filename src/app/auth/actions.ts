@@ -14,7 +14,11 @@ function validateEmail(email: string): string | null {
     return null
 }
 
-export async function login(prevState: any, formData: FormData) {
+type LoginState = 
+    | { error: string }
+    | { success: boolean; redirect: string }
+
+export async function login(prevState: LoginState | null, formData: FormData): Promise<LoginState> {
     const supabase = await createClient()
 
     // Get raw inputs
