@@ -273,13 +273,19 @@ export const MainCalculator: React.FC<MainCalculatorProps> = ({
     const [isSetupComplete, setIsSetupComplete] = useState<boolean>(false);
 
     useEffect(() => {
+        // If we have initial project data from the server, setup is complete
+        if (initialProjectData) {
+            setIsSetupComplete(true);
+            return;
+        }
+        
         try {
             const saved = localStorage.getItem('ghg-calc-isSetupComplete');
             if (saved) setIsSetupComplete(JSON.parse(saved));
         } catch (error) {
             // ignore
         }
-    }, []);
+    }, [initialProjectData]);
     const [activeTab, setActiveTab] = useState<ActiveTab>('scope1');
     const [isSaving, setIsSaving] = useState(false);
 

@@ -49,6 +49,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
                 organizationId={project.organizationId}
                 hasScope3Access={(project.organization as any).scope3Access}
                 scope3Requested={(project.organization as any).scope3Requested}
+                isAuthenticated={true}
             />
         </div>
     );
