@@ -201,6 +201,35 @@ export const Category4_9Row: React.FC<SourceInputRowProps> = ({ source, onUpdate
                         </div>
                     )}
 
+                    {/* Category 9 Guidance Box */}
+                    {source.category === EmissionCategory.DownstreamTransportationAndDistribution && (
+                        <div className="p-3 bg-pink-50 border border-pink-200 rounded-lg text-pink-800 dark:bg-pink-900/30 dark:border-pink-700/50 dark:text-pink-200 text-xs space-y-2">
+                            <h4 className="font-semibold text-sm flex items-center gap-2"><IconInfo className="w-4 h-4" /> {t('cat9GuidanceTitle')}</h4>
+                            <ul className="list-disc pl-5 space-y-1">
+                                <li>{t('cat9GuidanceText')}</li>
+                                <li dangerouslySetInnerHTML={{ __html: t('cat9BoundaryNote') }}></li>
+                                <li dangerouslySetInnerHTML={{ __html: t('cat9CalculationMethods') }}></li>
+                            </ul>
+                            <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-yellow-800 dark:bg-yellow-900/30 dark:border-yellow-700 dark:text-yellow-200">
+                                <p className="flex items-start gap-2 mb-1">
+                                    <IconInfo className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                                    <span dangerouslySetInnerHTML={{ __html: t('cat9Scope1Warning') }}></span>
+                                </p>
+                                <p className="flex items-start gap-2 mb-1">
+                                    <IconInfo className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                                    <span dangerouslySetInnerHTML={{ __html: t('cat9Category4Warning') }}></span>
+                                </p>
+                                <p className="flex items-start gap-2">
+                                    <IconInfo className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                                    <span dangerouslySetInnerHTML={{ __html: t('cat9IncotermsWarning') }}></span>
+                                </p>
+                            </div>
+                            <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-blue-800 dark:bg-blue-900/30 dark:border-blue-700 dark:text-blue-200">
+                                <p className="text-xs" dangerouslySetInnerHTML={{ __html: t('cat9IncotermsNote') }}></p>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Description & AI */}
                     <div>
                         <label htmlFor={`description-${source.id}`} className={commonLabelClass}>{t('emissionSourceDescription')}</label>
@@ -316,6 +345,11 @@ export const Category4_9Row: React.FC<SourceInputRowProps> = ({ source, onUpdate
                             {source.category === EmissionCategory.UpstreamTransportationAndDistribution && (
                                 <div className="p-2 bg-blue-50 border border-blue-200 rounded-md text-blue-800 dark:bg-blue-900/30 dark:border-blue-700/50 dark:text-blue-200 text-xs">
                                     <p className="font-semibold mb-1" dangerouslySetInnerHTML={{ __html: t('cat4ActivityCalculation') }}></p>
+                                </div>
+                            )}
+                            {source.category === EmissionCategory.DownstreamTransportationAndDistribution && (
+                                <div className="p-2 bg-blue-50 border border-blue-200 rounded-md text-blue-800 dark:bg-blue-900/30 dark:border-blue-700/50 dark:text-blue-200 text-xs">
+                                    <p className="font-semibold mb-1" dangerouslySetInnerHTML={{ __html: t('cat9MethodActivity') }}></p>
                                 </div>
                             )}
 
