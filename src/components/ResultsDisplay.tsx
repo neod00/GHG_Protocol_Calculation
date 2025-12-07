@@ -168,12 +168,12 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
     );
   };
 
-  const ScopeCard = ({ title, value, color, textColorClass, icon: Icon, percentage }: any) => (
+  const ScopeCard = ({ title, value, color, iconColor, icon: Icon, percentage }: any) => (
     <div className={`${cardBg} rounded-2xl p-5 flex flex-col justify-between h-full hover:shadow-md transition-all duration-300 group`}>
       <div className="flex justify-between items-start mb-2">
         <div className="flex items-center gap-3">
           <div className={`p-2.5 rounded-lg ${color} bg-opacity-10 group-hover:scale-110 transition-transform`}>
-            <Icon className={`w-5 h-5 ${textColorClass || color.replace('bg-', 'text-')}`} />
+            <Icon className={`w-5 h-5 ${iconColor}`} />
           </div>
           <span className={`text-sm font-medium ${subTextColor}`}>{title}</span>
         </div>
@@ -241,7 +241,7 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
             title={t('scope1')}
             value={formatNumber(scope1Total)}
             color="bg-emerald-500"
-            textColorClass="text-emerald-500"
+            iconColor="text-emerald-600 dark:text-emerald-400"
             icon={IconFire}
             percentage={((scope1Total / totalEmissionsForPercent) * 100).toFixed(1)}
           />
@@ -251,7 +251,7 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
             title={t('scope2Location')}
             value={formatNumber(scope2LocationTotal)}
             color="bg-cyan-500"
-            textColorClass="text-cyan-500"
+            iconColor="text-cyan-600 dark:text-cyan-400"
             icon={IconBuilding}
             percentage={((scope2LocationTotal / totalEmissionsForPercent) * 100).toFixed(1)}
           />
@@ -261,7 +261,7 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
             title={t('scope2Market')}
             value={formatNumber(scope2MarketTotal)}
             color="bg-amber-500"
-            textColorClass="text-amber-500"
+            iconColor="text-amber-600 dark:text-amber-400"
             icon={IconZap}
             percentage={((scope2MarketTotal / totalEmissionsForPercent) * 100).toFixed(1)}
           />
@@ -271,7 +271,7 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
             title={t('scope3')}
             value={formatNumber(scope3Total)}
             color="bg-purple-500"
-            textColorClass="text-purple-500"
+            iconColor="text-purple-600 dark:text-purple-400"
             icon={IconCar} // Or IconUsers/IconBriefcase
             percentage={((scope3Total / totalEmissionsForPercent) * 100).toFixed(1)}
           />
