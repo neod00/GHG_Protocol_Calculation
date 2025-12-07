@@ -140,6 +140,15 @@ export const en = {
   cat11MethodGhgData: 'Use when: Customers provide lifetime CO2e emissions data per unit. Most reliable if available. Formula: Units Sold × Lifetime CO2e per Unit.',
   cat11Category10Warning: '⚠️ Boundary Warning: If you sell intermediate products that require further processing, those processing emissions belong in Category 10, not Category 11. Category 11 is only for use phase emissions of final products.',
   cat11Category12Warning: '⚠️ Boundary Warning: Emissions from product disposal (end-of-life treatment, recycling, landfill) belong in Category 12, not Category 11. Category 11 is only for use phase emissions.',
+  cat12GuidanceTitle: 'How to report Category 12',
+  cat12GuidanceText: 'This category covers emissions from the end-of-life treatment and disposal of sold products. This includes landfill, incineration, recycling, and other waste treatment methods.',
+  cat12BoundaryNote: '<strong>Boundary:</strong> Only include emissions from end-of-life treatment of sold products. <br> - <strong>Sold Products:</strong> This applies to products that your company sold to customers and are now being disposed of at the end of their life. <br> - <strong>Category 5:</strong> Do not include waste generated in your operations (e.g., office waste, manufacturing waste). That is Category 5. <br> - <strong>Category 11:</strong> Do not include emissions from product use phase (e.g., electricity consumption during use). That is Category 11. <br> - <strong>Take-back Programs:</strong> If your company operates a take-back program and pays for disposal, those emissions belong here. <br> - <strong>Packaging:</strong> Packaging waste from sold products can be included here if significant.',
+  cat12CalculationMethods: '<strong>Calculation Methods:</strong> Use Waste stream when you know the weight of disposed products and disposal ratios (most accurate). Use Units sold when you know the number of units sold and weight per unit. Use Spend when you only have disposal/take-back costs.',
+  cat12MethodWasteStream: 'Use when: You know the total weight (tonnes) of disposed products and the disposal scenario (landfill, incineration, recycling percentages). Most accurate method. Formula: Σ (Total Weight × Disposal Ratio% × Treatment Factor).',
+  cat12MethodUnitsSold: 'Use when: You know the number of units sold and the weight per unit (kg). Useful when tracking by product units. Formula: Units Sold × Weight per Unit (tonnes) × Disposal Ratios × Treatment Factors.',
+  cat12MethodSpend: 'Use when: You only have disposal/take-back costs (USD, KRW). Only use if your company pays for disposal/take-back. Less accurate but useful when activity data is unavailable. Formula: Disposal Cost × Spend-based Emission Factor.',
+  cat12Category5Warning: '⚠️ Boundary Warning: Waste generated in your operations (e.g., office waste, manufacturing waste, wastewater) belongs in Category 5, not Category 12. Category 12 is only for end-of-life treatment of sold products.',
+  cat12Category11Warning: '⚠️ Boundary Warning: Emissions from product use phase (e.g., electricity consumption when customers use your products) belong in Category 11, not Category 12. Category 12 is only for end-of-life disposal emissions.',
 
   // Results Display
   emissionsSummary: 'Emissions Summary',
@@ -648,6 +657,15 @@ export const ko = {
   cat11MethodGhgData: '사용 시점: 고객이 단위당 수명주기 CO2e 배출 데이터를 제공하는 경우. 가능하면 가장 신뢰할 수 있는 방법입니다. 공식: 판매 단위 × 단위당 수명주기 CO2e.',
   cat11Category10Warning: '⚠️ 경계 경고: 추가 가공이 필요한 중간 제품을 판매하는 경우, 해당 가공 배출은 카테고리 10에 속하며 카테고리 11이 아닙니다. 카테고리 11은 최종 제품의 사용 단계 배출만을 위한 것입니다.',
   cat11Category12Warning: '⚠️ 경계 경고: 제품 폐기 배출(폐기물 처리, 재활용, 매립)은 카테고리 12에 속하며 카테고리 11이 아닙니다. 카테고리 11은 사용 단계 배출만을 위한 것입니다.',
+  cat12GuidanceTitle: '카테고리 12 보고 방법',
+  cat12GuidanceText: '이 카테고리는 판매된 제품의 폐기물 처리 및 폐기에서 발생하는 배출을 포함합니다. 매립, 소각, 재활용 및 기타 폐기물 처리 방법을 포함합니다.',
+  cat12BoundaryNote: '<strong>경계:</strong> 판매된 제품의 폐기물 처리 배출만 포함하세요. <br> - <strong>판매된 제품:</strong> 회사가 고객에게 판매한 제품이 수명이 다해 현재 폐기되고 있는 제품에 적용됩니다. <br> - <strong>카테고리 5:</strong> 운영 중 발생한 폐기물(예: 사무실 폐기물, 제조 폐기물)은 포함하지 마십시오. 이는 카테고리 5입니다. <br> - <strong>카테고리 11:</strong> 제품 사용 단계 배출(예: 사용 중 전력 소비)은 포함하지 마십시오. 이는 카테고리 11입니다. <br> - <strong>회수 프로그램:</strong> 회사가 회수 프로그램을 운영하고 폐기 비용을 지불하는 경우, 해당 배출은 여기에 속합니다. <br> - <strong>포장재:</strong> 판매된 제품의 포장재 폐기물은 중요한 경우 여기에 포함할 수 있습니다.',
+  cat12CalculationMethods: '<strong>계산 방법:</strong> 폐기된 제품의 중량과 폐기 비율을 알고 있는 경우 Waste stream을 사용하세요(가장 정확). 판매된 단위 수와 단위당 중량을 알고 있는 경우 Units sold, 폐기/회수 비용만 있는 경우 Spend를 사용하세요.',
+  cat12MethodWasteStream: '사용 시점: 폐기된 제품의 총 중량(톤)과 폐기 시나리오(매립, 소각, 재활용 비율)를 알고 있는 경우. 가장 정확한 방법입니다. 공식: Σ (총 중량 × 폐기 비율% × 처리 계수).',
+  cat12MethodUnitsSold: '사용 시점: 판매된 단위 수와 단위당 중량(kg)을 알고 있는 경우. 제품 단위별 추적에 유용합니다. 공식: 판매 단위 × 단위당 중량(톤) × 폐기 비율 × 처리 계수.',
+  cat12MethodSpend: '사용 시점: 폐기/회수 비용(USD, KRW)만 알고 있는 경우. 회사가 폐기/회수를 위해 비용을 지불하는 경우에만 사용하세요. 정확도는 낮지만 활동 데이터가 없을 때 유용합니다. 공식: 폐기 비용 × 지출 기반 배출계수.',
+  cat12Category5Warning: '⚠️ 경계 경고: 운영 중 발생한 폐기물(예: 사무실 폐기물, 제조 폐기물, 폐수)은 카테고리 5에 속하며 카테고리 12가 아닙니다. 카테고리 12는 판매된 제품의 폐기물 처리만을 위한 것입니다.',
+  cat12Category11Warning: '⚠️ 경계 경고: 제품 사용 단계 배출(예: 고객이 귀사 제품을 사용할 때 전력 소비)은 카테고리 11에 속하며 카테고리 12가 아닙니다. 카테고리 12는 폐기물 처리 배출만을 위한 것입니다.',
 
   // Results Display
   emissionsSummary: '배출량 요약',
