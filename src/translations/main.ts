@@ -188,6 +188,7 @@ export const en = {
   tonnesCO2e: 'tonnes CO₂e',
   emissions: 'Emissions',
   emissionsByFacility: 'Emissions by Facility',
+  emissionsByScope: 'Emissions by Scope',
   appliedBasis: 'Applied Basis',
   stationary: 'Stationary',
   mobile: 'Mobile',
@@ -1105,5 +1106,6 @@ export const ko = {
   market: '시장',
   location: '지역',
   facilityBreakdown: '시설별 배출량',
+  emissionsByScope: '스코프별 배출량',
   ungroupedFacilities: '그룹 미지정 시설',
 };

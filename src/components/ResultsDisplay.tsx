@@ -1,9 +1,22 @@
-import React, { useMemo, useCallback } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import React, { useMemo } from 'react';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Label
+} from 'recharts';
 import { Facility, BoundaryApproach } from '../types';
 import { useTranslation } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
-import { IconProcess } from './IconComponents';
+import { IconProcess, IconFactory, IconBuilding, IconCar, IconLeaf, IconBriefcase, IconZap, IconFire } from './IconComponents';
 
 interface ResultsDisplayProps {
   totalEmissionsMarket: number;
@@ -24,32 +37,23 @@ interface ResultsDisplayProps {
 }
 
 const COLORS = {
-  scope1: '#059669', // Emerald 600
+  scope1: '#10B981', // Emerald 500
   scope2Location: '#34D399', // Emerald 400
-  scope2Market: '#F59E0B', // Amber 500
-  scope3: '#0F172A', // Slate 900
+  scope2Market: '#f59e0b', // Amber 500
+  scope3: '#3B82F6', // Blue 500
 };
 
+// Pastel/Gradient Palette for Scope 3 Categories
 const SCOPE3_CATEGORY_COLORS = [
-  '#0F172A', '#1E293B', '#334155', '#475569', '#64748B', '#94A3B8',
-  '#059669', '#10B981', '#34D399', '#6EE7B7', '#A7F3D0', '#D1FAE5'
+  '#3B82F6', '#60A5FA', '#93C5FD', // Blues
+  '#8B5CF6', '#A78BFA', '#C4B5FD', // Violets
+  '#EC4899', '#F472B6', '#FBCFE8', // Pinks
+  '#10B981', '#34D399', '#6EE7B7', // Emeralds
 ];
 
-const CustomTooltip = ({ active, payload, scope3Total, t }: any) => {
-  if (active && payload && payload.length) {
-    const data = payload[0].payload;
-    const valueAsNumber = Number(data.value);
-    const percentage = scope3Total > 0 ? ((valueAsNumber * 1000 / scope3Total) * 100).toFixed(1) : 0;
-    return (
-      <div className="bg-white dark:bg-slate-800 p-4 border border-slate-100 dark:border-slate-700 rounded-xl shadow-xl text-sm">
-        <p className="font-bold text-slate-900 dark:text-white mb-1">{data.name}</p>
-        <p className="text-emerald-600 dark:text-emerald-400 font-medium">{`${valueAsNumber.toLocaleString()} t CO₂e`}</p>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{percentage}{t('percentageOfScope3')}</p>
-      </div>
-    );
-  }
-  return null;
-};
+// Helper to format numbers (t CO2e)
+const formatNumber = (num: number) =>
+  (num / 1000).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
   totalEmissionsMarket,
@@ -66,219 +70,372 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
   reportingYear,
   boundaryApproachText,
   onGenerateReport,
-  isAuthenticated = false
+  isAuthenticated = false,
 }) => {
   const { t } = useTranslation();
   const { theme } = useTheme();
 
-  const tickColor = theme === 'dark' ? '#94a3b8' : '#64748b';
-  const gridColor = theme === 'dark' ? '#334155' : '#e2e8f0';
-  const tooltipBg = theme === 'dark' ? '#1e293b' : '#ffffff';
-  const tooltipText = theme === 'dark' ? '#f1f5f9' : '#1e293b';
+  // Theme-aware styles
+  const isDark = theme === 'dark';
+  const textColor = isDark ? 'text-white' : 'text-slate-900';
+  const subTextColor = isDark ? 'text-slate-400' : 'text-slate-500';
+  const cardBg = isDark
+    ? 'bg-slate-900/50 backdrop-blur-md border border-slate-700/50'
+    : 'bg-white border border-slate-100 shadow-sm';
+  const chartGridColor = isDark ? '#334155' : '#e2e8f0'; // slate-700 / slate-200
+  const chartTickColor = isDark ? '#94a3b8' : '#64748b'; // slate-400 / slate-500
 
+  // Calculation for Chart Data
   const hasMarketBasedValues = scope2MarketTotal !== scope2LocationTotal;
+  const chartData = useMemo(() => {
+    return hasMarketBasedValues
+      ? [
+        {
+          name: t('marketBasedTotal'),
+          [t('scope1')]: parseFloat((scope1Total / 1000).toFixed(2)),
+          [t('scope2Market')]: parseFloat((scope2MarketTotal / 1000).toFixed(2)),
+          [t('scope3')]: parseFloat((scope3Total / 1000).toFixed(2)),
+        },
+        {
+          name: t('locationBasedTotal'),
+          [t('scope1')]: parseFloat((scope1Total / 1000).toFixed(2)),
+          [t('scope2Location')]: parseFloat((scope2LocationTotal / 1000).toFixed(2)),
+          [t('scope3')]: parseFloat((scope3Total / 1000).toFixed(2)),
+        },
+      ]
+      : [
+        {
+          name: t('emissions'),
+          [t('scope1')]: parseFloat((scope1Total / 1000).toFixed(2)),
+          [t('scope2Location')]: parseFloat((scope2LocationTotal / 1000).toFixed(2)),
+          [t('scope3')]: parseFloat((scope3Total / 1000).toFixed(2)),
+        },
+      ];
+  }, [hasMarketBasedValues, scope1Total, scope2MarketTotal, scope2LocationTotal, scope3Total, t]);
 
-  const chartData = hasMarketBasedValues
-    ? [
-      {
-        name: t('marketBasedTotal'),
-        [t('scope1')]: parseFloat((scope1Total / 1000).toFixed(2)),
-        [t('scope2Market')]: parseFloat((scope2MarketTotal / 1000).toFixed(2)),
-        [t('scope3')]: parseFloat((scope3Total / 1000).toFixed(2)),
-      },
-      {
-        name: t('locationBasedTotal'),
-        [t('scope1')]: parseFloat((scope1Total / 1000).toFixed(2)),
-        [t('scope2Location')]: parseFloat((scope2LocationTotal / 1000).toFixed(2)),
-        [t('scope3')]: parseFloat((scope3Total / 1000).toFixed(2)),
-      },
-    ]
-    : [
-      {
-        name: t('emissions'),
-        [t('scope1')]: parseFloat((scope1Total / 1000).toFixed(2)),
-        [t('scope2Market')]: parseFloat((scope2MarketTotal / 1000).toFixed(2)),
-        [t('scope3')]: parseFloat((scope3Total / 1000).toFixed(2)),
-      },
-    ];
+  const scope3Data = useMemo(() => {
+    return Object.entries(scope3CategoryBreakdown)
+      .map(([name, value]) => ({ name: t(name), value: (value as number) / 1000 }))
+      .filter((item) => item.value > 0)
+      .sort((a, b) => b.value - a.value);
+  }, [scope3CategoryBreakdown, t]);
 
-  const formatNumber = (num: number) => (num / 1000).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  // --- Render Components ---
 
-  const StatCard = ({ title, value, subValue, icon, colorClass }: any) => (
-    <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-300 group">
-      <div className="flex justify-between items-start mb-4">
-        <div className={`p-3 rounded-xl ${colorClass} bg-opacity-10 group-hover:scale-110 transition-transform duration-300`}>
-          {icon}
+  const HeroCard = ({ title, value, sub, type }: { title: string, value: string, sub: string, type: 'market' | 'location' }) => {
+    const isLocation = type === 'location';
+
+    // Improved Contrast Logic
+    const gradient = type === 'market'
+      ? isDark
+        ? 'from-emerald-900/30 to-teal-900/30 text-emerald-400' // Dark Mode: Deep/Rich
+        : 'from-emerald-50 to-teal-50 text-emerald-900 border-emerald-200' // Light Mode: Light/Clean with Dark Text
+      : isDark
+        ? 'from-slate-800 to-slate-900 text-slate-300'
+        : 'from-white to-slate-50 text-slate-900 border-slate-200';
+
+    const border = type === 'market'
+      ? isDark ? 'border-emerald-500/30' : 'border-emerald-200'
+      : isDark ? 'border-slate-700' : 'border-slate-200';
+
+    const iconColor = type === 'market'
+      ? isDark ? 'text-emerald-400' : 'text-emerald-600'
+      : isDark ? 'text-slate-400' : 'text-slate-500';
+
+    // Tweaked colors for light mode contrast
+    const titleColor = type === 'market' && !isDark ? 'text-emerald-800' : (isLocation && !isDark ? 'text-slate-600' : 'text-slate-200');
+    const valueColor = type === 'market' && !isDark ? 'text-emerald-900' : (isLocation && !isDark ? 'text-slate-900' : 'text-white');
+    const subColor = type === 'market' && !isDark ? 'text-emerald-700/80' : (isLocation && !isDark ? 'text-slate-500' : 'opacity-60');
+
+    return (
+      <div className={`relative overflow-hidden rounded-2xl border ${border} p-6 flex flex-col justify-between h-full bg-gradient-to-br ${gradient} shadow-sm`}>
+        <div className="flex justify-between items-start">
+          <div>
+            <p className={`text-sm font-medium mb-1 ${titleColor}`}>{title}</p>
+            <div className="flex items-baseline gap-2">
+              <h2 className={`text-4xl font-bold tracking-tight ${valueColor}`}>
+                {value}
+              </h2>
+              <span className={`text-sm font-medium ${subColor}`}>t CO₂e</span>
+            </div>
+            <p className={`text-xs mt-2 max-w-[200px] ${subColor}`}>{sub}</p>
+          </div>
+          <div className={`p-3 rounded-xl bg-white/5 backdrop-blur-sm ${iconColor}`}>
+            {type === 'market' ? <IconZap className="w-6 h-6" /> : <IconLeaf className="w-6 h-6" />}
+          </div>
         </div>
-        {subValue && (
-          <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
-            {subValue}
+      </div>
+    );
+  };
+
+  const ScopeCard = ({ title, value, color, icon: Icon, percentage }: any) => (
+    <div className={`${cardBg} rounded-2xl p-5 flex flex-col justify-between h-full hover:shadow-md transition-all duration-300 group`}>
+      <div className="flex justify-between items-start mb-2">
+        <div className="flex items-center gap-3">
+          <div className={`p-2.5 rounded-lg ${color} bg-opacity-10 group-hover:scale-110 transition-transform`}>
+            <Icon className={`w-5 h-5 ${color.replace('bg-', 'text-')}`} />
+          </div>
+          <span className={`text-sm font-medium ${subTextColor}`}>{title}</span>
+        </div>
+        {percentage && (
+          <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
+            {percentage}%
           </span>
         )}
       </div>
-      <h3 className="text-slate-500 dark:text-slate-400 text-sm font-medium mb-1">{title}</h3>
-      <p className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
-        {value} <span className="text-sm font-normal text-slate-400">t CO₂e</span>
-      </p>
+      <div>
+        <div className={`text-2xl font-bold ${textColor} tracking-tight`}>
+          {value}
+        </div>
+        <div className="text-xs text-slate-400 mt-1">t CO₂e</div>
+      </div>
     </div>
   );
 
-  const scope3Data = Object.entries(scope3CategoryBreakdown)
-    .map(([name, value]) => ({ name: t(name), value: (value as number) / 1000 }))
-    .filter(item => item.value > 0)
-    .sort((a, b) => b.value - a.value);
+  const totalEmissionsForPercent = totalEmissionsLocation > 0 ? totalEmissionsLocation : 1; // avoid /0
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6 md:p-8 border border-gray-200 dark:border-gray-700 transition-colors duration-300">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+    <div className="space-y-6 animate-fade-in-up">
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{t('resultsTitle')}</h2>
-          <p className="text-gray-600 dark:text-gray-400">{t('resultsSubtitle', { companyName, reportingYear })}</p>
+          <h2 className={`text-2xl font-bold tracking-tight ${textColor}`}>{t('resultsTitle')}</h2>
+          <p className={`text-sm mt-1 ${subTextColor}`}>
+            {companyName} • {reportingYear} • {t(boundaryApproach)} ({boundaryApproachText})
+          </p>
+          {/* Removed locked message as per feedback */}
         </div>
         <button
           onClick={onGenerateReport}
-          className="flex items-center gap-2 text-sm font-medium bg-ghg-green text-white py-2 px-4 rounded-lg hover:bg-emerald-600 transition-all shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
+          className="flex items-center gap-2 text-sm font-medium bg-gradient-to-r from-emerald-500 to-teal-500 text-white py-2.5 px-5 rounded-xl hover:from-emerald-600 hover:to-teal-600 transition-all shadow-lg shadow-emerald-500/20 active:scale-95"
         >
           <IconProcess className="w-4 h-4" />
           {t('generateReport')}
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-10">
-        <StatCard
-          title={t('totalEmissionsLocation')}
-          value={formatNumber(totalEmissionsLocation)}
-          subValue={t('locationBased')}
-          icon={<div className="w-6 h-6 bg-emerald-600 rounded-full" />}
-          colorClass="bg-emerald-600"
-        />
-        <StatCard
-          title={t('totalEmissionsMarket')}
-          value={formatNumber(totalEmissionsMarket)}
-          subValue={t('marketBased')}
-          icon={<div className="w-6 h-6 bg-emerald-700 rounded-full" />}
-          colorClass="bg-emerald-700"
-        />
-        <StatCard
-          title={t('scope1')}
-          value={formatNumber(scope1Total)}
-          icon={<div className="w-6 h-6 bg-emerald-500 rounded-full" />}
-          colorClass="bg-emerald-500"
-        />
-        <StatCard
-          title={t('scope2Location')}
-          value={formatNumber(scope2LocationTotal)}
-          subValue={t('locationBased')}
-          icon={<div className="w-6 h-6 bg-emerald-400 rounded-full" />}
-          colorClass="bg-emerald-400"
-        />
-        <StatCard
-          title={t('scope2Market')}
-          value={formatNumber(scope2MarketTotal)}
-          subValue={t('marketBased')}
-          icon={<div className="w-6 h-6 bg-amber-500 rounded-full" />}
-          colorClass="bg-amber-500"
-        />
-        <StatCard
-          title={t('scope3')}
-          value={formatNumber(scope3Total)}
-          icon={<div className="w-6 h-6 bg-slate-800 rounded-full" />}
-          colorClass="bg-slate-800"
-        />
-      </div>
+      {/* Bento Grid Layout */}
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
-        <div className="h-80">
-          <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-4">{t('emissionsByScope')}</h3>
-          <ResponsiveContainer width="100%" height="100%" minHeight={300}>
-            <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
-              <XAxis dataKey="name" stroke={tickColor} axisLine={false} tickLine={false} dy={10} />
-              <YAxis stroke={tickColor} axisLine={false} tickLine={false} dx={-10} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: tooltipBg,
-                  borderColor: theme === 'dark' ? '#334155' : '#e2e8f0',
-                  borderRadius: '8px',
-                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                  color: tooltipText
-                }}
-                cursor={{ fill: theme === 'dark' ? '#334155' : '#f1f5f9', opacity: 0.4 }}
+        {/* Top Row: Hero Stats (Span 6 each for equal prominence) */}
+        <div className="md:col-span-6 lg:col-span-6 h-40">
+          <HeroCard
+            title={t('locationBasedTotal')}
+            value={formatNumber(totalEmissionsLocation)}
+            sub="Grid average emission factors applied."
+            type="location"
+          />
+        </div>
+        <div className="md:col-span-6 lg:col-span-6 h-40">
+          <HeroCard
+            title={t('marketBasedTotal')}
+            value={formatNumber(totalEmissionsMarket)}
+            sub="Specific contracts (RECs, PPA) reflected."
+            type="market"
+          />
+        </div>
+
+        {/* Middle Row: Scopes Breakdown (Span 3 each = 12 total) */}
+        <div className="md:col-span-3 h-32">
+          <ScopeCard
+            title={t('scope1')}
+            value={formatNumber(scope1Total)}
+            color="bg-emerald-500"
+            icon={IconFire}
+            percentage={((scope1Total / totalEmissionsForPercent) * 100).toFixed(1)}
+          />
+        </div>
+        <div className="md:col-span-3 h-32">
+          <ScopeCard
+            title={t('scope2Location')}
+            value={formatNumber(scope2LocationTotal)}
+            color="bg-cyan-500"
+            icon={IconBuilding}
+            percentage={((scope2LocationTotal / totalEmissionsForPercent) * 100).toFixed(1)}
+          />
+        </div>
+        <div className="md:col-span-3 h-32">
+          <ScopeCard
+            title={t('scope2Market')}
+            value={formatNumber(scope2MarketTotal)}
+            color="bg-amber-500"
+            icon={IconZap}
+            percentage={((scope2MarketTotal / totalEmissionsForPercent) * 100).toFixed(1)}
+          />
+        </div>
+        <div className="md:col-span-3 h-32">
+          <ScopeCard
+            title={t('scope3')}
+            value={formatNumber(scope3Total)}
+            color="bg-purple-500"
+            icon={IconCar} // Or IconUsers/IconBriefcase
+            percentage={((scope3Total / totalEmissionsForPercent) * 100).toFixed(1)}
+          />
+        </div>
+
+        {/* Bottom Row: Charts Area */}
+        {/* Left: Bar Chart (Span 7) */}
+        <div className={`md:col-span-7 ${cardBg} p-6 rounded-2xl min-h-[400px]`}>
+          <h3 className={`text-lg font-semibold mb-6 ${textColor}`}>{t('emissionsByScope')}</h3>
+          <ResponsiveContainer width="100%" height={320}>
+            <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke={chartGridColor} vertical={false} opacity={0.5} />
+              <XAxis
+                dataKey="name"
+                stroke={chartTickColor}
+                axisLine={false}
+                tickLine={false}
+                dy={10}
+                fontSize={12}
               />
-              <Legend wrapperStyle={{ paddingTop: '20px' }} />
-              <Bar dataKey={t('scope1')} name={t('scope1')} stackId="a" fill={COLORS.scope1} radius={[0, 0, 4, 4]} maxBarSize={60} />
-              <Bar dataKey={t('scope2Location')} name={t('scope2Location')} stackId="a" fill={COLORS.scope2Location} radius={[4, 4, 0, 0]} maxBarSize={60} />
-              <Bar dataKey={t('scope2Market')} name={t('scope2Market')} stackId="a" fill={COLORS.scope2Market} radius={[4, 4, 0, 0]} maxBarSize={60} />
-              <Bar dataKey={t('scope3')} name={t('scope3')} stackId="a" fill={COLORS.scope3} radius={[4, 4, 0, 0]} maxBarSize={60} />
+              <YAxis
+                stroke={chartTickColor}
+                axisLine={false}
+                tickLine={false}
+                dx={-10}
+                fontSize={12}
+                tickFormatter={(value) => `${value}`}
+              />
+              <Tooltip
+                cursor={{ fill: isDark ? '#334155' : '#f1f5f9', opacity: 0.2 }}
+                contentStyle={{
+                  backgroundColor: isDark ? '#1e293b' : '#ffffff',
+                  borderColor: isDark ? '#334155' : '#e2e8f0',
+                  borderRadius: '12px',
+                  boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                  color: isDark ? '#f1f5f9' : '#1e293b'
+                }}
+              />
+              <Legend wrapperStyle={{ paddingTop: '20px', fontSize: '12px' }} iconType="circle" />
+              <Bar dataKey={t('scope1')} stackId="a" fill={COLORS.scope1} radius={[0, 0, 0, 0]} barSize={40} />
+              <Bar dataKey={t('scope2Location')} stackId="a" fill={COLORS.scope2Location} radius={[0, 0, 0, 0]} barSize={40} />
+              {hasMarketBasedValues && <Bar dataKey={t('scope2Market')} stackId="a" fill={COLORS.scope2Market} radius={[0, 0, 0, 0]} barSize={40} />}
+              <Bar dataKey={t('scope3')} stackId="a" fill={COLORS.scope3} radius={[4, 4, 0, 0]} barSize={40} />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
-        {scope3Total > 0 && (
-          <div className="h-80">
-            <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-4">{t('scope3Breakdown')}</h3>
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={scope3Data}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={100}
-                  paddingAngle={2}
-                  dataKey="value"
-                >
-                  {scope3Data.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={SCOPE3_CATEGORY_COLORS[index % SCOPE3_CATEGORY_COLORS.length]} strokeWidth={0} />
-                  ))}
-                </Pie>
-                <Tooltip content={<CustomTooltip scope3Total={scope3Total / 1000} t={t} />} />
-                <Legend
-                  layout="vertical"
-                  verticalAlign="middle"
-                  align="right"
-                  wrapperStyle={{ fontSize: '12px', color: tickColor }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
+        {/* Right: Donut Chart for Scope 3 (Span 5) */}
+        <div className={`md:col-span-5 ${cardBg} p-6 rounded-2xl min-h-[400px] flex flex-col`}>
+          <h3 className={`text-lg font-semibold mb-2 ${textColor}`}>{t('scope3Breakdown')}</h3>
+          {scope3Total > 0 ? (
+            <div className="flex-1 min-h-[300px] relative">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={scope3Data}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={80} // Donut style
+                    outerRadius={110}
+                    paddingAngle={3}
+                    dataKey="value"
+                    cornerRadius={4}
+                    stroke="none"
+                  >
+                    {scope3Data.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={SCOPE3_CATEGORY_COLORS[index % SCOPE3_CATEGORY_COLORS.length]} />
+                    ))}
+                    {/* Center Label */}
+                    <Label
+                      value={((scope3Total / totalEmissionsForPercent) * 100).toFixed(1) + '%'}
+                      position="center"
+                      className={`text-2xl font-bold ${isDark ? 'fill-white' : 'fill-slate-900'}`}
+                      dy={-5}
+                    />
+                    <Label
+                      value="of Total"
+                      position="center"
+                      className="text-xs fill-slate-500"
+                      dy={15}
+                    />
+                  </Pie>
+                  <Tooltip
+                    itemStyle={{ color: isDark ? '#fff' : '#000' }}
+                    contentStyle={{
+                      backgroundColor: isDark ? '#1e293b' : '#ffffff',
+                      borderColor: isDark ? '#334155' : '#e2e8f0',
+                      borderRadius: '8px',
+                    }}
+                    formatter={(val: number) => [`${val.toFixed(2)} t`, '']}
+                  />
+                  <Legend
+                    layout="horizontal"
+                    verticalAlign="bottom"
+                    align="center"
+                    wrapperStyle={{ fontSize: '11px', paddingTop: '10px', color: chartTickColor }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center text-slate-400">
+              <div className="p-4 rounded-full bg-slate-100 dark:bg-slate-800 mb-3">
+                <IconLeaf className="w-8 h-8 opacity-50" />
+              </div>
+              <p className="text-sm">No Scope 3 data calculated yet.</p>
+            </div>
+          )}
+        </div>
+
+        {/* Bottom: Facility Breakdown Table */}
+        <div className={`md:col-span-12 ${cardBg} rounded-2xl overflow-hidden`}>
+          <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700/50">
+            <h3 className={`text-lg font-semibold ${textColor}`}>{t('facilityBreakdown')}</h3>
           </div>
-        )}
-      </div>
-
-      <div className="overflow-x-auto">
-        <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-4">{t('facilityBreakdown')}</h3>
-        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-          <thead className="bg-gray-50 dark:bg-gray-800">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('facility')}</th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('scope1')}</th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('scope2Location')}</th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('scope2Market')}</th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('scope3')}</th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('totalLocation')}</th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('totalMarket')}</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-            {facilities.map((facility) => {
-              const data = facilityBreakdown[facility.id] || { scope1: 0, scope2Location: 0, scope2Market: 0, scope3: 0 };
-              const totalLocation = data.scope1 + data.scope2Location + data.scope3;
-              const totalMarket = data.scope1 + data.scope2Market + data.scope3;
-
-              return (
-                <tr key={facility.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{facility.name}</td>
-                  <td className="px-6 py-4 text-right text-gray-600 dark:text-gray-300">{formatNumber(data.scope1)}</td>
-                  <td className="px-6 py-4 text-right text-gray-600 dark:text-gray-300">{formatNumber(data.scope2Location)}</td>
-                  <td className="px-6 py-4 text-right text-gray-600 dark:text-gray-300">{formatNumber(data.scope2Market)}</td>
-                  <td className="px-6 py-4 text-right text-gray-600 dark:text-gray-300">{formatNumber(data.scope3)}</td>
-                  <td className="px-6 py-4 text-right font-bold text-gray-900 dark:text-white">{formatNumber(totalLocation)}</td>
-                  <td className="px-6 py-4 text-right font-bold text-gray-900 dark:text-white">{formatNumber(totalMarket)}</td>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700/50">
+              <thead className="bg-gray-50 dark:bg-slate-800/50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('facility')}</th>
+                  <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('scope1')}</th>
+                  <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('scope2Location')}</th>
+                  <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('scope2Market')}</th>
+                  <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t('scope3')}</th>
+                  <th className="px-6 py-3 text-right text-xs font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider">{t('totalLocation')}</th>
+                  <th className="px-6 py-3 text-right text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">{t('totalMarket')}</th>
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
+              </thead>
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-700/50">
+                {facilities.map((facility) => {
+                  const data = facilityBreakdown[facility.id] || { scope1: 0, scope2Location: 0, scope2Market: 0, scope3: 0 };
+                  const totalLocation = data.scope1 + data.scope2Location + data.scope3;
+                  const totalMarket = data.scope1 + data.scope2Market + data.scope3;
+
+                  return (
+                    <tr key={facility.id} className="hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors">
+                      <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${textColor}`}>
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                          {facility.name}
+                        </div>
+                      </td>
+                      <td className={`px-6 py-4 text-right text-sm ${data.scope1 === 0 ? 'text-slate-300 dark:text-slate-600' : subTextColor}`}>
+                        {formatNumber(data.scope1)}
+                      </td>
+                      <td className={`px-6 py-4 text-right text-sm ${data.scope2Location === 0 ? 'text-slate-300 dark:text-slate-600' : subTextColor}`}>
+                        {formatNumber(data.scope2Location)}
+                      </td>
+                      <td className={`px-6 py-4 text-right text-sm ${data.scope2Market === 0 ? 'text-slate-300 dark:text-slate-600' : 'text-amber-500'}`}>
+                        {formatNumber(data.scope2Market)}
+                      </td>
+                      <td className={`px-6 py-4 text-right text-sm ${data.scope3 === 0 ? 'text-slate-300 dark:text-slate-600' : subTextColor}`}>
+                        {formatNumber(data.scope3)}
+                      </td>
+                      <td className={`px-6 py-4 text-right text-sm font-bold ${textColor}`}>
+                        {formatNumber(totalLocation)}
+                      </td>
+                      <td className={`px-6 py-4 text-right text-sm font-bold text-emerald-600 dark:text-emerald-400`}>
+                        {formatNumber(totalMarket)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
       </div>
     </div>
   );
