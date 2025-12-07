@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { EmissionSource, Cat6CalculationMethod, BusinessTravelMode, FlightClass, TripType } from '../../types';
 import { useTranslation } from '../../context/LanguageContext';
 import { TranslationKey } from '../../translations/index';
-import { IconTrash, IconSparkles, IconCheck, IconAlertTriangle, IconPlane, IconBuilding } from '../IconComponents';
+import { IconTrash, IconSparkles, IconCheck, IconAlertTriangle, IconPlane, IconBuilding, IconInfo } from '../IconComponents';
 import { GoogleGenAI, Type } from '@google/genai';
 
 interface SourceInputRowProps {
@@ -44,6 +44,15 @@ export const Category6Row: React.FC<SourceInputRowProps> = ({ source, onUpdate, 
         let updates: Partial<EmissionSource> = { calculationMethod: method };
         if (method === 'activity') {
             updates.unit = source.businessTravelMode === 'Hotel' ? 'night' : 'passenger-km';
+        } else if (method === 'fuel') {
+            updates.unit = 'liters';
+            // Default to first fuel type for cars
+            if (source.businessTravelMode === 'RentalCar' || source.businessTravelMode === 'PersonalCar') {
+                const carTypes = Object.keys(fuels.activity[source.businessTravelMode] || {});
+                if (carTypes.length > 0) {
+                    updates.fuelType = carTypes[0];
+                }
+            }
         } else if (method === 'spend') {
             updates.unit = 'USD';
             // Default to first spend factor
@@ -164,6 +173,8 @@ export const Category6Row: React.FC<SourceInputRowProps> = ({ source, onUpdate, 
                     return `${(source.nights || 0)} ${t('night')}`;
                 }
                 return `${(source.distanceKm || 0).toLocaleString()} km`;
+            case 'fuel':
+                return `${(source.fuelConsumptionLiters || 0).toLocaleString()} L`;
             case 'spend':
                 return `${source.monthlyQuantities.reduce((a, b) => a + b, 0).toLocaleString()} ${source.unit}`;
             case 'supplier_specific':
@@ -220,6 +231,36 @@ export const Category6Row: React.FC<SourceInputRowProps> = ({ source, onUpdate, 
             {isExpanded && (
                 <div className="flex flex-col gap-3 pt-3 border-t dark:border-gray-600">
 
+                    {/* Category 6 Guidance Box */}
+                    <div className="p-3 bg-cyan-50 border border-cyan-200 rounded-lg text-cyan-800 dark:bg-cyan-900/30 dark:border-cyan-700/50 dark:text-cyan-200 text-xs space-y-2">
+                        <h4 className="font-semibold text-sm flex items-center gap-2"><IconInfo className="w-4 h-4" /> {t('cat6GuidanceTitle')}</h4>
+                        <ul className="list-disc pl-5 space-y-1">
+                            <li>{t('cat6GuidanceText')}</li>
+                            <li dangerouslySetInnerHTML={{ __html: t('cat6BoundaryNote') }}></li>
+                            <li dangerouslySetInnerHTML={{ __html: t('cat6CalculationMethods') }}></li>
+                        </ul>
+                        <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-yellow-800 dark:bg-yellow-900/30 dark:border-yellow-700 dark:text-yellow-200">
+                            <p className="flex items-start gap-2 mb-1">
+                                <IconInfo className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                                <span dangerouslySetInnerHTML={{ __html: t('cat6Scope1Warning') }}></span>
+                            </p>
+                            <p className="flex items-start gap-2">
+                                <IconInfo className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                                <span dangerouslySetInnerHTML={{ __html: t('cat6Category7Warning') }}></span>
+                            </p>
+                        </div>
+                        {(source.businessTravelMode === 'Air') && (
+                            <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-blue-800 dark:bg-blue-900/30 dark:border-blue-700 dark:text-blue-200">
+                                <p className="text-xs" dangerouslySetInnerHTML={{ __html: t('cat6AirDistanceNote') }}></p>
+                            </div>
+                        )}
+                        {(source.businessTravelMode === 'RentalCar' || source.businessTravelMode === 'PersonalCar') && (
+                            <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-blue-800 dark:bg-blue-900/30 dark:border-blue-700 dark:text-blue-200">
+                                <p className="text-xs" dangerouslySetInnerHTML={{ __html: t('cat6VehicleCountNote') }}></p>
+                            </div>
+                        )}
+                    </div>
+
                     {/* Description & AI */}
                     <div>
                         <label htmlFor={`description-${source.id}`} className={commonLabelClass}>{t('emissionSourceDescription')}</label>
@@ -273,16 +314,20 @@ export const Category6Row: React.FC<SourceInputRowProps> = ({ source, onUpdate, 
                     <div>
                         <label className={commonLabelClass}>{t('calculationMethod')}</label>
                         <div className="flex gap-1 rounded-md bg-gray-200 dark:bg-gray-900 p-1 text-xs">
-                            {(['activity', 'spend', 'supplier_specific']).map(method => (
+                            {(['activity', 'fuel', 'spend', 'supplier_specific']).map(method => (
                                 <button
                                     key={method}
                                     onClick={() => handleMethodChange(method as Cat6CalculationMethod)}
                                     className={`flex-1 py-1 px-2 rounded-md transition-colors whitespace-nowrap ${calculationMethod === method ? 'bg-white dark:bg-gray-700 shadow font-semibold text-ghg-green' : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400'}`}
+                                    disabled={method === 'fuel' && source.businessTravelMode !== 'RentalCar' && source.businessTravelMode !== 'PersonalCar'}
                                 >
                                     {t(`${method}Method` as TranslationKey)}
                                 </button>
                             ))}
                         </div>
+                        {calculationMethod === 'activity' && (source.businessTravelMode === 'RentalCar' || source.businessTravelMode === 'PersonalCar') && (
+                            <p className="text-xs text-gray-500 mt-1" dangerouslySetInnerHTML={{ __html: t('cat6FuelBasedNote') }}></p>
+                        )}
                     </div>
 
                     {/* === ACTIVITY METHOD === */}
@@ -350,10 +395,17 @@ export const Category6Row: React.FC<SourceInputRowProps> = ({ source, onUpdate, 
                                             <label className={commonLabelClass}>{t('oneWayDistance')} (km)</label>
                                             <input type="number" value={source.distanceKm || ''} onChange={e => onUpdate({ distanceKm: parseFloat(e.target.value) })} className={commonInputClass} />
                                         </div>
-                                        <div className="col-span-1">
-                                            <label className={commonLabelClass}>{t('passengers')}</label>
-                                            <input type="number" value={source.passengers || 1} onChange={e => onUpdate({ passengers: parseInt(e.target.value) })} className={commonInputClass} />
-                                        </div>
+                                        {(source.businessTravelMode === 'RentalCar' || source.businessTravelMode === 'PersonalCar') ? (
+                                            <div className="col-span-1">
+                                                <label className={commonLabelClass}>{t('vehicleCount') || '차량 대수'} (vehicles)</label>
+                                                <input type="number" value={source.vehicleCount || 1} onChange={e => onUpdate({ vehicleCount: parseInt(e.target.value) || 1 })} className={commonInputClass} min="1" />
+                                            </div>
+                                        ) : (
+                                            <div className="col-span-1">
+                                                <label className={commonLabelClass}>{t('passengers')}</label>
+                                                <input type="number" value={source.passengers || 1} onChange={e => onUpdate({ passengers: parseInt(e.target.value) })} className={commonInputClass} />
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             )}
@@ -369,6 +421,63 @@ export const Category6Row: React.FC<SourceInputRowProps> = ({ source, onUpdate, 
                                         <label className={commonLabelClass}>{t('passengers')}</label>
                                         <input type="number" value={source.passengers || 1} onChange={e => onUpdate({ passengers: parseInt(e.target.value) })} className={commonInputClass} />
                                     </div>
+                                </div>
+                            )}
+                        </>
+                    )}
+
+                    {/* === FUEL METHOD === */}
+                    {calculationMethod === 'fuel' && (
+                        <>
+                            {(source.businessTravelMode === 'RentalCar' || source.businessTravelMode === 'PersonalCar') ? (
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label className={commonLabelClass}>{t('businessTravelMode')}</label>
+                                        <select value={source.businessTravelMode} onChange={handleModeChange} className={commonSelectClass}>
+                                            <option value="RentalCar">{t('RentalCar')}</option>
+                                            <option value="PersonalCar">{t('PersonalCar')}</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className={commonLabelClass}>{t('fuelType')}</label>
+                                        <select value={source.fuelType || ''} onChange={e => onUpdate({ fuelType: e.target.value })} className={commonSelectClass}>
+                                            {(() => {
+                                                const mode = source.businessTravelMode;
+                                                if (!mode || !fuels.activity[mode]) return null;
+                                                return Object.keys(fuels.activity[mode]).map(type => {
+                                                    const item = fuels.activity[mode][type];
+                                                    if (item?.factor !== undefined && (type.includes('Gasoline') || type.includes('Diesel'))) {
+                                                        return <option key={type} value={type}>{t(item.translationKey)}</option>;
+                                                    }
+                                                    return null;
+                                                });
+                                            })()}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className={commonLabelClass}>{t('fuelConsumption') || '연료 소비량'} (L)</label>
+                                        <input
+                                            type="number"
+                                            value={source.fuelConsumptionLiters || ''}
+                                            onChange={e => onUpdate({ fuelConsumptionLiters: parseFloat(e.target.value) })}
+                                            className={commonInputClass}
+                                            placeholder="0"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className={commonLabelClass}>{t('vehicleCount') || '차량 대수'} (vehicles)</label>
+                                        <input
+                                            type="number"
+                                            value={source.vehicleCount || 1}
+                                            onChange={e => onUpdate({ vehicleCount: parseInt(e.target.value) || 1 })}
+                                            className={commonInputClass}
+                                            min="1"
+                                        />
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded text-yellow-800 dark:bg-yellow-900/30 dark:border-yellow-700 dark:text-yellow-200 text-xs">
+                                    <p>{t('cat6FuelBasedNote')}</p>
                                 </div>
                             )}
                         </>

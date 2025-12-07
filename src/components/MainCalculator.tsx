@@ -1033,18 +1033,40 @@ export const MainCalculator: React.FC<MainCalculatorProps> = ({
                     const spendFactor = spendFactorData?.factors[source.unit] || 0;
                     scope3 = totalSpend * spendFactor;
                     break;
+                case 'fuel':
+                    // Fuel-based calculation for car travel
+                    if (source.businessTravelMode === 'RentalCar' || source.businessTravelMode === 'PersonalCar') {
+                        const fuelLiters = source.fuelConsumptionLiters || 0;
+                        const vehicleCount = source.vehicleCount || 1;
+                        const fuelType = source.fuelType || '';
+                        
+                        // Get emission factor based on fuel type (Gasoline or Diesel)
+                        // Gasoline: ~2.31 kg CO2e/L, Diesel: ~2.68 kg CO2e/L (approximate values)
+                        let fuelFactor = 0;
+                        if (fuelType.includes('Gasoline')) {
+                            fuelFactor = 2.31; // kg CO2e per liter of gasoline
+                        } else if (fuelType.includes('Diesel')) {
+                            fuelFactor = 2.68; // kg CO2e per liter of diesel
+                        }
+                        
+                        scope3 = fuelLiters * fuelFactor * vehicleCount;
+                    }
+                    break;
                 case 'activity':
                 default:
                     const mode = source.businessTravelMode || 'Air';
-                    const distance = (source.distanceKm || 0) * (source.tripType === 'round-trip' ? 2 : 1);
+                    const oneWayDistance = source.distanceKm || 0;
+                    const totalDistance = oneWayDistance * (source.tripType === 'round-trip' ? 2 : 1);
                     const passengers = source.passengers || 1;
 
                     if (mode === 'Air') {
-                        const flightTypeKey = distance < 463 ? 'Short-haul (<463 km)' : distance <= 1108 ? 'Medium-haul (463-1108 km)' : 'Long-haul (>1108 km)';
+                        // FIX: Use one-way distance for flight category classification, not total distance
+                        const flightTypeKey = oneWayDistance < 463 ? 'Short-haul (<463 km)' : oneWayDistance <= 1108 ? 'Medium-haul (463-1108 km)' : 'Long-haul (>1108 km)';
                         const flightClass = source.flightClass || 'Economy';
                         const factorData = allFactors.businessTravel.activity.Air[flightTypeKey]?.[flightClass];
                         if (factorData) {
-                            scope3 = distance * passengers * factorData.factor;
+                            // Use total distance (round-trip if applicable) for emission calculation
+                            scope3 = totalDistance * passengers * factorData.factor;
                         }
                     } else if (mode === 'Hotel') {
                         const nights = source.nights || 0;
@@ -1060,8 +1082,16 @@ export const MainCalculator: React.FC<MainCalculatorProps> = ({
                             factorData = allFactors.businessTravel.activity[mode][vehicleType];
                         }
                         if (factorData) {
-                            const activity = factorData.unit === 'passenger-km' ? distance * passengers : distance;
-                            scope3 = activity * factorData.factor;
+                            if (mode === 'RentalCar' || mode === 'PersonalCar') {
+                                // FIX: Use vehicle count instead of passengers for car travel
+                                const vehicleCount = source.vehicleCount || 1;
+                                const activity = factorData.unit === 'passenger-km' ? totalDistance * passengers : totalDistance * vehicleCount;
+                                scope3 = activity * factorData.factor;
+                            } else {
+                                // Rail, Bus: use passengers
+                                const activity = factorData.unit === 'passenger-km' ? totalDistance * passengers : totalDistance;
+                                scope3 = activity * factorData.factor;
+                            }
                         }
                     }
                     break;

@@ -66,7 +66,7 @@ export interface Facility {
 export type CalculationMethod = 'supplier_co2e' | 'activity' | 'spend';
 export type Cat4CalculationMethod = 'activity' | 'fuel' | 'spend' | 'supplier_specific';
 export type Cat5CalculationMethod = 'activity' | 'supplier_specific' | 'spend';
-export type Cat6CalculationMethod = 'activity' | 'spend' | 'supplier_specific';
+export type Cat6CalculationMethod = 'activity' | 'fuel' | 'spend' | 'supplier_specific';
 export type Cat7CalculationMethod = 'activity' | 'average' | 'spend';
 export type Cat8CalculationMethod = 'asset_specific' | 'area_based' | 'spend_based' | 'supplier_specific';
 export type Cat10CalculationMethod = 'process_specific' | 'customer_specific' | 'spend';
@@ -141,6 +141,8 @@ export interface EmissionSource {
   tripType?: TripType;
   passengers?: number;
   nights?: number; // for hotels
+  fuelConsumptionLiters?: number; // for fuel-based car travel calculation
+  vehicleCount?: number; // number of vehicles used (for car travel)
 
   // New fields for advanced Scope 3 Category 7 calculation
   commutingMode?: EmployeeCommutingMode;
