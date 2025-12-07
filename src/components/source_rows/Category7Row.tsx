@@ -163,6 +163,36 @@ export const Category7Row: React.FC<SourceInputRowProps> = ({ source, onUpdate, 
             {isExpanded && (
                 <div className="flex flex-col gap-3 pt-3 border-t dark:border-gray-600">
 
+                    {/* Category 7 Guidance Box */}
+                    <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-lg text-indigo-800 dark:bg-indigo-900/30 dark:border-indigo-700/50 dark:text-indigo-200 text-xs space-y-2">
+                        <h4 className="font-semibold text-sm flex items-center gap-2"><IconInfo className="w-4 h-4" /> {t('cat7GuidanceTitle')}</h4>
+                        <ul className="list-disc pl-5 space-y-1">
+                            <li>{t('cat7GuidanceText')}</li>
+                            <li dangerouslySetInnerHTML={{ __html: t('cat7BoundaryNote') }}></li>
+                            <li dangerouslySetInnerHTML={{ __html: t('cat7CalculationMethods') }}></li>
+                        </ul>
+                        <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-yellow-800 dark:bg-yellow-900/30 dark:border-yellow-700 dark:text-yellow-200">
+                            <p className="flex items-start gap-2 mb-1">
+                                <IconInfo className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                                <span dangerouslySetInnerHTML={{ __html: t('cat7Scope1Warning') }}></span>
+                            </p>
+                            <p className="flex items-start gap-2">
+                                <IconInfo className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                                <span dangerouslySetInnerHTML={{ __html: t('cat7Category6Warning') }}></span>
+                            </p>
+                        </div>
+                        {(source.commutingMode === 'Carpool') && (
+                            <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-blue-800 dark:bg-blue-900/30 dark:border-blue-700 dark:text-blue-200">
+                                <p className="text-xs" dangerouslySetInnerHTML={{ __html: t('cat7CarpoolNote') }}></p>
+                            </div>
+                        )}
+                        {calculationMethod === 'average' && (
+                            <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-blue-800 dark:bg-blue-900/30 dark:border-blue-700 dark:text-blue-200">
+                                <p className="text-xs" dangerouslySetInnerHTML={{ __html: t('cat7TeleworkingNote') }}></p>
+                            </div>
+                        )}
+                    </div>
+
                     {/* Description & AI */}
                     <div>
                         <label htmlFor={`description-${source.id}`} className={commonLabelClass}>{t('emissionSourceDescription')}</label>
@@ -193,6 +223,16 @@ export const Category7Row: React.FC<SourceInputRowProps> = ({ source, onUpdate, 
                                 </button>
                             ))}
                         </div>
+                        {/* Calculation Method Descriptions */}
+                        {calculationMethod === 'activity' && (
+                            <p className="text-xs text-gray-500 mt-1" dangerouslySetInnerHTML={{ __html: t('cat7MethodActivity') }}></p>
+                        )}
+                        {calculationMethod === 'average' && (
+                            <p className="text-xs text-gray-500 mt-1" dangerouslySetInnerHTML={{ __html: t('cat7MethodAverage') }}></p>
+                        )}
+                        {calculationMethod === 'spend' && (
+                            <p className="text-xs text-gray-500 mt-1" dangerouslySetInnerHTML={{ __html: t('cat7MethodSpend') }}></p>
+                        )}
                     </div>
 
                     {/* === ACTIVITY & AVERAGE INPUTS === */}
