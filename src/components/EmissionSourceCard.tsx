@@ -118,10 +118,7 @@ export const EmissionSourceCard: React.FC<EmissionSourceCardProps> = ({
                   <p className="font-semibold">{t('cat9GuidanceTitle')}</p>
                   <p className="text-sm" dangerouslySetInnerHTML={{ __html: t('cat9GuidanceText') }} />
                 </>}
-                {category === EmissionCategory.ProcessingOfSoldProducts && <>
-                  <p className="font-semibold">{t('cat10GuidanceTitle')}</p>
-                  <p className="text-sm" dangerouslySetInnerHTML={{ __html: t('cat10GuidanceText') }} />
-                </>}
+                {/* Category 10 guidance is now shown in Category10Row component to avoid duplication */}
                 {category === EmissionCategory.PurchasedGoodsAndServices && <>
                   <p className="font-semibold">{t('cat1GuidanceTitle')}</p>
                   <p className="text-sm">{t('cat1GuidanceText')}</p>

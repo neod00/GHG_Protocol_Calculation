@@ -206,6 +206,30 @@ export const Category10Row: React.FC<SourceInputRowProps> = ({ source, onUpdate,
             {isExpanded && (
                 <div className="flex flex-col gap-3 pt-3 border-t dark:border-gray-600">
 
+                    {/* Category 10 Guidance Box */}
+                    <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg text-purple-800 dark:bg-purple-900/30 dark:border-purple-700/50 dark:text-purple-200 text-xs space-y-2">
+                        <h4 className="font-semibold text-sm flex items-center gap-2"><IconInfo className="w-4 h-4" /> {t('cat10GuidanceTitle')}</h4>
+                        <ul className="list-disc pl-5 space-y-1">
+                            <li>{t('cat10GuidanceText')}</li>
+                            <li dangerouslySetInnerHTML={{ __html: t('cat10BoundaryNote') }}></li>
+                            <li dangerouslySetInnerHTML={{ __html: t('cat10CalculationMethods') }}></li>
+                        </ul>
+                        <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-yellow-800 dark:bg-yellow-900/30 dark:border-yellow-700 dark:text-yellow-200">
+                            <p className="flex items-start gap-2 mb-1">
+                                <IconInfo className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                                <span dangerouslySetInnerHTML={{ __html: t('cat10Scope1Warning') }}></span>
+                            </p>
+                            <p className="flex items-start gap-2 mb-1">
+                                <IconInfo className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                                <span dangerouslySetInnerHTML={{ __html: t('cat10Category11Warning') }}></span>
+                            </p>
+                            <p className="flex items-start gap-2">
+                                <IconInfo className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                                <span dangerouslySetInnerHTML={{ __html: t('cat10Category12Warning') }}></span>
+                            </p>
+                        </div>
+                    </div>
+
                     {/* Description & AI */}
                     <div>
                         <label htmlFor={`description-${source.id}`} className={commonLabelClass}>{t('emissionSourceDescription')}</label>
@@ -230,9 +254,20 @@ export const Category10Row: React.FC<SourceInputRowProps> = ({ source, onUpdate,
                         <div className={`p-3 border rounded-lg text-xs ${aiAnalysisResult.boundary_warning || !aiAnalysisResult.is_intermediate_product ? 'bg-yellow-50 border-yellow-200 text-yellow-800 dark:bg-yellow-900/30 dark:border-yellow-700 dark:text-yellow-200' : 'bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/30 dark:border-blue-700 dark:text-blue-200'}`}>
                             {/* Boundary Warning Header */}
                             {(aiAnalysisResult.boundary_warning || !aiAnalysisResult.is_intermediate_product) && (
-                                <div className="flex items-center gap-2 font-bold mb-2 text-yellow-700 dark:text-yellow-400">
-                                    <IconAlertTriangle className="w-4 h-4" />
-                                    {t('boundaryWarning')}: {aiAnalysisResult.boundary_warning || "Not an intermediate product"}
+                                <div className="space-y-2 mb-2">
+                                    <div className="flex items-center gap-2 font-bold text-yellow-700 dark:text-yellow-400">
+                                        <IconAlertTriangle className="w-4 h-4" />
+                                        {t('boundaryWarning')}: {aiAnalysisResult.boundary_warning || "Not an intermediate product"}
+                                    </div>
+                                    {aiAnalysisResult.boundary_warning?.includes('Scope 1') && (
+                                        <p className="text-xs" dangerouslySetInnerHTML={{ __html: t('cat10Scope1Warning') }}></p>
+                                    )}
+                                    {aiAnalysisResult.boundary_warning?.includes('Category 11') && (
+                                        <p className="text-xs" dangerouslySetInnerHTML={{ __html: t('cat10Category11Warning') }}></p>
+                                    )}
+                                    {aiAnalysisResult.boundary_warning?.includes('Category 12') && (
+                                        <p className="text-xs" dangerouslySetInnerHTML={{ __html: t('cat10Category12Warning') }}></p>
+                                    )}
                                 </div>
                             )}
 
@@ -266,6 +301,29 @@ export const Category10Row: React.FC<SourceInputRowProps> = ({ source, onUpdate,
                                 </button>
                             ))}
                         </div>
+                        {/* Calculation Method Descriptions */}
+                        {calculationMethod && (
+                            <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-blue-800 dark:bg-blue-900/30 dark:border-blue-700 dark:text-blue-200 text-xs">
+                                {calculationMethod === 'process_specific' && (
+                                    <p className="flex items-start gap-2">
+                                        <IconInfo className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                                        <span>{t('cat10MethodProcessSpecific')}</span>
+                                    </p>
+                                )}
+                                {calculationMethod === 'customer_specific' && (
+                                    <p className="flex items-start gap-2">
+                                        <IconInfo className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                                        <span>{t('cat10MethodCustomerSpecific')}</span>
+                                    </p>
+                                )}
+                                {calculationMethod === 'spend' && (
+                                    <p className="flex items-start gap-2">
+                                        <IconInfo className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                                        <span>{t('cat10MethodSpend')}</span>
+                                    </p>
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     {/* === PROCESS SPECIFIC METHOD === */}
