@@ -1,10 +1,10 @@
 
 import React, { useState, useEffect } from 'react';
-import { EmissionSource, Cat8CalculationMethod, LeasedAssetType, BuildingType } from '../../types';
+import { EmissionSource, Cat8CalculationMethod, LeasedAssetType, BuildingType, EmissionCategory } from '../../types';
 import { useTranslation } from '../../context/LanguageContext';
 // FIX: Changed import path to be more explicit.
 import { TranslationKey } from '../../translations/index';
-import { IconTrash, IconX, IconSparkles, IconCheck, IconAlertTriangle, IconBuilding, IconCar, IconFactory } from '../IconComponents';
+import { IconTrash, IconX, IconSparkles, IconCheck, IconAlertTriangle, IconBuilding, IconCar, IconFactory, IconInfo } from '../IconComponents';
 
 
 interface SourceInputRowProps {
@@ -131,6 +131,33 @@ export const Category8_13Row: React.FC<SourceInputRowProps> = ({ source, onUpdat
             {isExpanded && (
                 <div className="flex flex-col gap-3 pt-3 border-t dark:border-gray-600">
 
+                    {/* Category 8 Guidance Box */}
+                    {source.category === EmissionCategory.UpstreamLeasedAssets && (
+                        <div className="p-3 bg-teal-50 border border-teal-200 rounded-lg text-teal-800 dark:bg-teal-900/30 dark:border-teal-700/50 dark:text-teal-200 text-xs space-y-2">
+                            <h4 className="font-semibold text-sm flex items-center gap-2"><IconInfo className="w-4 h-4" /> {t('cat8GuidanceTitle')}</h4>
+                            <ul className="list-disc pl-5 space-y-1">
+                                <li>{t('cat8GuidanceText')}</li>
+                                <li dangerouslySetInnerHTML={{ __html: t('cat8BoundaryNote') }}></li>
+                                <li dangerouslySetInnerHTML={{ __html: t('cat8CalculationMethods') }}></li>
+                            </ul>
+                            <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-yellow-800 dark:bg-yellow-900/30 dark:border-yellow-700 dark:text-yellow-200">
+                                <p className="flex items-start gap-2 mb-1">
+                                    <IconInfo className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                                    <span dangerouslySetInnerHTML={{ __html: t('cat8OperationalControlWarning') }}></span>
+                                </p>
+                                <p className="flex items-start gap-2">
+                                    <IconInfo className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                                    <span dangerouslySetInnerHTML={{ __html: t('cat8Scope1Warning') }}></span>
+                                </p>
+                            </div>
+                            {calculationMethod !== 'supplier_specific' && (
+                                <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-blue-800 dark:bg-blue-900/30 dark:border-blue-700 dark:text-blue-200">
+                                    <p className="text-xs" dangerouslySetInnerHTML={{ __html: t('cat8LeaseDurationNote') }}></p>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     {/* Description & AI */}
                     <div>
                         <label htmlFor={`description-${source.id}`} className={commonLabelClass}>{t('emissionSourceDescription')}</label>
@@ -160,6 +187,19 @@ export const Category8_13Row: React.FC<SourceInputRowProps> = ({ source, onUpdat
                                 </button>
                             ))}
                         </div>
+                        {/* Calculation Method Descriptions */}
+                        {calculationMethod === 'asset_specific' && (
+                            <p className="text-xs text-gray-500 mt-1" dangerouslySetInnerHTML={{ __html: t('cat8MethodAssetSpecific') }}></p>
+                        )}
+                        {calculationMethod === 'area_based' && (
+                            <p className="text-xs text-gray-500 mt-1" dangerouslySetInnerHTML={{ __html: t('cat8MethodAreaBased') }}></p>
+                        )}
+                        {calculationMethod === 'spend_based' && (
+                            <p className="text-xs text-gray-500 mt-1" dangerouslySetInnerHTML={{ __html: t('cat8MethodSpend') }}></p>
+                        )}
+                        {calculationMethod === 'supplier_specific' && (
+                            <p className="text-xs text-gray-500 mt-1" dangerouslySetInnerHTML={{ __html: t('cat8MethodSupplier') }}></p>
+                        )}
                     </div>
 
                     {/* Asset Type Config */}
