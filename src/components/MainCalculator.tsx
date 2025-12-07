@@ -1314,15 +1314,37 @@ export const MainCalculator: React.FC<MainCalculatorProps> = ({
             switch (calcMethod) {
                 case 'investment_specific':
                     // PCAF Method: Emissions x Attribution Factor
-                    // Attribution Factor = Outstanding Investment / (EVIC or Total Equity + Debt)
+                    // Attribution Factor varies by investment type:
+                    // - Equity: Investment Value / Company Value (EVIC)
+                    // - Debt: Loan Outstanding / Total Debt
+                    // - Project Finance: Investment Value / Project Total Cost
                     const investeeEmissions = source.supplierProvidedCO2e || 0;
-                    const investmentValue = source.investmentValue || 0;
-                    const companyValue = source.companyValue || 0;
+                    let attributionFactor = 0;
 
-                    if (companyValue > 0) {
-                        const attributionFactor = investmentValue / companyValue;
-                        scope3 = investeeEmissions * attributionFactor;
+                    if (source.investmentType === 'Debt') {
+                        // Debt: Loan Outstanding / Total Debt
+                        const loanOutstanding = source.loanOutstanding || 0;
+                        const totalDebt = source.totalDebt || 0;
+                        if (totalDebt > 0) {
+                            attributionFactor = loanOutstanding / totalDebt;
+                        }
+                    } else if (source.investmentType === 'ProjectFinance') {
+                        // Project Finance: Investment Value / Project Total Cost
+                        const investmentValue = source.investmentValue || 0;
+                        const projectCost = source.companyValue || 0; // companyValue holds project cost for Project Finance
+                        if (projectCost > 0) {
+                            attributionFactor = investmentValue / projectCost;
+                        }
+                    } else {
+                        // Equity, RealEstate, Other: Investment Value / Company Value (EVIC)
+                        const investmentValue = source.investmentValue || 0;
+                        const companyValue = source.companyValue || 0;
+                        if (companyValue > 0) {
+                            attributionFactor = investmentValue / companyValue;
+                        }
                     }
+
+                    scope3 = investeeEmissions * attributionFactor;
                     break;
                 case 'average_data':
                     // EEIO Method: Investment Value * Sector Intensity

@@ -186,7 +186,9 @@ export interface EmissionSource {
   investmentType?: InvestmentType;
   investeeSector?: string;
   investmentValue?: number; // Amount invested
-  companyValue?: number; // EVIC or Total Project Cost
+  companyValue?: number; // EVIC or Total Project Cost (for Equity and Project Finance)
+  totalDebt?: number; // Total Debt (for Debt investments)
+  loanOutstanding?: number; // Loan Outstanding (for Debt investments)
 
   // New fields for advanced Scope 3 Category 2 calculation
   capitalGoodsType?: CapitalGoodsType;

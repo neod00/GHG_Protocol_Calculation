@@ -138,15 +138,40 @@ export const Category15Row: React.FC<SourceInputRowProps> = ({ source, onUpdate,
         }
     };
 
-    const attributionFactor = (source.investmentValue && source.companyValue) ? (source.investmentValue / source.companyValue) : 0;
+    // Calculate attribution factor based on investment type (PCAF method)
+    let attributionFactor = 0;
+    if (source.investmentType === 'Debt') {
+        // Debt: Loan Outstanding / Total Debt
+        if (source.loanOutstanding && source.totalDebt && source.totalDebt > 0) {
+            attributionFactor = source.loanOutstanding / source.totalDebt;
+        }
+    } else if (source.investmentType === 'ProjectFinance') {
+        // Project Finance: Investment Value / Project Total Cost
+        if (source.investmentValue && source.companyValue && source.companyValue > 0) {
+            attributionFactor = source.investmentValue / source.companyValue;
+        }
+    } else {
+        // Equity, RealEstate, Other: Investment Value / Company Value (EVIC)
+        if (source.investmentValue && source.companyValue && source.companyValue > 0) {
+            attributionFactor = source.investmentValue / source.companyValue;
+        }
+    }
     const attributionPercent = (attributionFactor * 100).toFixed(2);
 
     const renderCalculationLogic = () => {
         if (calculationMethod === 'investment_specific') {
+            let formulaText = '';
+            if (source.investmentType === 'Debt') {
+                formulaText = `${t('investeeEmissions')} × (${t('loanOutstanding')} / ${t('totalDebt')}) = ${t('emissions')} × ${attributionPercent}%`;
+            } else if (source.investmentType === 'ProjectFinance') {
+                formulaText = `${t('investeeEmissions')} × (${t('investmentValue')} / ${t('projectCost')}) = ${t('emissions')} × ${attributionPercent}%`;
+            } else {
+                formulaText = `${t('investeeEmissions')} × (${t('investmentValue')} / ${t('companyValue')}) = ${t('emissions')} × ${attributionPercent}%`;
+            }
             return (
                 <div className="mt-2 p-2 bg-gray-100 dark:bg-gray-700 rounded text-xs text-gray-600 dark:text-gray-300 font-mono">
                     {t('calculationLogic')}: <br />
-                    {t('investeeEmissions')} × ({t('investmentValue')} / {t('companyValue')}) = {t('emissions')} × {attributionPercent}%
+                    {formulaText}
                 </div>
             );
         } else if (calculationMethod === 'average_data') {
@@ -184,6 +209,26 @@ export const Category15Row: React.FC<SourceInputRowProps> = ({ source, onUpdate,
             {isExpanded && (
                 <div className="flex flex-col gap-3 pt-3 border-t dark:border-gray-600">
 
+                    {/* Category 15 Guidance Box */}
+                    <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg text-purple-800 dark:bg-purple-900/30 dark:border-purple-700/50 dark:text-purple-200 text-xs space-y-2">
+                        <h4 className="font-semibold text-sm flex items-center gap-2"><IconInfo className="w-4 h-4" /> {t('cat15GuidanceTitle')}</h4>
+                        <ul className="list-disc pl-5 space-y-1">
+                            <li>{t('cat15GuidanceText')}</li>
+                            <li dangerouslySetInnerHTML={{ __html: t('cat15BoundaryNote') }}></li>
+                            <li dangerouslySetInnerHTML={{ __html: t('cat15CalculationMethods') }}></li>
+                        </ul>
+                        <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-yellow-800 dark:bg-yellow-900/30 dark:border-yellow-700 dark:text-yellow-200">
+                            <p className="flex items-start gap-2 mb-1">
+                                <IconInfo className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                                <span dangerouslySetInnerHTML={{ __html: t('cat15Scope1Warning') }}></span>
+                            </p>
+                            <p className="flex items-start gap-2">
+                                <IconInfo className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                                <span dangerouslySetInnerHTML={{ __html: t('cat15Category8Warning') }}></span>
+                            </p>
+                        </div>
+                    </div>
+
                     {/* Description & AI */}
                     <div>
                         <label htmlFor={`description-${source.id}`} className={commonLabelClass}>{t('emissionSourceDescription')}</label>
@@ -207,9 +252,17 @@ export const Category15Row: React.FC<SourceInputRowProps> = ({ source, onUpdate,
                     {aiAnalysisResult && (
                         <div className={`p-3 border rounded-lg text-xs ${aiAnalysisResult.boundary_warning ? 'bg-yellow-50 border-yellow-200 text-yellow-800 dark:bg-yellow-900/30 dark:border-yellow-700 dark:text-yellow-200' : 'bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/30 dark:border-blue-700 dark:text-blue-200'}`}>
                             {aiAnalysisResult.boundary_warning && (
-                                <div className="flex items-center gap-2 font-bold mb-2 text-yellow-700 dark:text-yellow-400">
-                                    <IconAlertTriangle className="w-4 h-4" />
-                                    {t('boundaryWarning')}: {aiAnalysisResult.boundary_warning}
+                                <div className="space-y-2 mb-2">
+                                    <div className="flex items-center gap-2 font-bold text-yellow-700 dark:text-yellow-400">
+                                        <IconAlertTriangle className="w-4 h-4" />
+                                        {t('boundaryWarning')}: {aiAnalysisResult.boundary_warning}
+                                    </div>
+                                    {aiAnalysisResult.boundary_warning?.includes('Scope 1/2') && (
+                                        <p className="text-xs" dangerouslySetInnerHTML={{ __html: t('cat15Scope1Warning') }}></p>
+                                    )}
+                                    {aiAnalysisResult.boundary_warning?.includes('Category 8') && (
+                                        <p className="text-xs" dangerouslySetInnerHTML={{ __html: t('cat15Category8Warning') }}></p>
+                                    )}
                                 </div>
                             )}
 
@@ -241,34 +294,149 @@ export const Category15Row: React.FC<SourceInputRowProps> = ({ source, onUpdate,
                                 </button>
                             ))}
                         </div>
+                        {/* Calculation Method Descriptions */}
+                        {calculationMethod && (
+                            <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-blue-800 dark:bg-blue-900/30 dark:border-blue-700 dark:text-blue-200 text-xs">
+                                {calculationMethod === 'investment_specific' && (
+                                    <p className="flex items-start gap-2">
+                                        <IconInfo className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                                        <span>{t('cat15MethodInvestmentSpecific')}</span>
+                                    </p>
+                                )}
+                                {calculationMethod === 'average_data' && (
+                                    <p className="flex items-start gap-2">
+                                        <IconInfo className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                                        <span>{t('cat15MethodAverageData')}</span>
+                                    </p>
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     {/* === INVESTMENT SPECIFIC (PCAF) === */}
                     {calculationMethod === 'investment_specific' && (
                         <div className="space-y-3">
+                            {/* Investment Type Selector */}
+                            <div>
+                                <label className={commonLabelClass}>{t('investmentType')}</label>
+                                <select
+                                    value={source.investmentType || 'Equity'}
+                                    onChange={e => {
+                                        const newType = e.target.value as InvestmentType;
+                                        onUpdate({ investmentType: newType });
+                                        // Reset relevant fields when type changes
+                                        if (newType === 'Debt') {
+                                            onUpdate({ companyValue: undefined });
+                                        } else if (newType === 'ProjectFinance') {
+                                            onUpdate({ totalDebt: undefined, loanOutstanding: undefined });
+                                        } else {
+                                            onUpdate({ totalDebt: undefined, loanOutstanding: undefined });
+                                        }
+                                    }}
+                                    className={commonSelectClass}
+                                >
+                                    <option value="Equity">Equity</option>
+                                    <option value="Debt">Debt</option>
+                                    <option value="ProjectFinance">Project Finance</option>
+                                    <option value="RealEstate">Real Estate</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+
                             <div className="p-3 border rounded-md dark:border-gray-600 bg-gray-50 dark:bg-gray-800/50">
                                 <h4 className="text-xs font-bold mb-2 text-gray-700 dark:text-gray-300">{t('attributionFactor')} ({attributionPercent}%)</h4>
-                                <div className="grid grid-cols-2 gap-2">
-                                    <div>
-                                        <label className={commonLabelClass}>{t('investmentValue')} (USD)</label>
-                                        <input
-                                            type="number"
-                                            value={source.investmentValue || ''}
-                                            onChange={e => onUpdate({ investmentValue: parseFloat(e.target.value) })}
-                                            className={commonInputClass}
-                                            placeholder="Your Investment"
-                                        />
+                                
+                                {/* Equity or Project Finance */}
+                                {(source.investmentType === 'Equity' || source.investmentType === 'ProjectFinance' || !source.investmentType) && (
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <label className={commonLabelClass}>{t('investmentValue')} (USD)</label>
+                                            <input
+                                                type="number"
+                                                value={source.investmentValue || ''}
+                                                onChange={e => onUpdate({ investmentValue: parseFloat(e.target.value) })}
+                                                className={commonInputClass}
+                                                placeholder="Your Investment"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className={commonLabelClass}>
+                                                {source.investmentType === 'ProjectFinance' ? t('projectCost') : t('companyValue')} ({source.investmentType === 'ProjectFinance' ? 'Project Cost' : 'EVIC'})
+                                            </label>
+                                            <input
+                                                type="number"
+                                                value={source.companyValue || ''}
+                                                onChange={e => onUpdate({ companyValue: parseFloat(e.target.value) })}
+                                                className={commonInputClass}
+                                                placeholder={source.investmentType === 'ProjectFinance' ? "Project Total Cost" : "Total Value"}
+                                            />
+                                        </div>
                                     </div>
-                                    <div>
-                                        <label className={commonLabelClass}>{t('companyValue')} (EVIC/Project Cost)</label>
-                                        <input
-                                            type="number"
-                                            value={source.companyValue || ''}
-                                            onChange={e => onUpdate({ companyValue: parseFloat(e.target.value) })}
-                                            className={commonInputClass}
-                                            placeholder="Total Value"
-                                        />
+                                )}
+
+                                {/* Debt */}
+                                {source.investmentType === 'Debt' && (
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <label className={commonLabelClass}>{t('loanOutstanding')} (USD)</label>
+                                            <input
+                                                type="number"
+                                                value={source.loanOutstanding || ''}
+                                                onChange={e => onUpdate({ loanOutstanding: parseFloat(e.target.value) })}
+                                                className={commonInputClass}
+                                                placeholder="Loan Outstanding"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className={commonLabelClass}>{t('totalDebt')} (USD)</label>
+                                            <input
+                                                type="number"
+                                                value={source.totalDebt || ''}
+                                                onChange={e => onUpdate({ totalDebt: parseFloat(e.target.value) })}
+                                                className={commonInputClass}
+                                                placeholder="Total Debt"
+                                            />
+                                        </div>
                                     </div>
+                                )}
+
+                                {/* Real Estate or Other - use Equity method */}
+                                {(source.investmentType === 'RealEstate' || source.investmentType === 'Other') && (
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <label className={commonLabelClass}>{t('investmentValue')} (USD)</label>
+                                            <input
+                                                type="number"
+                                                value={source.investmentValue || ''}
+                                                onChange={e => onUpdate({ investmentValue: parseFloat(e.target.value) })}
+                                                className={commonInputClass}
+                                                placeholder="Your Investment"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className={commonLabelClass}>{t('companyValue')} (EVIC)</label>
+                                            <input
+                                                type="number"
+                                                value={source.companyValue || ''}
+                                                onChange={e => onUpdate({ companyValue: parseFloat(e.target.value) })}
+                                                className={commonInputClass}
+                                                placeholder="Total Value"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Calculation method note */}
+                                <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-blue-800 dark:bg-blue-900/30 dark:border-blue-700 dark:text-blue-200 text-xs">
+                                    {source.investmentType === 'Equity' || !source.investmentType ? (
+                                        <p>{t('cat15EquityNote')}</p>
+                                    ) : source.investmentType === 'Debt' ? (
+                                        <p>{t('cat15DebtNote')}</p>
+                                    ) : source.investmentType === 'ProjectFinance' ? (
+                                        <p>{t('cat15ProjectFinanceNote')}</p>
+                                    ) : (
+                                        <p>{t('cat15EquityNote')}</p>
+                                    )}
                                 </div>
                             </div>
 
