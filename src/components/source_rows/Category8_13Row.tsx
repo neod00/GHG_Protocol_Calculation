@@ -185,7 +185,7 @@ export const Category8_13Row: React.FC<SourceInputRowProps> = ({ source, onUpdat
                         {source.leasedAssetType === 'Building' && <IconBuilding className="w-4 h-4 text-gray-500" />}
                         {source.leasedAssetType === 'Vehicle' && <IconCar className="w-4 h-4 text-gray-500" />}
                         {source.leasedAssetType === 'Equipment' && <IconFactory className="w-4 h-4 text-gray-500" />}
-                        <p className="text-sm font-medium text-ghg-dark dark:text-gray-100 truncate">{source.description || t('upstreamLeasedAssetsPlaceholder')}</p>
+                        <p className="text-sm font-medium text-ghg-dark dark:text-gray-100 truncate">{source.description || (source.category === EmissionCategory.UpstreamLeasedAssets ? t('upstreamLeasedAssetsPlaceholder') : t('downstreamLeasedAssetsPlaceholder'))}</p>
                     </div>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                         {calculationMethod === 'asset_specific' && `${(source.energyInputs || []).length} ${t('energyInputs')} • `}
@@ -234,6 +234,33 @@ export const Category8_13Row: React.FC<SourceInputRowProps> = ({ source, onUpdat
                         </div>
                     )}
 
+                    {/* Category 13 Guidance Box */}
+                    {source.category === EmissionCategory.DownstreamLeasedAssets && (
+                        <div className="p-3 bg-teal-50 border border-teal-200 rounded-lg text-teal-800 dark:bg-teal-900/30 dark:border-teal-700/50 dark:text-teal-200 text-xs space-y-2">
+                            <h4 className="font-semibold text-sm flex items-center gap-2"><IconInfo className="w-4 h-4" /> {t('cat13GuidanceTitle')}</h4>
+                            <ul className="list-disc pl-5 space-y-1">
+                                <li>{t('cat13GuidanceText')}</li>
+                                <li dangerouslySetInnerHTML={{ __html: t('cat13BoundaryNote') }}></li>
+                                <li dangerouslySetInnerHTML={{ __html: t('cat13CalculationMethods') }}></li>
+                            </ul>
+                            <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-yellow-800 dark:bg-yellow-900/30 dark:border-yellow-700 dark:text-yellow-200">
+                                <p className="flex items-start gap-2 mb-1">
+                                    <IconInfo className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                                    <span dangerouslySetInnerHTML={{ __html: t('cat13OperationalControlWarning') }}></span>
+                                </p>
+                                <p className="flex items-start gap-2">
+                                    <IconInfo className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                                    <span dangerouslySetInnerHTML={{ __html: t('cat13Scope1Warning') }}></span>
+                                </p>
+                            </div>
+                            {calculationMethod !== 'supplier_specific' && (
+                                <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-blue-800 dark:bg-blue-900/30 dark:border-blue-700 dark:text-blue-200">
+                                    <p className="text-xs" dangerouslySetInnerHTML={{ __html: t('cat13LeaseDurationNote') }}></p>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     {/* Description & AI */}
                     <div>
                         <label htmlFor={`description-${source.id}`} className={commonLabelClass}>{t('emissionSourceDescription')}</label>
@@ -244,9 +271,9 @@ export const Category8_13Row: React.FC<SourceInputRowProps> = ({ source, onUpdat
                                 value={source.description}
                                 onChange={(e) => onUpdate({ description: e.target.value })}
                                 className={commonInputClass}
-                                placeholder={t('upstreamLeasedAssetsPlaceholder')}
+                                placeholder={source.category === EmissionCategory.UpstreamLeasedAssets ? t('upstreamLeasedAssetsPlaceholder') : t('downstreamLeasedAssetsPlaceholder')}
                             />
-                            {source.category === EmissionCategory.UpstreamLeasedAssets && (
+                            {(source.category === EmissionCategory.UpstreamLeasedAssets || source.category === EmissionCategory.DownstreamLeasedAssets) && (
                                 <button onClick={handleAnalyze} disabled={isLoadingAI || !source.description} className="px-3 py-1 bg-ghg-light-green text-white rounded-md hover:bg-ghg-green disabled:bg-gray-400 flex items-center gap-2 text-sm whitespace-nowrap">
                                     <IconSparkles className="w-4 h-4" />
                                     <span>{isLoadingAI ? '...' : t('analyzeWithAI')}</span>
@@ -256,12 +283,20 @@ export const Category8_13Row: React.FC<SourceInputRowProps> = ({ source, onUpdat
                     </div>
 
                     {/* AI Result Panel */}
-                    {aiAnalysisResult && source.category === EmissionCategory.UpstreamLeasedAssets && (
+                    {aiAnalysisResult && (source.category === EmissionCategory.UpstreamLeasedAssets || source.category === EmissionCategory.DownstreamLeasedAssets) && (
                         <div className={`p-3 border rounded-lg text-xs ${aiAnalysisResult.boundary_warning ? 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/30 dark:border-red-700 dark:text-red-200' : 'bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/30 dark:border-blue-700 dark:text-blue-200'}`}>
                             {aiAnalysisResult.boundary_warning && (
-                                <div className="flex items-center gap-2 font-bold mb-2">
-                                    <IconAlertTriangle className="w-4 h-4" />
-                                    {t('boundaryWarning')}: {aiAnalysisResult.boundary_warning}
+                                <div className="space-y-2 mb-2">
+                                    <div className="flex items-center gap-2 font-bold text-red-700 dark:text-red-400">
+                                        <IconAlertTriangle className="w-4 h-4" />
+                                        {t('boundaryWarning')}: {aiAnalysisResult.boundary_warning}
+                                    </div>
+                                    {source.category === EmissionCategory.UpstreamLeasedAssets && aiAnalysisResult.boundary_warning?.includes('Scope 1/2') && (
+                                        <p className="text-xs" dangerouslySetInnerHTML={{ __html: t('cat8OperationalControlWarning') }}></p>
+                                    )}
+                                    {source.category === EmissionCategory.DownstreamLeasedAssets && aiAnalysisResult.boundary_warning?.includes('Scope 1/2') && (
+                                        <p className="text-xs" dangerouslySetInnerHTML={{ __html: t('cat13OperationalControlWarning') }}></p>
+                                    )}
                                 </div>
                             )}
 
@@ -296,16 +331,16 @@ export const Category8_13Row: React.FC<SourceInputRowProps> = ({ source, onUpdat
                         </div>
                         {/* Calculation Method Descriptions */}
                         {calculationMethod === 'asset_specific' && (
-                            <p className="text-xs text-gray-500 mt-1" dangerouslySetInnerHTML={{ __html: t('cat8MethodAssetSpecific') }}></p>
+                            <p className="text-xs text-gray-500 mt-1" dangerouslySetInnerHTML={{ __html: source.category === EmissionCategory.UpstreamLeasedAssets ? t('cat8MethodAssetSpecific') : t('cat13MethodAssetSpecific') }}></p>
                         )}
                         {calculationMethod === 'area_based' && (
-                            <p className="text-xs text-gray-500 mt-1" dangerouslySetInnerHTML={{ __html: t('cat8MethodAreaBased') }}></p>
+                            <p className="text-xs text-gray-500 mt-1" dangerouslySetInnerHTML={{ __html: source.category === EmissionCategory.UpstreamLeasedAssets ? t('cat8MethodAreaBased') : t('cat13MethodAreaBased') }}></p>
                         )}
                         {calculationMethod === 'spend_based' && (
-                            <p className="text-xs text-gray-500 mt-1" dangerouslySetInnerHTML={{ __html: t('cat8MethodSpend') }}></p>
+                            <p className="text-xs text-gray-500 mt-1" dangerouslySetInnerHTML={{ __html: source.category === EmissionCategory.UpstreamLeasedAssets ? t('cat8MethodSpend') : t('cat13MethodSpend') }}></p>
                         )}
                         {calculationMethod === 'supplier_specific' && (
-                            <p className="text-xs text-gray-500 mt-1" dangerouslySetInnerHTML={{ __html: t('cat8MethodSupplier') }}></p>
+                            <p className="text-xs text-gray-500 mt-1" dangerouslySetInnerHTML={{ __html: source.category === EmissionCategory.UpstreamLeasedAssets ? t('cat8MethodSupplier') : t('cat13MethodSupplier') }}></p>
                         )}
                     </div>
 
