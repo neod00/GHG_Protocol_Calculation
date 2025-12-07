@@ -2,8 +2,18 @@ import Link from 'next/link';
 import { ThemeToggle } from './ThemeToggle';
 import { LanguageToggle } from './LanguageToggle';
 import { Leaf } from 'lucide-react';
+import { HeaderActions } from './HeaderActions';
 
-export function Header() {
+type User = {
+  id: string;
+  email?: string;
+} | null;
+
+interface HeaderProps {
+  user?: User;
+}
+
+export function Header({ user }: HeaderProps = {}) {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-slate-200 bg-white/80 backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/80 transition-colors duration-300">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
@@ -19,33 +29,31 @@ export function Header() {
 
         {/* Navigation - Desktop */}
         <nav className="hidden md:flex items-center space-x-8">
-          {['Features', 'How it Works', 'Calculator', 'About'].map((item) => (
+          {user ? (
             <Link
-              key={item}
-              href={`#${item.toLowerCase().replace(/\s+/g, '-')}`}
+              href="/dashboard"
               className="text-sm font-medium text-slate-600 hover:text-teal-600 dark:text-slate-300 dark:hover:text-teal-400 transition-colors"
             >
-              {item}
+              Dashboard
             </Link>
-          ))}
+          ) : (
+            ['Features', 'How it Works', 'Calculator', 'About'].map((item) => (
+              <Link
+                key={item}
+                href={`#${item.toLowerCase().replace(/\s+/g, '-')}`}
+                className="text-sm font-medium text-slate-600 hover:text-teal-600 dark:text-slate-300 dark:hover:text-teal-400 transition-colors"
+              >
+                {item}
+              </Link>
+            ))
+          )}
         </nav>
 
         {/* Actions */}
         <div className="flex items-center space-x-4">
           <LanguageToggle />
           <ThemeToggle />
-          <Link
-            href="/login"
-            className="hidden sm:inline-flex px-4 py-2 text-sm font-semibold text-teal-700 bg-teal-50 hover:bg-teal-100 rounded-lg transition-colors dark:bg-slate-800 dark:text-teal-400 dark:hover:bg-slate-700"
-          >
-            Log in
-          </Link>
-          <Link
-            href="/signup"
-            className="inline-flex px-4 py-2 text-sm font-semibold text-white bg-teal-600 hover:bg-teal-700 rounded-lg shadow-md shadow-teal-500/20 transition-all hover:scale-105"
-          >
-            Get Started
-          </Link>
+          <HeaderActions user={user} />
         </div>
       </div>
     </header>

@@ -11,7 +11,7 @@ export default async function Home() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col font-sans selection:bg-teal-100 selection:text-teal-900">
-      <Header />
+      <Header user={user} />
 
       {/* Hero Section */}
       <LandingHero user={user} />
