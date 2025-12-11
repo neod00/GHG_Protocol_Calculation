@@ -15,6 +15,7 @@ import { Category12Row } from './source_rows/Category12Row';
 import { Category14Row } from './source_rows/Category14Row';
 import { Category15Row } from './source_rows/Category15Row';
 import { SimpleScope3Row } from './source_rows/SimpleScope3Row';
+import { Scope2Row } from './source_rows/Scope2Row';
 
 // The props are unchanged and will be passed down to the specialized components.
 interface SourceInputRowProps {
@@ -37,7 +38,7 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = (props) => {
 
     case EmissionCategory.FuelAndEnergyRelatedActivities:
       return <Category3Row {...props} />;
-      
+
     case EmissionCategory.UpstreamTransportationAndDistribution:
     case EmissionCategory.DownstreamTransportationAndDistribution:
       return <Category4_9Row {...props} />;
@@ -47,17 +48,17 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = (props) => {
 
     case EmissionCategory.BusinessTravel:
       return <Category6Row {...props} />;
-    
+
     case EmissionCategory.EmployeeCommuting:
       return <Category7Row {...props} />;
 
     case EmissionCategory.UpstreamLeasedAssets:
     case EmissionCategory.DownstreamLeasedAssets:
       return <Category8_13Row {...props} />;
-      
+
     case EmissionCategory.ProcessingOfSoldProducts:
       return <Category10Row {...props} />;
-    
+
     case EmissionCategory.UseOfSoldProducts:
       return <Category11Row {...props} />;
 
@@ -70,12 +71,14 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = (props) => {
     case EmissionCategory.Investments:
       return <Category15Row {...props} />;
 
+    case EmissionCategory.PurchasedEnergy:
+      return <Scope2Row {...props} />;
+
     case EmissionCategory.StationaryCombustion:
     case EmissionCategory.MobileCombustion:
     case EmissionCategory.ProcessEmissions:
     case EmissionCategory.FugitiveEmissions:
     case EmissionCategory.Waste: // Scope 1 Waste
-    case EmissionCategory.PurchasedEnergy:
     default:
       return <DefaultRow {...props} />;
   }

@@ -189,29 +189,231 @@ export const DefaultRow: React.FC<SourceInputRowProps> = ({ source, onUpdate, on
       </div>
 
       {source.category === EmissionCategory.PurchasedEnergy && (
-        <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
-          <label className="flex items-center space-x-2 text-sm text-blue-800 dark:text-blue-200">
-            <input type="checkbox" checked={provideMarketData} onChange={toggleMarketData} className="rounded text-ghg-green focus:ring-ghg-green" />
-            <span>{t('provideMarketData')}</span>
-          </label>
-          {provideMarketData && (
-            <div className="mt-2">
-              <label htmlFor={`market-factor-${source.id}`} className="block text-xs font-medium text-blue-700 dark:text-blue-300">{t('marketFactor')}</label>
-              <div className="flex items-center gap-2">
-                <input
-                  id={`market-factor-${source.id}`}
-                  type="number"
-                  step="any"
-                  value={source.marketBasedFactor ?? ''}
-                  onChange={(e) => handleMarketFactorChange(e.target.value)}
-                  className={`${commonInputClass} mt-1`}
-                />
-                <span className="mt-1 text-xs text-blue-600 dark:text-blue-400 whitespace-nowrap">
-                  kg CO₂e / {renderUnit(source.unit)}
-                </span>
+        <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg space-y-3">
+          <div>
+            <p className="text-xs text-blue-700 dark:text-blue-300 mb-2">
+              {t('scope2DualReportingInfoText')}
+            </p>
+          </div>
+          
+          {/* 기존 시장 배출계수 입력 (하위 호환성) */}
+          <div>
+            <label className="flex items-center space-x-2 text-sm text-blue-800 dark:text-blue-200">
+              <input type="checkbox" checked={provideMarketData} onChange={toggleMarketData} className="rounded text-ghg-green focus:ring-ghg-green" />
+              <span>{t('provideMarketData')}</span>
+            </label>
+            {provideMarketData && (
+              <div className="mt-2">
+                <label htmlFor={`market-factor-${source.id}`} className="block text-xs font-medium text-blue-700 dark:text-blue-300">{t('marketFactor')}</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    id={`market-factor-${source.id}`}
+                    type="number"
+                    step="any"
+                    value={source.marketBasedFactor ?? ''}
+                    onChange={(e) => handleMarketFactorChange(e.target.value)}
+                    className={`${commonInputClass} mt-1`}
+                  />
+                  <span className="mt-1 text-xs text-blue-600 dark:text-blue-400 whitespace-nowrap">
+                    kg CO₂e / {renderUnit(source.unit)}
+                  </span>
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
+          
+          {/* 녹색프리미엄 입력 (한국 특화) */}
+          <div className="border-t border-blue-200 dark:border-blue-700 pt-3">
+            <label className="flex items-center space-x-2 text-sm font-medium text-green-800 dark:text-green-200 mb-2">
+              <input 
+                type="checkbox" 
+                checked={!!source.powerMix?.greenPremium}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    const currentPowerMix = source.powerMix || {};
+                    onUpdate({ 
+                      powerMix: { 
+                        ...currentPowerMix, 
+                        greenPremium: { 
+                          quantity: [0,0,0,0,0,0,0,0,0,0,0,0], 
+                          factor: 0,
+                          treatAsRenewable: false,
+                          supplierFactorProvided: false
+                        } 
+                      } 
+                    });
+                  } else {
+                    const { greenPremium, ...rest } = source.powerMix || {};
+                    onUpdate({ powerMix: rest });
+                  }
+                }}
+                className="rounded text-ghg-green"
+              />
+              <span>{t('greenPremiumTitle')}</span>
+            </label>
+            
+            {source.powerMix?.greenPremium && (
+              <div className="mt-2 space-y-3">
+                {/* 녹색프리미엄 전력 사용량 (월별) */}
+                <div>
+                  <label className="block text-xs font-medium text-green-700 dark:text-green-300 mb-1">
+                    녹색프리미엄 전력 사용량 (월별)
+                  </label>
+                  <div className="grid grid-cols-6 gap-2">
+                    {source.powerMix.greenPremium.quantity.map((q, idx) => (
+                      <div key={idx}>
+                        <input
+                          type="number"
+                          step="any"
+                          value={q || ''}
+                          onChange={(e) => {
+                            const newQty = [...source.powerMix!.greenPremium!.quantity];
+                            newQty[idx] = parseFloat(e.target.value) || 0;
+                            onUpdate({ 
+                              powerMix: { 
+                                ...source.powerMix!, 
+                                greenPremium: { 
+                                  ...source.powerMix!.greenPremium!, 
+                                  quantity: newQty 
+                                } 
+                              } 
+                            });
+                          }}
+                          className={commonInputClass}
+                          placeholder={t(monthKeys[idx] as TranslationKey)}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
+                {/* 재생에너지 계약수단으로 간주 여부 */}
+                <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded border border-green-200 dark:border-green-800">
+                  <label className="flex items-center space-x-2 text-sm font-semibold text-green-800 dark:text-green-200 mb-2">
+                    <input
+                      type="checkbox"
+                      checked={source.powerMix.greenPremium.treatAsRenewable || false}
+                      onChange={(e) => {
+                        onUpdate({ 
+                          powerMix: { 
+                            ...source.powerMix!, 
+                            greenPremium: { 
+                              ...source.powerMix!.greenPremium!, 
+                              treatAsRenewable: e.target.checked 
+                            } 
+                          } 
+                        });
+                      }}
+                      className="rounded text-ghg-green"
+                    />
+                    <span>{t('treatAsRenewable')}</span>
+                  </label>
+                  
+                  {source.powerMix.greenPremium.treatAsRenewable ? (
+                    <div className="mt-2 space-y-2">
+                      <p className="text-xs text-green-700 dark:text-green-300">
+                        ✅ {t('greenPremiumAsRenewableNote')}
+                      </p>
+                      <p className="text-xs text-yellow-700 dark:text-yellow-300">
+                        ⚠️ {t('greenPremiumKETSWarning')}
+                      </p>
+                      
+                      {/* 공급사 배출계수 입력 */}
+                      <div className="mt-2">
+                        <label className="flex items-center space-x-2 text-xs">
+                          <input
+                            type="checkbox"
+                            checked={source.powerMix.greenPremium.supplierFactorProvided || false}
+                            onChange={(e) => {
+                              onUpdate({ 
+                                powerMix: { 
+                                  ...source.powerMix!, 
+                                  greenPremium: { 
+                                    ...source.powerMix!.greenPremium!, 
+                                    supplierFactorProvided: e.target.checked 
+                                  } 
+                                } 
+                              });
+                            }}
+                            className="rounded text-ghg-green"
+                          />
+                          <span className="text-green-700 dark:text-green-300">
+                            {t('supplierFactorProvided')}
+                          </span>
+                        </label>
+                        
+                        {source.powerMix.greenPremium.supplierFactorProvided && (
+                          <div className="mt-2">
+                            <label className="block text-xs text-green-700 dark:text-green-300 mb-1">
+                              {t('supplierFactor')}
+                            </label>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="number"
+                                step="any"
+                                value={source.powerMix.greenPremium.supplierFactor ?? 0}
+                                onChange={(e) => {
+                                  onUpdate({ 
+                                    powerMix: { 
+                                      ...source.powerMix!, 
+                                      greenPremium: { 
+                                        ...source.powerMix!.greenPremium!, 
+                                        supplierFactor: parseFloat(e.target.value) || 0 
+                                      } 
+                                    } 
+                                  });
+                                }}
+                                className={commonInputClass}
+                              />
+                              <span className="text-xs text-green-600 dark:text-green-400 whitespace-nowrap">
+                                kg CO₂e / {renderUnit(source.unit)}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {!source.powerMix.greenPremium.supplierFactorProvided && (
+                          <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                            배출계수 0 적용
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mt-2">
+                      <p className="text-xs text-green-700 dark:text-green-300">
+                        ⚠️ {t('greenPremiumNotAsRenewableNote')}
+                      </p>
+                    </div>
+                  )}
+                </div>
+                
+                {/* 계약 정보 */}
+                <div>
+                  <label className="block text-xs font-medium text-green-700 dark:text-green-300 mb-1">
+                    계약 번호 (선택사항)
+                  </label>
+                  <input
+                    type="text"
+                    value={source.powerMix.greenPremium.contractId || ''}
+                    onChange={(e) => {
+                      onUpdate({ 
+                        powerMix: { 
+                          ...source.powerMix!, 
+                          greenPremium: { 
+                            ...source.powerMix!.greenPremium!, 
+                            contractId: e.target.value 
+                          } 
+                        } 
+                      });
+                    }}
+                    className={commonInputClass}
+                    placeholder="녹색프리미엄-2024-001"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
 

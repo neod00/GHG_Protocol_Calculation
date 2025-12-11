@@ -101,6 +101,52 @@ export interface EmissionSource {
   unit: string;
   marketBasedFactor?: number;
   
+  // Scope 2 혼합 전력 사용 상세 정보 (PPA/REC/녹색프리미엄/일반전력)
+  powerMix?: {
+    // PPA 전력
+    ppa?: {
+      quantity: number[]; // 월별 사용량
+      factor: number; // PPA 배출계수
+      contractId?: string;
+      supplierName?: string;
+      verificationStatus?: 'verified' | 'pending' | 'not-verified';
+    };
+    
+    // REC 전력
+    rec?: {
+      quantity: number[]; // 월별 사용량
+      factor: number; // REC 배출계수 (일반적으로 0, 요건 충족 시)
+      certificateId?: string;
+      issuer?: string;
+      verificationStatus?: 'verified' | 'pending' | 'not-verified';
+      meetsRequirements?: boolean; // GHG Protocol 요건 충족 여부
+      generationMatch?: boolean; // 발전 일치성
+      certificationMatch?: boolean; // 인증 일치성
+      ownershipMatch?: boolean; // 소유권 일치성
+      periodMatch?: boolean; // 사용기간 일치성
+    };
+    
+    // 녹색프리미엄 (Green Tariff) - 한국 특화
+    greenPremium?: {
+      quantity: number[]; // 월별 사용량
+      factor: number; // 배출계수
+      supplierName?: string;
+      contractId?: string;
+      treatAsRenewable?: boolean; // 재생에너지 계약수단으로 간주 여부 (사용자 선택)
+      supplierFactorProvided?: boolean; // 공급사 배출계수 제공 여부
+      supplierFactor?: number; // 공급사 제공 배출계수
+      verificationStatus?: 'verified' | 'pending' | 'not-verified';
+    };
+    
+    // 일반 전력 (나머지)
+    conventional?: {
+      quantity: number[]; // 월별 사용량
+      factor: number; // 잔여 전력(residual mix) 또는 공급자 배출계수
+      source: 'residual-mix' | 'supplier-specific' | 'national-average';
+      supplierName?: string;
+    };
+  };
+  
   // New fields for advanced Scope 3 calculation
   calculationMethod?: CalculationMethod | Cat4CalculationMethod | Cat5CalculationMethod | Cat6CalculationMethod | Cat7CalculationMethod | Cat8CalculationMethod | Cat10CalculationMethod | Cat11CalculationMethod | Cat12CalculationMethod | Cat14CalculationMethod | Cat15CalculationMethod;
   supplierProvidedCO2e?: number; // Total annual kg CO2e from supplier

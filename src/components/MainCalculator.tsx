@@ -278,7 +278,7 @@ export const MainCalculator: React.FC<MainCalculatorProps> = ({
             setIsSetupComplete(true);
             return;
         }
-        
+
         try {
             const saved = localStorage.getItem('ghg-calc-isSetupComplete');
             if (saved) setIsSetupComplete(JSON.parse(saved));
@@ -1039,7 +1039,7 @@ export const MainCalculator: React.FC<MainCalculatorProps> = ({
                         const fuelLiters = source.fuelConsumptionLiters || 0;
                         const vehicleCount = source.vehicleCount || 1;
                         const fuelType = source.fuelType || '';
-                        
+
                         // Get emission factor based on fuel type (Gasoline or Diesel)
                         // Gasoline: ~2.31 kg CO2e/L, Diesel: ~2.68 kg CO2e/L (approximate values)
                         let fuelFactor = 0;
@@ -1048,7 +1048,7 @@ export const MainCalculator: React.FC<MainCalculatorProps> = ({
                         } else if (fuelType.includes('Diesel')) {
                             fuelFactor = 2.68; // kg CO2e per liter of diesel
                         }
-                        
+
                         scope3 = fuelLiters * fuelFactor * vehicleCount;
                     }
                     break;
@@ -1357,7 +1357,34 @@ export const MainCalculator: React.FC<MainCalculatorProps> = ({
             return { scope1: 0, scope2Location: 0, scope2Market: 0, scope3 };
         }
 
-        const totalQuantity = source.monthlyQuantities.reduce((sum, q) => sum + q, 0);
+        // 전체 사용량 계산: monthlyQuantities와 powerMix의 모든 사용량 합산
+        let totalQuantity = source.monthlyQuantities.reduce((sum, q) => sum + q, 0);
+
+        // powerMix가 있을 때 전체 사용량 계산 (녹색프리미엄 등이 monthlyQuantities에 없을 수 있음)
+        if (source.powerMix) {
+            const mix = source.powerMix;
+            let powerMixTotal = 0;
+
+            if (mix.ppa) {
+                powerMixTotal += mix.ppa.quantity.reduce((sum, q) => sum + q, 0);
+            }
+            if (mix.rec) {
+                powerMixTotal += mix.rec.quantity.reduce((sum, q) => sum + q, 0);
+            }
+            if (mix.greenPremium) {
+                powerMixTotal += mix.greenPremium.quantity.reduce((sum, q) => sum + q, 0);
+            }
+            if (mix.conventional) {
+                powerMixTotal += mix.conventional.quantity.reduce((sum, q) => sum + q, 0);
+            }
+
+            // powerMix의 총 사용량이 더 크면 그것을 전체 사용량으로 사용
+            // (monthlyQuantities가 비어있을 수 있음)
+            if (powerMixTotal > totalQuantity) {
+                totalQuantity = powerMixTotal;
+            }
+        }
+
         const categoryFuels = FUELS_MAP[source.category];
         if (!categoryFuels || (Array.isArray(categoryFuels) && categoryFuels.length === 0)) return { scope1: 0, scope2Location: 0, scope2Market: 0, scope3: 0 };
 
@@ -1382,21 +1409,104 @@ export const MainCalculator: React.FC<MainCalculatorProps> = ({
                 factor = SCOPE2_FACTORS_BY_REGION['South Korea'].factors[source.unit] || 0;
             }
 
-            const emissions = totalQuantity * factor;
+            // Location-based: 항상 전체 사용량 × 지역 평균 배출계수 (PPA/REC/녹색프리미엄 무관)
+            const locationEmissions = totalQuantity * factor;
+            // Shared emissions variable (used for Scope 1 & 3 fallback)
+            const emissions = locationEmissions;
 
             if (scope === 'scope2') {
-                const marketFactor = source.marketBasedFactor ?? factor;
-                const marketEmissions = totalQuantity * marketFactor;
 
-                // Mutually Exclusive Logic:
-                // If market data provided -> Market column only.
-                // If NO market data provided -> Location column only.
-                const hasMarketData = source.marketBasedFactor !== undefined;
+                // --- Market-Based Method (MB) ---
+                // Rule: Sum of specific contract emissions + Residual Mix for remainder
+                // Rule: Sum of specific contract emissions + Residual Mix for remainder
+                let marketEmissions = 0;
 
-                const locationEmissions = hasMarketData ? 0 : emissions;
-                const finalMarketEmissions = hasMarketData ? marketEmissions : 0;
+                // Helper: Get Residual Mix Factor
+                // Priority: 1. User/Custom Residual 2. Regional Residual (if available) 3. Grid Average (Fallback per Guidance)
+                const getResidualMixFactor = (fuelType: string, unit: string): number => {
+                    // Start with Grid Average as base
+                    const gridFactor = SCOPE2_FACTORS_BY_REGION['South Korea']?.factors[unit] || factor;
 
-                return { scope1: 0, scope2Location: locationEmissions, scope2Market: finalMarketEmissions, scope3: 0 };
+                    // Simple logic: If we had a real database, we'd query 'Residual Mix - Korea'.
+                    // For now, prompt specified 'Residual mix ... (if provided)'. 
+                    // We'll use a placeholder logic: 
+                    // If 'conventional' mix is defined with a specific factor, that's the explicit residual.
+                    // Otherwise, we default to Grid Factor (standard fallback when residual unavailable).
+                    // The prompt mentioned "EF_residual (or EF_grid)".
+                    // Let's use Grid Factor for now to be safe, or allow user override in future.
+                    // (User prompt: "Residual mix 배출계수(EF_residual) (제공된 경우)")
+                    return gridFactor;
+                };
+
+                if (source.powerMix) {
+                    const mix = source.powerMix;
+                    let allocatedQuantity = 0;
+
+                    // 1. PPA
+                    if (mix.ppa) {
+                        const q = mix.ppa.quantity.reduce((sum, v) => sum + v, 0);
+                        marketEmissions += q * (mix.ppa.factor || 0);
+                        allocatedQuantity += q;
+                    }
+
+                    // 2. REC
+                    if (mix.rec) {
+                        const q = mix.rec.quantity.reduce((sum, v) => sum + v, 0);
+                        // Rule: EF = 0 only if quality criteria met
+                        const meetsCriteria = mix.rec.meetsRequirements ?? true; // Default to true if not set? Or false? Prompt implies user checks.
+                        // UI default is checked=true usually for convenience, but here logic must follow.
+                        if (meetsCriteria) {
+                            marketEmissions += q * 0;
+                        } else {
+                            marketEmissions += q * getResidualMixFactor(source.fuelType, source.unit);
+                        }
+                        allocatedQuantity += q;
+                    }
+
+                    // 3. Green Premium
+                    if (mix.greenPremium) {
+                        const q = mix.greenPremium.quantity.reduce((sum, v) => sum + v, 0);
+
+                        // Rule: 
+                        // IF "Treat as Renewable" (User Yes) -> EF = 0 (or Supplier Specific)
+                        // ELSE -> EF = Residual/Grid
+                        if (mix.greenPremium.treatAsRenewable) {
+                            const supplierEF = mix.greenPremium.supplierFactorProvided ? (mix.greenPremium.supplierFactor || 0) : 0;
+                            marketEmissions += q * supplierEF;
+                        } else {
+                            marketEmissions += q * getResidualMixFactor(source.fuelType, source.unit);
+                        }
+                        allocatedQuantity += q;
+                    }
+
+                    // 4. Conventional / Remainder
+                    // If user explicitly entered conventional quantity:
+                    if (mix.conventional) {
+                        const q = mix.conventional.quantity.reduce((sum, v) => sum + v, 0);
+                        marketEmissions += q * (mix.conventional.factor || getResidualMixFactor(source.fuelType, source.unit));
+                        allocatedQuantity += q;
+                    }
+
+                    // 5. Unallocated Remainder (Implicit Residual)
+                    // If Total > Allocated, the rest is Residual Mix
+                    if (totalQuantity > allocatedQuantity) {
+                        const remainder = totalQuantity - allocatedQuantity;
+                        marketEmissions += remainder * getResidualMixFactor(source.fuelType, source.unit);
+                    }
+
+                    // Note: If Allocated > Total, we trust the mix (user warning in UI already)?? 
+                    // Or cap? Let's just use the calculated mix sum to respect user detailed input.
+
+                } else {
+                    // No Mix Data Provided -> Fallback to Grid (Location-based proxy) or Residual if known
+                    // GHG Protocol: If no market data, use Residual. If no Residual, use Grid.
+                    // Here we default to Grid Factor.
+                    const marketFactor = source.marketBasedFactor ?? factor;
+                    marketEmissions = totalQuantity * marketFactor;
+                }
+
+                return { scope1: 0, scope2Location: locationEmissions, scope2Market: marketEmissions, scope3: 0 };
+
             } else if (scope === 'scope1') {
                 return { scope1: emissions, scope2Location: 0, scope2Market: 0, scope3: 0 };
             } else {

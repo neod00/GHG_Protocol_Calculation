@@ -20,6 +20,13 @@ export const en = {
   scope2LocTotal: 'Scope 2 (Location-based)',
   scope2MktTotal: 'Scope 2 (Market-based)',
   scope3Total: 'Scope 3',
+  // 녹색프리미엄 관련
+  greenPremiumTreatment: 'Green Premium Treatment Method',
+  greenPremiumAsRenewableText: 'In this report\'s market-based Scope 2 calculation, Green Premium is treated as a renewable energy contract and {factor} is applied.',
+  greenPremiumKETSWarning: 'This treatment relies on the interpretation of GHG Protocol Scope 2 quality criteria, and some stakeholders and regulations (e.g., K-ETS) may not recognize this as emission reduction.',
+  greenPremiumNotAsRenewableText: 'Green Premium is not reflected as emission reduction. Residual mix or grid average emission factor is applied in market-based calculation.',
+  supplierProvidedFactor: 'Supplier-provided emission factor',
+  zeroEmission: 'Zero emission',
   intensityMetric: 'Emission Intensity',
   biogenicEmissions: 'Biogenic CO₂ Emissions (Reported Separately)',
   
@@ -122,6 +129,13 @@ export const ko = {
   scope2LocTotal: 'Scope 2 (지역 기반)',
   scope2MktTotal: 'Scope 2 (시장 기반)',
   scope3Total: 'Scope 3 (기타 간접 배출)',
+  // 녹색프리미엄 관련
+  greenPremiumTreatment: '녹색프리미엄 처리 방법',
+  greenPremiumAsRenewableText: '본 보고서의 market-based Scope 2 산정에는 녹색프리미엄을 재생에너지 계약수단으로 간주하여 {factor}을 적용하였음.',
+  greenPremiumKETSWarning: '이 처리는 GHG Protocol Scope 2 품질 기준 해석에 의존하며, 일부 이해관계자 및 제도 (K-ETS 등)는 이를 감축 실적으로 인정하지 않을 수 있음.',
+  greenPremiumNotAsRenewableText: '녹색프리미엄은 배출량 감축으로 반영되지 않음. 시장기반 산정에서 Residual mix 또는 계통 평균 배출계수를 적용하였음.',
+  supplierProvidedFactor: '공급사 제공 배출계수',
+  zeroEmission: '0 배출',
   intensityMetric: '배출 집약도',
   biogenicEmissions: '생물성 CO₂ 배출 (별도 보고)',
 

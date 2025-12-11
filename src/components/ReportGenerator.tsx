@@ -39,6 +39,7 @@ export const ReportGenerator: React.FC<ReportGeneratorProps> = ({
     boundaryApproach,
     sources,
     scope3Settings,
+    allFactors,
 }) => {
     const { t, language } = useTranslation();
 
@@ -364,6 +365,179 @@ export const ReportGenerator: React.FC<ReportGeneratorProps> = ({
                                 </tr>
                             </tbody>
                         </table>
+
+                        {/* Scope 2 Detailed Reporting (Dual Reporting & Power Mix) */}
+                        <h3 className="report-h3 mt-6">{t('scope2Title') || 'Scope 2 Detailed Reporting'}</h3>
+
+                        {/* 1. Dual Reporting Table */}
+                        <p className="text-sm text-gray-700 mb-2 font-semibold">Dual Reporting (Location-based vs Market-based)</p>
+                        <table className="report-table mb-6">
+                            <thead>
+                                <tr>
+                                    <th>Method</th>
+                                    <th className="text-right">Emissions (tCO₂e)</th>
+                                    <th>Description</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td className="font-bold">Location-based</td>
+                                    <td className="text-right font-mono">{formatNumber(results.scope2LocationTotal)}</td>
+                                    <td className="text-xs text-gray-500">Reflects average emissions intensity of grids on which energy consumption occurs (using mostly grid-average emission factor data).</td>
+                                </tr>
+                                <tr>
+                                    <td className="font-bold">Market-based</td>
+                                    <td className="text-right font-mono">{formatNumber(results.scope2MarketTotal)}</td>
+                                    <td className="text-xs text-gray-500">Reflects emissions from electricity that electricity consumers have purposefully chosen (or their lack of choice).</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        {/* 2. Power Mix Breakdown */}
+                        <p className="text-sm text-gray-700 mb-2 font-semibold">Power Mix (Market-based Attribution)</p>
+                        <table className="report-table">
+                            <thead>
+                                <tr>
+                                    <th>Instrument Type</th>
+                                    <th className="text-right">Energy (kWh)</th>
+                                    <th className="text-right">Applied EF (kgCO₂e/kWh)</th>
+                                    <th className="text-right">Emissions (tCO₂e)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {(() => {
+                                    // Aggregate Scope 2 Power Mix data for report
+                                    let ppaKwh = 0, ppaEmissions = 0;
+                                    let recKwh = 0, recEmissions = 0;
+                                    let gpKwh = 0, gpEmissions = 0;
+                                    let convKwh = 0, convEmissions = 0;
+                                    let residualKwh = 0, residualEmissions = 0;
+                                    let totalKwh = 0;
+
+                                    const s2Sources = sources[EmissionCategory.PurchasedEnergy] || [];
+
+                                    s2Sources.forEach(s => {
+                                        // Need to replicate calculation logic slightly to aggregate for display
+                                        // or ideally logic should store breakdown. For now, re-calc aggregates.
+                                        const mix = s.powerMix || {};
+                                        const qTotal = s.monthlyQuantities.reduce((a, b) => a + b, 0);
+                                        totalKwh += qTotal;
+
+                                        const gridFactor = allFactors.scope2?.find((f: any) => f.name === s.fuelType)?.factors[s.unit] || 0;
+                                        // Residual proxy
+                                        const residualFactor = gridFactor; // Using grid as residual per MainCalculator logic
+
+                                        let allocated = 0;
+
+                                        // PPA
+                                        if (mix.ppa) {
+                                            const q = mix.ppa.quantity.reduce((a: number, b: number) => a + b, 0);
+                                            ppaKwh += q;
+                                            ppaEmissions += q * (mix.ppa.factor || 0);
+                                            allocated += q;
+                                        }
+                                        // REC
+                                        if (mix.rec) {
+                                            const q = mix.rec.quantity.reduce((a: number, b: number) => a + b, 0);
+                                            recKwh += q;
+                                            // Logic check
+                                            if (mix.rec.meetsRequirements ?? true) {
+                                                recEmissions += 0;
+                                            } else {
+                                                recEmissions += q * residualFactor;
+                                            }
+                                            allocated += q;
+                                        }
+                                        // GP
+                                        if (mix.greenPremium) {
+                                            const q = mix.greenPremium.quantity.reduce((a: number, b: number) => a + b, 0);
+                                            gpKwh += q;
+                                            if (mix.greenPremium.treatAsRenewable) {
+                                                const ef = mix.greenPremium.supplierFactorProvided ? (mix.greenPremium.supplierFactor || 0) : 0;
+                                                gpEmissions += q * ef;
+                                            } else {
+                                                gpEmissions += q * residualFactor;
+                                            }
+                                            allocated += q;
+                                        }
+                                        // Conventional
+                                        if (mix.conventional) {
+                                            const q = mix.conventional.quantity.reduce((a: number, b: number) => a + b, 0);
+                                            convKwh += q;
+                                            convEmissions += q * (mix.conventional.factor || residualFactor);
+                                            allocated += q;
+                                        }
+
+                                        // Residual
+                                        if (qTotal > allocated) {
+                                            const rem = qTotal - allocated;
+                                            residualKwh += rem;
+                                            residualEmissions += rem * residualFactor;
+                                        }
+                                    });
+
+                                    return (
+                                        <>
+                                            {/* PPA Row */}
+                                            <tr>
+                                                <td>PPA (Direct Contracts)</td>
+                                                <td className="text-right">{ppaKwh.toLocaleString()}</td>
+                                                <td className="text-right">-</td>
+                                                <td className="text-right">{(ppaEmissions / 1000).toLocaleString(undefined, { maximumFractionDigits: 3 })}</td>
+                                            </tr>
+                                            {/* REC Row */}
+                                            <tr>
+                                                <td>REC (Certificates)</td>
+                                                <td className="text-right">{recKwh.toLocaleString()}</td>
+                                                <td className="text-right">0 (if valid)</td>
+                                                <td className="text-right">{(recEmissions / 1000).toLocaleString(undefined, { maximumFractionDigits: 3 })}</td>
+                                            </tr>
+                                            {/* GP Row */}
+                                            <tr>
+                                                <td>Green Premium</td>
+                                                <td className="text-right">{gpKwh.toLocaleString()}</td>
+                                                <td className="text-right">Var</td>
+                                                <td className="text-right">{(gpEmissions / 1000).toLocaleString(undefined, { maximumFractionDigits: 3 })}</td>
+                                            </tr>
+                                            {/* Residual Row (Includes Conventional + Unallocated) */}
+                                            <tr>
+                                                <td>Residual Mix (Grid/Unknown)</td>
+                                                <td className="text-right">{(residualKwh + convKwh).toLocaleString()}</td>
+                                                <td className="text-right">Grid Avg (Proxy)</td>
+                                                <td className="text-right">{((residualEmissions + convEmissions) / 1000).toLocaleString(undefined, { maximumFractionDigits: 3 })}</td>
+                                            </tr>
+                                            <tr className="bg-gray-50 font-bold border-t">
+                                                <td>Total Scope 2</td>
+                                                <td className="text-right">{totalKwh.toLocaleString()}</td>
+                                                <td className="text-right">-</td>
+                                                <td className="text-right">{formatNumber(results.scope2MarketTotal)}</td>
+                                            </tr>
+                                        </>
+                                    );
+                                })()}
+                            </tbody>
+                        </table>
+
+                        {/* 3. Green Premium Strict Disclaimer */}
+                        {(() => {
+                            const s2Sources = sources[EmissionCategory.PurchasedEnergy] || [];
+                            const gpSources = s2Sources.filter(s => s.powerMix?.greenPremium && s.powerMix.greenPremium.quantity.reduce((a, b) => a + b, 0) > 0);
+
+                            if (gpSources.some(s => s.powerMix?.greenPremium?.treatAsRenewable)) {
+                                return (
+                                    <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
+                                        <strong>Green Premium Treatment:</strong> 本 보고서의 market-based Scope 2 산정에는 녹색프리미엄을 재생에너지 계약수단으로 간주하여 0배출(또는 공급사 배출계수)을 적용하였음. 이 처리는 GHG Protocol Scope 2 품질 기준 해석에 의존하며, 일부 이해관계자 및 제도(K-ETS 등)는 이를 감축 실적으로 인정하지 않을 수 있음.
+                                    </div>
+                                );
+                            } else if (gpSources.length > 0) {
+                                // GP used but NOT treated as renewable
+                                return (
+                                    <div className="mt-4 p-3 bg-gray-50 border border-gray-200 rounded text-xs text-gray-600">
+                                        <strong>Green Premium Treatment:</strong> 녹색프리미엄은 MB 감축으로 반영하지 않음 (Applied Residual/Grid Mix).
+                                    </div>
+                                );
+                            }
+                        })()}
 
                         <h3 className="report-h3 mt-6">{t('ch5Scope3')}</h3>
                         <table className="report-table">
