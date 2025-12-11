@@ -1388,7 +1388,7 @@ export const MainCalculator: React.FC<MainCalculatorProps> = ({
                 const marketFactor = source.marketBasedFactor ?? factor;
                 const marketEmissions = totalQuantity * marketFactor;
 
-                // Mutually Exclusive Logic (Restored):
+                // Mutually Exclusive Logic:
                 // If market data provided -> Market column only.
                 // If NO market data provided -> Location column only.
                 const hasMarketData = source.marketBasedFactor !== undefined;

@@ -85,33 +85,23 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
   const chartGridColor = isDark ? '#334155' : '#e2e8f0'; // slate-700 / slate-200
   const chartTickColor = isDark ? '#94a3b8' : '#64748b'; // slate-400 / slate-500
 
-  // Calculation for Chart Data
-  const hasMarketBasedValues = scope2MarketTotal !== scope2LocationTotal;
+  // Calculation for Chart Data - Two separate bars: Location-based and Market-based totals
   const chartData = useMemo(() => {
-    return hasMarketBasedValues
-      ? [
-        {
-          name: t('marketBasedTotal'),
-          [t('scope1')]: parseFloat((scope1Total / 1000).toFixed(2)),
-          [t('scope2Market')]: parseFloat((scope2MarketTotal / 1000).toFixed(2)),
-          [t('scope3')]: parseFloat((scope3Total / 1000).toFixed(2)),
-        },
-        {
-          name: t('locationBasedTotal'),
-          [t('scope1')]: parseFloat((scope1Total / 1000).toFixed(2)),
-          [t('scope2Location')]: parseFloat((scope2LocationTotal / 1000).toFixed(2)),
-          [t('scope3')]: parseFloat((scope3Total / 1000).toFixed(2)),
-        },
-      ]
-      : [
-        {
-          name: t('emissions'),
-          [t('scope1')]: parseFloat((scope1Total / 1000).toFixed(2)),
-          [t('scope2Location')]: parseFloat((scope2LocationTotal / 1000).toFixed(2)),
-          [t('scope3')]: parseFloat((scope3Total / 1000).toFixed(2)),
-        },
-      ];
-  }, [hasMarketBasedValues, scope1Total, scope2MarketTotal, scope2LocationTotal, scope3Total, t]);
+    return [
+      {
+        name: t('locationBasedTotal'),
+        [t('scope1')]: parseFloat((scope1Total / 1000).toFixed(2)),
+        [t('scope2Location')]: parseFloat((scope2LocationTotal / 1000).toFixed(2)),
+        [t('scope3')]: parseFloat((scope3Total / 1000).toFixed(2)),
+      },
+      {
+        name: t('marketBasedTotal'),
+        [t('scope1')]: parseFloat((scope1Total / 1000).toFixed(2)),
+        [t('scope2Market')]: parseFloat((scope2MarketTotal / 1000).toFixed(2)),
+        [t('scope3')]: parseFloat((scope3Total / 1000).toFixed(2)),
+      },
+    ];
+  }, [scope1Total, scope2MarketTotal, scope2LocationTotal, scope3Total, t]);
 
   const scope3Data = useMemo(() => {
     return Object.entries(scope3CategoryBreakdown)
@@ -313,7 +303,7 @@ export const ResultsDisplay: React.FC<ResultsDisplayProps> = ({
               <Legend wrapperStyle={{ paddingTop: '20px', fontSize: '12px' }} iconType="circle" />
               <Bar dataKey={t('scope1')} stackId="a" fill={COLORS.scope1} radius={[0, 0, 0, 0]} barSize={40} />
               <Bar dataKey={t('scope2Location')} stackId="a" fill={COLORS.scope2Location} radius={[0, 0, 0, 0]} barSize={40} />
-              {hasMarketBasedValues && <Bar dataKey={t('scope2Market')} stackId="a" fill={COLORS.scope2Market} radius={[0, 0, 0, 0]} barSize={40} />}
+              <Bar dataKey={t('scope2Market')} stackId="a" fill={COLORS.scope2Market} radius={[0, 0, 0, 0]} barSize={40} />
               <Bar dataKey={t('scope3')} stackId="a" fill={COLORS.scope3} radius={[4, 4, 0, 0]} barSize={40} />
             </BarChart>
           </ResponsiveContainer>
