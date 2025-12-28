@@ -55,6 +55,7 @@ model Project {
 
   facilities      Facility[]
   emissionSources EmissionSource[]
+  versions        ProjectVersion[]
 }
 
 enum ProjectStatus {
@@ -106,4 +107,22 @@ model EmissionSource {
   
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
+}
+
+// Version management for projects (manual saves only, max 10 versions)
+model ProjectVersion {
+  id            String   @id @default(uuid())
+  projectId     String
+  project       Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  versionNumber Int      // Sequential version number for display
+  versionName   String?  // Optional user-provided name
+  dataSnapshot  Json     // Complete snapshot of sources and facilities
+  
+  createdAt     DateTime @default(now())
+  createdBy     String?  // User ID who created this version
+
+  @@unique([projectId, versionNumber])
+  @@index([projectId])
+  @@index([createdAt(sort: Desc)])
 }

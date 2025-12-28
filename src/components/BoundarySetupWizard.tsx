@@ -3,6 +3,7 @@ import { BoundaryApproach, Facility, EmissionCategory } from '../types';
 import { useTranslation } from '../context/LanguageContext';
 import { IconX, IconInfo, IconPencil, IconCheck } from './IconComponents';
 import { FACILITY_TYPES_BY_SCOPE, ALL_SCOPE3_CATEGORIES } from '../constants/index';
+import { Portal } from './Portal';
 
 interface Scope3Settings {
   isEnabled: boolean;
@@ -538,44 +539,46 @@ export const BoundarySetupWizard: React.FC<BoundarySetupWizardProps> = ({ isOpen
   const maxSteps = 4;
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in" onClick={isCancellable ? onClose : undefined}>
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col transition-all duration-300 border border-white/10" onClick={(e) => e.stopPropagation()}>
-        <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50 rounded-t-2xl">
-          <div>
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white">{t('boundarySetupTitle')}</h2>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">{t(`step${step}`)}</p>
-          </div>
-          {isCancellable && (
-            <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-slate-500 dark:text-slate-400"><IconX className="w-5 h-5" /></button>
-          )}
-        </div>
-
-        {!isAuthenticated && (
-          <div className="bg-amber-50 border-b border-amber-200 px-6 py-3 flex items-center justify-between">
-            <div className="flex items-center gap-2 text-amber-800">
-              <span className="text-lg">⚠️</span>
-              <p className="text-sm font-medium">{t('guestModeDataNotSaved')}</p>
+    <Portal>
+      <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in" onClick={isCancellable ? onClose : undefined}>
+        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col transition-all duration-300 border border-white/10" onClick={(e) => e.stopPropagation()}>
+          <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50 rounded-t-2xl">
+            <div>
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white">{t('boundarySetupTitle')}</h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">{t(`step${step}`)}</p>
             </div>
-            <a href="/signup" className="text-xs font-bold text-amber-600 hover:text-amber-800 bg-white px-3 py-1 rounded border border-amber-200 shadow-sm">
-              {t('signUp')}
-            </a>
+            {isCancellable && (
+              <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-slate-500 dark:text-slate-400"><IconX className="w-5 h-5" /></button>
+            )}
           </div>
-        )}
 
-        <div className="p-6 md:p-8 flex-grow overflow-y-auto custom-scrollbar">
-          {renderStepContent()}
-        </div>
-        <div className="flex justify-between items-center p-6 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-100 dark:border-slate-700 rounded-b-2xl backdrop-blur-sm">
-          <div>
-            {step > 0 && <button onClick={() => setStep(step - 1)} className="px-5 py-2.5 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg shadow-sm hover:bg-slate-50 dark:bg-slate-700 dark:text-slate-200 dark:border-slate-600 transition-colors">{t('back')}</button>}
+          {!isAuthenticated && (
+            <div className="bg-amber-50 border-b border-amber-200 px-6 py-3 flex items-center justify-between">
+              <div className="flex items-center gap-2 text-amber-800">
+                <span className="text-lg">⚠️</span>
+                <p className="text-sm font-medium">{t('guestModeDataNotSaved')}</p>
+              </div>
+              <a href="/signup" className="text-xs font-bold text-amber-600 hover:text-amber-800 bg-white px-3 py-1 rounded border border-amber-200 shadow-sm">
+                {t('signUp')}
+              </a>
+            </div>
+          )}
+
+          <div className="p-6 md:p-8 flex-grow overflow-y-auto custom-scrollbar">
+            {renderStepContent()}
           </div>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-slate-500 dark:text-slate-400 font-medium">{`Step ${step + 1} of ${maxSteps + 1}`}</span>
-            {step < maxSteps && <button onClick={() => setStep(step + 1)} className="px-6 py-2.5 text-sm font-medium text-white bg-emerald-600 rounded-lg shadow-lg shadow-emerald-500/30 hover:bg-emerald-700 transition-all">{step === 0 ? t('getStarted') : t('next')}</button>}
-            {step === maxSteps && <button onClick={handleSave} className="px-6 py-2.5 text-sm font-medium text-white bg-amber-500 rounded-lg shadow-lg shadow-amber-500/30 hover:bg-amber-600 transition-all">{t('finish')}</button>}
+          <div className="flex justify-between items-center p-6 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-100 dark:border-slate-700 rounded-b-2xl backdrop-blur-sm">
+            <div>
+              {step > 0 && <button onClick={() => setStep(step - 1)} className="px-5 py-2.5 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg shadow-sm hover:bg-slate-50 dark:bg-slate-700 dark:text-slate-200 dark:border-slate-600 transition-colors">{t('back')}</button>}
+            </div>
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-slate-500 dark:text-slate-400 font-medium">{`Step ${step + 1} of ${maxSteps + 1}`}</span>
+              {step < maxSteps && <button onClick={() => setStep(step + 1)} className="px-6 py-2.5 text-sm font-medium text-white bg-emerald-600 rounded-lg shadow-lg shadow-emerald-500/30 hover:bg-emerald-700 transition-all">{step === 0 ? t('getStarted') : t('next')}</button>}
+              {step === maxSteps && <button onClick={handleSave} className="px-6 py-2.5 text-sm font-medium text-white bg-amber-500 rounded-lg shadow-lg shadow-amber-500/30 hover:bg-amber-600 transition-all">{t('finish')}</button>}
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </Portal>
   );
 };

@@ -126,3 +126,148 @@ export async function loadProjectData(projectId: string) {
         return { success: false, error: 'Failed to load project data' };
     }
 }
+
+// ========================================
+// Version Management Functions
+// ========================================
+
+const MAX_VERSIONS = 10;
+
+/**
+ * Create a version snapshot when manually saving
+ */
+export async function createProjectVersion(
+    projectId: string,
+    sources: FrontendEmissionSource[],
+    facilities: FrontendFacility[],
+    userId?: string,
+    versionName?: string
+) {
+    try {
+        // Get the next version number
+        const latestVersion = await prisma.projectVersion.findFirst({
+            where: { projectId },
+            orderBy: { versionNumber: 'desc' },
+            select: { versionNumber: true },
+        });
+
+        const nextVersionNumber = (latestVersion?.versionNumber || 0) + 1;
+
+        // Create the snapshot
+        const dataSnapshot = {
+            sources,
+            facilities,
+            createdAt: new Date().toISOString(),
+        };
+
+        // Create the version
+        const version = await prisma.projectVersion.create({
+            data: {
+                projectId,
+                versionNumber: nextVersionNumber,
+                versionName: versionName || `버전 ${nextVersionNumber}`,
+                dataSnapshot: dataSnapshot as unknown as Prisma.InputJsonValue,
+                createdBy: userId,
+            },
+        });
+
+        // Clean up old versions (keep only MAX_VERSIONS)
+        const allVersions = await prisma.projectVersion.findMany({
+            where: { projectId },
+            orderBy: { versionNumber: 'desc' },
+            select: { id: true },
+        });
+
+        if (allVersions.length > MAX_VERSIONS) {
+            const versionsToDelete = allVersions.slice(MAX_VERSIONS);
+            await prisma.projectVersion.deleteMany({
+                where: {
+                    id: { in: versionsToDelete.map((v: { id: string }) => v.id) },
+                },
+            });
+        }
+
+        return { success: true, data: version };
+    } catch (error: any) {
+        console.error('Failed to create project version:', error);
+        return { success: false, error: error.message || 'Failed to create version' };
+    }
+}
+
+/**
+ * Get all versions for a project
+ */
+export async function getProjectVersions(projectId: string) {
+    try {
+        const versions = await prisma.projectVersion.findMany({
+            where: { projectId },
+            orderBy: { versionNumber: 'desc' },
+            select: {
+                id: true,
+                versionNumber: true,
+                versionName: true,
+                createdAt: true,
+                createdBy: true,
+            },
+        });
+
+        return { success: true, data: versions };
+    } catch (error: any) {
+        console.error('Failed to get project versions:', error);
+        return { success: false, error: error.message || 'Failed to get versions' };
+    }
+}
+
+/**
+ * Get a specific version's data snapshot
+ */
+export async function getProjectVersionData(versionId: string) {
+    try {
+        const version = await prisma.projectVersion.findUnique({
+            where: { id: versionId },
+            select: {
+                id: true,
+                versionNumber: true,
+                versionName: true,
+                dataSnapshot: true,
+                createdAt: true,
+            },
+        });
+
+        if (!version) {
+            return { success: false, error: 'Version not found' };
+        }
+
+        return { success: true, data: version };
+    } catch (error: any) {
+        console.error('Failed to get version data:', error);
+        return { success: false, error: error.message || 'Failed to get version data' };
+    }
+}
+
+/**
+ * Restore a project to a specific version
+ */
+export async function restoreProjectVersion(projectId: string, versionId: string) {
+    try {
+        // Get the version data
+        const version = await prisma.projectVersion.findUnique({
+            where: { id: versionId },
+        });
+
+        if (!version || version.projectId !== projectId) {
+            return { success: false, error: 'Version not found or does not belong to this project' };
+        }
+
+        const snapshot = version.dataSnapshot as unknown as { sources: FrontendEmissionSource[]; facilities: FrontendFacility[] };
+
+        // Use saveProjectData to restore the data
+        const result = await saveProjectData(projectId, snapshot.sources, snapshot.facilities);
+
+        return result;
+    } catch (error: any) {
+        console.error('Failed to restore project version:', error);
+        return { success: false, error: error.message || 'Failed to restore version' };
+    }
+}
+

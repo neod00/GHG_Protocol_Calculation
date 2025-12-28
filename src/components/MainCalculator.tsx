@@ -26,8 +26,11 @@ import { ReportGenerator } from './ReportGenerator';
 import { Scope1Calculator } from './Scope1Calculator';
 import { Scope2Calculator } from './Scope2Calculator';
 import { Scope3Calculator } from './Scope3Calculator';
-import { createProject, saveProjectData } from '../app/actions/project';
+import { createProject, saveProjectData, createProjectVersion } from '../app/actions/project';
 import { createOrganization, requestScope3Access } from '../app/actions/organization';
+import { exportToExcel, ExcelExportData } from '../utils/excelExport';
+import { ExcelUploadModal } from './ExcelUploadModal';
+import { VersionHistoryModal } from './VersionHistoryModal';
 
 const allCategories = Object.values(EmissionCategory);
 
@@ -108,14 +111,17 @@ interface MainCalculatorProps {
 }
 
 export const MainCalculator: React.FC<MainCalculatorProps> = ({
-    projectId,
+    projectId: initialProjectId,
     initialProjectData,
     organizationId,
     hasScope3Access = false,
     scope3Requested = false,
     isAuthenticated = false
 }) => {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+
+    // Manage projectId as local state so it can be updated after saving
+    const [projectId, setProjectId] = useState<string | undefined>(initialProjectId);
 
     const [isScope3Requested, setIsScope3Requested] = useState(scope3Requested);
 
@@ -289,6 +295,21 @@ export const MainCalculator: React.FC<MainCalculatorProps> = ({
     const [activeTab, setActiveTab] = useState<ActiveTab>('scope1');
     const [isSaving, setIsSaving] = useState(false);
 
+    // Auto-save status
+    type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
+    const [autoSaveStatus, setAutoSaveStatus] = useState<SaveStatus>('idle');
+    const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+    const autoSaveTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    // Excel export status
+    const [isExporting, setIsExporting] = useState(false);
+
+    // Excel upload modal status
+    const [isExcelUploadOpen, setIsExcelUploadOpen] = useState(false);
+
+    // Version history modal status
+    const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false);
+
     // Auth Check Helper
     const checkAuth = useCallback((actionName?: string) => {
         if (!isAuthenticated) {
@@ -337,6 +358,9 @@ export const MainCalculator: React.FC<MainCalculatorProps> = ({
                     }
                 }
                 targetProjectId = storedProjectId;
+
+                // Update state with the new project ID
+                setProjectId(targetProjectId);
             }
 
             // 3. Save Data
@@ -353,13 +377,40 @@ export const MainCalculator: React.FC<MainCalculatorProps> = ({
             const saveResult = await saveProjectData(targetProjectId, allSources, facilities);
 
             if (saveResult.success) {
-                alert("Data saved to cloud successfully!");
+                // Update auto-save status and timestamp to sync with indicator
+                setAutoSaveStatus('saved');
+                setLastSavedAt(new Date());
+
+                // Clear any pending auto-save timeout since we just saved
+                if (autoSaveTimeoutRef.current) {
+                    clearTimeout(autoSaveTimeoutRef.current);
+                    autoSaveTimeoutRef.current = null;
+                }
+
+                // Create a version snapshot on manual save
+                if (targetProjectId) {
+                    createProjectVersion(targetProjectId, allSources, facilities)
+                        .then(result => {
+                            if (result.success) {
+                                console.log('[Version] Created version:', result.data?.versionNumber);
+                            } else {
+                                console.warn('[Version] Failed to create version:', result.error);
+                            }
+                        })
+                        .catch(err => {
+                            console.warn('[Version] Error creating version:', err);
+                        });
+                }
+
+                alert(language === 'ko' ? "데이터가 성공적으로 저장되었습니다!" : "Data saved to cloud successfully!");
             } else {
-                alert("Failed to save data: " + saveResult.error);
+                setAutoSaveStatus('error');
+                alert((language === 'ko' ? "저장 실패: " : "Failed to save data: ") + saveResult.error);
             }
 
         } catch (error: any) {
             console.error("Save error:", error);
+            setAutoSaveStatus('error');
             alert(`An error occurred while saving: ${error.message || error}`);
         } finally {
             setIsSaving(false);
@@ -411,6 +462,99 @@ export const MainCalculator: React.FC<MainCalculatorProps> = ({
         companyName, reportingYear, facilities, boundaryApproach, scope3Settings, isSetupComplete, sources,
         allFactors
     ]);
+
+
+    // Auto-save to Supabase for authenticated users with debounce (30 seconds)
+    useEffect(() => {
+        // Only auto-save if authenticated, setup complete, and we have a project ID
+        if (!isAuthenticated || !isSetupComplete || !projectId) {
+            return;
+        }
+
+        // Clear any existing timeout
+        if (autoSaveTimeoutRef.current) {
+            clearTimeout(autoSaveTimeoutRef.current);
+        }
+
+        // Set status to idle (not showing "saving" immediately for long debounce)
+        // Status will change to 'saving' when the save actually starts
+
+        // Debounce: wait 30 seconds before auto-saving (reduced server load)
+        autoSaveTimeoutRef.current = setTimeout(async () => {
+            setAutoSaveStatus('saving');
+            try {
+                // Flatten sources from all categories
+                const allSources: EmissionSource[] = [];
+                Object.values(sources).forEach(categorySources => {
+                    allSources.push(...categorySources);
+                });
+
+                const saveResult = await saveProjectData(projectId, allSources, facilities);
+
+                if (saveResult.success) {
+                    setAutoSaveStatus('saved');
+                    setLastSavedAt(new Date());
+                } else {
+                    console.error('Auto-save failed:', saveResult.error);
+                    setAutoSaveStatus('error');
+                }
+            } catch (error) {
+                console.error('Auto-save error:', error);
+                setAutoSaveStatus('error');
+            }
+        }, 30000); // 30 seconds debounce
+
+        // Cleanup on unmount or when dependencies change
+        return () => {
+            if (autoSaveTimeoutRef.current) {
+                clearTimeout(autoSaveTimeoutRef.current);
+            }
+        };
+    }, [sources, facilities, isAuthenticated, isSetupComplete, projectId]);
+
+    // Save on page unload (beforeunload) for authenticated users
+    useEffect(() => {
+        if (!isAuthenticated || !isSetupComplete || !projectId) {
+            return;
+        }
+
+        const handleBeforeUnload = async (event: BeforeUnloadEvent) => {
+            // Flatten sources from all categories
+            const allSources: EmissionSource[] = [];
+            Object.values(sources).forEach(categorySources => {
+                allSources.push(...categorySources);
+            });
+
+            // Use sendBeacon for reliable save on page unload
+            // Note: sendBeacon is limited, so we use fetch with keepalive
+            try {
+                // We cannot use async/await properly in beforeunload
+                // Instead, we trigger a synchronous-like save using fetch with keepalive
+                const payload = {
+                    projectId,
+                    sources: allSources,
+                    facilities
+                };
+
+                // Show browser's default "unsaved changes" dialog
+                // This gives time for the save to complete
+                event.preventDefault();
+                event.returnValue = '';
+
+                // Note: Server action cannot be called directly in beforeunload
+                // The auto-save with 30s debounce + manual save button should cover most cases
+                // This event mainly shows a warning to the user
+            } catch (error) {
+                console.error('Save on unload failed:', error);
+            }
+        };
+
+        window.addEventListener('beforeunload', handleBeforeUnload);
+
+        return () => {
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+        };
+    }, [sources, facilities, isAuthenticated, isSetupComplete, projectId]);
 
     // Auto-calculate Scope 3, Category 3 from Scope 2 data
     useEffect(() => {
@@ -1392,7 +1536,16 @@ export const MainCalculator: React.FC<MainCalculatorProps> = ({
         if (!Array.isArray(categoryFuels)) return { scope1: 0, scope2Location: 0, scope2Market: 0, scope3: 0 };
 
         const fuel = categoryFuels.find((f: any) => f.name === source.fuelType);
-        if (!fuel) return { scope1: 0, scope2Location: 0, scope2Market: 0, scope3: 0 };
+        if (!fuel) {
+            // Debug: Log when fuel type is not found
+            console.warn(`[Calculation Debug] Fuel not found for source:`, {
+                category: source.category,
+                fuelType: source.fuelType,
+                unit: source.unit,
+                availableFuels: categoryFuels.map((f: any) => f.name).slice(0, 5),
+            });
+            return { scope1: 0, scope2Location: 0, scope2Market: 0, scope3: 0 };
+        }
 
         const scope = getScopeForCategory(source.category);
 
@@ -1585,6 +1738,76 @@ export const MainCalculator: React.FC<MainCalculatorProps> = ({
         }[boundaryApproach];
     }, [t, boundaryApproach]);
 
+    // Excel Export Handler
+    const handleExportToExcel = useCallback(() => {
+        setIsExporting(true);
+        try {
+            const exportData: ExcelExportData = {
+                companyName,
+                reportingYear,
+                boundaryApproach,
+                facilities,
+                sources,
+                results,
+            };
+
+            // Use language from context
+            exportToExcel(exportData, language);
+
+        } catch (error) {
+            console.error('Excel export error:', error);
+            alert('Failed to export Excel file. Please try again.');
+        } finally {
+            setIsExporting(false);
+        }
+    }, [companyName, reportingYear, boundaryApproach, facilities, sources, results, language]);
+
+    // Excel Import Handler
+    const handleExcelImport = useCallback((importedSources: EmissionSource[]) => {
+        // Group imported sources by category
+        const newSources = { ...sources };
+
+        importedSources.forEach(source => {
+            const category = source.category;
+            if (newSources[category]) {
+                // Add new source with unique ID
+                newSources[category] = [
+                    ...newSources[category],
+                    { ...source, id: `imported-${Date.now()}-${Math.random().toString(36).substr(2, 9)}` }
+                ];
+            }
+        });
+
+        setSources(newSources);
+
+        // Show success message
+        alert(language === 'ko'
+            ? `${importedSources.length}개의 데이터가 성공적으로 가져와졌습니다.`
+            : `${importedSources.length} entries have been imported successfully.`
+        );
+    }, [sources, language]);
+
+    // Handle restoring from a version
+    const handleVersionRestore = useCallback((restoredSources: EmissionSource[], restoredFacilities: Facility[]) => {
+        // Rebuild sources object by category
+        const newSources: Record<EmissionCategory, EmissionSource[]> = {} as Record<EmissionCategory, EmissionSource[]>;
+
+        // Initialize all categories with empty arrays
+        Object.values(EmissionCategory).forEach(cat => {
+            newSources[cat] = [];
+        });
+
+        // Populate with restored sources
+        restoredSources.forEach(source => {
+            if (newSources[source.category]) {
+                newSources[source.category].push(source);
+            }
+        });
+
+        setSources(newSources);
+        setFacilities(restoredFacilities);
+    }, []);
+
     const handleSaveSetup = useCallback((details: {
         companyName: string;
         reportingYear: string;
@@ -1722,7 +1945,49 @@ export const MainCalculator: React.FC<MainCalculatorProps> = ({
                 {/* Decorative background elements */}
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-64 bg-gradient-to-b from-teal-50/50 to-transparent dark:from-teal-900/10 pointer-events-none -z-10"></div>
 
-                <div className="flex justify-end mb-4">
+                <div className="flex justify-end items-center gap-4 mb-4">
+                    {/* Auto-save status indicator for authenticated users */}
+                    {isAuthenticated && projectId && (
+                        <div className="flex items-center gap-2 text-sm">
+                            {autoSaveStatus === 'saving' && (
+                                <span className="flex items-center text-blue-500 dark:text-blue-400">
+                                    <svg className="animate-spin h-4 w-4 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    {t('autoSaving')}
+                                </span>
+                            )}
+                            {autoSaveStatus === 'saved' && (
+                                <span className="flex items-center text-green-500 dark:text-green-400">
+                                    <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                    {t('autoSaved')}
+                                    {lastSavedAt && (
+                                        <span className="ml-1 text-slate-400 dark:text-slate-500">
+                                            · {lastSavedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        </span>
+                                    )}
+                                </span>
+                            )}
+                            {autoSaveStatus === 'error' && (
+                                <span className="flex items-center text-red-500 dark:text-red-400">
+                                    <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                    </svg>
+                                    {t('autoSaveFailed')}
+                                    <button
+                                        onClick={handleSaveToCloud}
+                                        className="ml-2 underline hover:no-underline"
+                                    >
+                                        {t('autoSaveRetry')}
+                                    </button>
+                                </span>
+                            )}
+                        </div>
+                    )}
+
                     <button
                         onClick={handleSaveToCloud}
                         disabled={isSaving}
@@ -1738,10 +2003,53 @@ export const MainCalculator: React.FC<MainCalculatorProps> = ({
                             </>
                         ) : (
                             <>
-                                <span className="mr-2">☁️</span> {t('saveToCloud')}
+                                <span className="mr-2">💾</span> {t('saveProject')}
                             </>
                         )}
                     </button>
+
+                    {/* Excel Export Button */}
+                    <button
+                        onClick={handleExportToExcel}
+                        disabled={isExporting}
+                        className="bg-white dark:bg-slate-700 border-2 border-green-500 hover:bg-green-50 dark:hover:bg-slate-600 text-green-600 dark:text-green-400 font-bold py-2 px-4 rounded inline-flex items-center transition-colors shadow-sm"
+                    >
+                        {isExporting ? (
+                            <>
+                                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                {t('exportingExcel')}
+                            </>
+                        ) : (
+                            <>
+                                <span className="mr-2">📊</span> {t('exportToExcel')}
+                            </>
+                        )}
+                    </button>
+
+                    {/* Excel Import Button */}
+                    <button
+                        onClick={() => setIsExcelUploadOpen(true)}
+                        className="bg-white dark:bg-slate-700 border-2 border-purple-500 hover:bg-purple-50 dark:hover:bg-slate-600 text-purple-600 dark:text-purple-400 font-bold py-2 px-4 rounded inline-flex items-center transition-colors shadow-sm"
+                    >
+                        <span className="mr-2">📥</span> {t('importFromExcel')}
+                    </button>
+
+                    {/* Version History Button - Only for authenticated users */}
+                    {isAuthenticated && (
+                        <button
+                            onClick={() => projectId ? setIsVersionHistoryOpen(true) : alert(language === 'ko' ? '먼저 프로젝트를 저장해주세요.' : 'Please save the project first.')}
+                            className={`font-bold py-2 px-4 rounded inline-flex items-center transition-colors shadow-sm ${projectId
+                                ? 'bg-white dark:bg-slate-700 border-2 border-orange-500 hover:bg-orange-50 dark:hover:bg-slate-600 text-orange-600 dark:text-orange-400'
+                                : 'bg-slate-100 dark:bg-slate-800 border-2 border-slate-300 dark:border-slate-600 text-slate-400 dark:text-slate-500 cursor-not-allowed'
+                                }`}
+                            title={!projectId ? (language === 'ko' ? '먼저 저장 후 사용 가능' : 'Save first to enable') : ''}
+                        >
+                            <span className="mr-2">🕐</span> {t('versionHistory')}
+                        </button>
+                    )}
                 </div>
 
                 <div className="mb-12 animate-slide-up" style={{ animationDelay: '0.1s' }}>
@@ -1896,6 +2204,20 @@ export const MainCalculator: React.FC<MainCalculatorProps> = ({
                 sources={sources}
                 allFactors={allFactors}
                 scope3Settings={scope3Settings}
+            />
+
+            <ExcelUploadModal
+                isOpen={isExcelUploadOpen}
+                onClose={() => setIsExcelUploadOpen(false)}
+                facilities={facilities}
+                onImport={handleExcelImport}
+            />
+
+            <VersionHistoryModal
+                isOpen={isVersionHistoryOpen}
+                onClose={() => setIsVersionHistoryOpen(false)}
+                projectId={projectId ?? null}
+                onRestore={handleVersionRestore}
             />
         </div>
     );
