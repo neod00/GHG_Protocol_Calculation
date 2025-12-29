@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { CalculationMethod } from '../types';
 import { useTranslation } from '../context/LanguageContext';
 import { IconInfo, IconChevronRight, IconChevronLeft } from './IconComponents';
+import { Portal } from './Portal';
 
 interface MethodologyWizardProps {
   isOpen: boolean;
@@ -188,8 +189,6 @@ export const MethodologyWizard: React.FC<MethodologyWizardProps> = ({
   const [history, setHistory] = useState<QuestionId[]>([]);
   const [result, setResult] = useState<Result | null>(null);
 
-  if (!isOpen) return null;
-
   const currentQuestion = QUESTIONS.find(q => q.id === currentQuestionId);
 
   const handleAnswer = (answer: 'yes' | 'no') => {
@@ -258,15 +257,29 @@ export const MethodologyWizard: React.FC<MethodologyWizardProps> = ({
     }
   };
 
+  if (!isOpen) return null;
+
   return (
-    <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
-      onClick={handleBackdropClick}
-    >
+    <Portal>
       <div 
-        className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
+        className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+        style={{ 
+          top: '0',
+          left: '0',
+          right: '0',
+          bottom: '0',
+          position: 'fixed',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999
+        }}
+        onClick={handleBackdropClick}
       >
+        <div 
+          className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden relative"
+          onClick={(e) => e.stopPropagation()}
+        >
         {/* Header */}
         <div className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white p-6">
           <div className="flex items-center justify-between">
@@ -486,8 +499,9 @@ export const MethodologyWizard: React.FC<MethodologyWizardProps> = ({
             </p>
           )}
         </div>
+        </div>
       </div>
-    </div>
+    </Portal>
   );
 };
 
