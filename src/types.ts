@@ -63,7 +63,7 @@ export interface Facility {
   isCorporate?: boolean; // New field to identify the special corporate-level facility
 }
 
-export type CalculationMethod = 'supplier_co2e' | 'activity' | 'spend';
+export type CalculationMethod = 'supplier_co2e' | 'activity' | 'spend' | 'hybrid';
 export type Cat4CalculationMethod = 'activity' | 'fuel' | 'spend' | 'supplier_specific';
 export type Cat5CalculationMethod = 'activity' | 'supplier_specific' | 'spend';
 export type Cat6CalculationMethod = 'activity' | 'fuel' | 'spend' | 'supplier_specific';
@@ -90,6 +90,112 @@ export type FranchiseType = 'Restaurant' | 'Retail' | 'Service' | 'ConvenienceSt
 export type InvestmentType = 'Equity' | 'Debt' | 'ProjectFinance' | 'RealEstate' | 'Other';
 export type CapitalGoodsType = 'Building' | 'Vehicle' | 'ManufacturingEquipment' | 'ITEquipment' | 'OfficeEquipment' | 'Other';
 
+// Category 1 Factor Types for UI grouping
+export type Category1FactorType = 
+  | 'rawMaterials_metals'
+  | 'rawMaterials_plastics'
+  | 'rawMaterials_chemicals'
+  | 'rawMaterials_construction'
+  | 'packaging'
+  | 'electronics'
+  | 'officeSupplies'
+  | 'ppeSafety'
+  | 'services'
+  | 'foodAgricultural'
+  | 'textiles'
+  | 'custom';
+
+// Data Quality Indicator (DQI) for GHG Protocol compliance
+// Each dimension scored 1-5 (1=Very Good, 5=Very Poor)
+export interface DataQualityIndicator {
+  technologicalRep: 1 | 2 | 3 | 4 | 5;  // How well data reflects actual technology/process
+  temporalRep: 1 | 2 | 3 | 4 | 5;       // How recent the data is (1=same year, 5=>10 years old)
+  geographicalRep: 1 | 2 | 3 | 4 | 5;   // How well data reflects geographic conditions
+  completeness: 1 | 2 | 3 | 4 | 5;      // Extent of upstream activities covered
+  reliability: 1 | 2 | 3 | 4 | 5;       // Verification status (1=3rd party verified, 5=estimate)
+}
+
+// Helper function to calculate weighted DQI score
+export const calculateDQIScore = (dqi: DataQualityIndicator): number => {
+  const weights = {
+    technologicalRep: 0.25,
+    temporalRep: 0.20,
+    geographicalRep: 0.20,
+    completeness: 0.20,
+    reliability: 0.15,
+  };
+  
+  const weightedSum = 
+    dqi.technologicalRep * weights.technologicalRep +
+    dqi.temporalRep * weights.temporalRep +
+    dqi.geographicalRep * weights.geographicalRep +
+    dqi.completeness * weights.completeness +
+    dqi.reliability * weights.reliability;
+  
+  return Math.round(weightedSum * 100) / 100;
+};
+
+// Get quality rating from DQI score
+export const getDQIRating = (score: number): 'high' | 'medium' | 'low' | 'estimated' => {
+  if (score <= 1.5) return 'high';
+  if (score <= 2.5) return 'medium';
+  if (score <= 3.5) return 'low';
+  return 'estimated';
+};
+
+// ============================================================================
+// Hybrid Method Types for Category 1
+// ============================================================================
+
+// Input material for hybrid method
+export interface HybridMaterialInput {
+  id: string;
+  materialName: string;           // 물질명 (from database or custom)
+  quantity: number;               // 투입량
+  unit: string;                   // 단위 (kg, tonnes, etc.)
+  emissionFactor: number;         // Cradle-to-Gate 배출계수 (kgCO₂e/unit)
+  factorSource?: string;          // 배출계수 출처
+}
+
+// Transport for hybrid method
+export interface HybridTransportInput {
+  id: string;
+  description?: string;           // 설명 (선택)
+  transportMode: TransportMode;   // 운송 수단
+  vehicleType?: string;           // 차량 유형
+  weightTonnes: number;           // 운송량 (tonnes)
+  distanceKm: number;             // 운송 거리 (km)
+  emissionFactor?: number;        // 배출계수 (kgCO₂e/tonne-km) - 선택, 없으면 기본값
+}
+
+// Waste for hybrid method
+export interface HybridWasteInput {
+  id: string;
+  wasteType: WasteType;           // 폐기물 종류
+  treatmentMethod: TreatmentMethod; // 처리 방법
+  quantity: number;               // 폐기량
+  unit: string;                   // 단위 (kg, tonnes)
+  emissionFactor?: number;        // 배출계수 - 선택, 없으면 기본값
+}
+
+// Complete hybrid calculation data
+export interface HybridCalculationData {
+  // 1. 공급업체 Scope 1, 2 할당 배출량
+  supplierScope12?: {
+    totalEmissions: number;       // 공급업체의 총 Scope 1,2 배출량 (kgCO₂e)
+    allocationBasis: 'revenue' | 'quantity' | 'custom'; // 할당 기준
+    allocationPercentage: number; // 할당 비율 (%)
+  };
+  
+  // 2. 투입 물질별 배출량
+  materialInputs: HybridMaterialInput[];
+  
+  // 3. 운송 배출량
+  transportInputs: HybridTransportInput[];
+  
+  // 4. 폐기물 처리 배출량
+  wasteInputs: HybridWasteInput[];
+}
 
 export interface EmissionSource {
   id: string;
@@ -158,8 +264,15 @@ export interface EmissionSource {
     justification?: string;
   }
   dataQualityRating?: 'high' | 'medium' | 'low' | 'estimated';
+  dataQualityIndicator?: DataQualityIndicator; // Detailed DQI for GHG Protocol compliance
   assumptions?: string;
   activityDataSource?: string; // e.g., "Monthly electricity bills", "Fuel purchase records"
+  
+  // Category 1 specific fields
+  cat1FactorType?: Category1FactorType; // Selected factor category for UI
+  selectedFactorName?: string; // Name of selected factor from database
+  isFactorFromDatabase?: boolean; // Whether factor was selected from DB or manually entered
+  hybridData?: HybridCalculationData; // Data for hybrid calculation method
   
   // New fields for advanced Scope 3 Category 3 calculation
   activityType?: 'fuel_wtt' | 'energy_upstream' | 'spend_based';

@@ -1008,6 +1008,52 @@ export const MainCalculator: React.FC<MainCalculatorProps> = ({
             if (source.calculationMethod === 'supplier_co2e') {
                 return { scope1: 0, scope2Location: 0, scope2Market: 0, scope3: source.supplierProvidedCO2e || 0 };
             }
+            
+            // Hybrid method calculation
+            if (source.calculationMethod === 'hybrid' && source.hybridData) {
+                let total = 0;
+                const hd = source.hybridData;
+                
+                // 1. Supplier Scope 1,2 allocation
+                if (hd.supplierScope12) {
+                    total += (hd.supplierScope12.totalEmissions * hd.supplierScope12.allocationPercentage) / 100;
+                }
+                
+                // 2. Material inputs (Cradle-to-Gate)
+                hd.materialInputs.forEach(m => {
+                    const quantityKg = m.unit === 'tonnes' ? m.quantity * 1000 : m.quantity;
+                    total += quantityKg * m.emissionFactor;
+                });
+                
+                // 3. Transport inputs (upstream transport of materials to supplier)
+                const transportFactors: Record<string, number> = {
+                    'Road': 0.062,
+                    'Rail': 0.022,
+                    'Sea': 0.016,
+                    'Air': 0.602,
+                };
+                hd.transportInputs.forEach(tr => {
+                    const factor = tr.emissionFactor || transportFactors[tr.transportMode] || 0;
+                    total += tr.weightTonnes * tr.distanceKm * factor;
+                });
+                
+                // 4. Waste inputs (waste from production at supplier)
+                const wasteFactors: Record<string, number> = {
+                    'Landfill': 0.587,
+                    'Incineration': 0.989,
+                    'Recycling': 0.021,
+                    'Composting': 0.023,
+                    'AnaerobicDigestion': 0.018,
+                };
+                hd.wasteInputs.forEach(w => {
+                    const factor = w.emissionFactor || wasteFactors[w.treatmentMethod] || 0;
+                    const quantityKg = w.unit === 'tonnes' ? w.quantity * 1000 : w.quantity;
+                    total += quantityKg * factor;
+                });
+                
+                return { scope1: 0, scope2Location: 0, scope2Market: 0, scope3: total };
+            }
+            
             const totalActivity = source.monthlyQuantities.reduce((sum, q) => sum + q, 0);
             const emissions = totalActivity * (source.factor || 0);
             return { scope1: 0, scope2Location: 0, scope2Market: 0, scope3: emissions };
