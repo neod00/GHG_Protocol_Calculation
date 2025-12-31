@@ -5,7 +5,7 @@ export const FUEL_ENERGY_ACTIVITIES_FACTORS: CO2eFactorFuel[] = [
   { name: 'Natural Gas (WTT)', translationKey: 'naturalGasWTT', units: ['cubic meters', 'therms'], factors: { 'cubic meters': 0.5, 'therms': 1.4 } },
   { name: 'Gasoline (WTT)', translationKey: 'gasolineWTT', units: ['liters', 'gallons'], factors: { 'liters': 0.6, 'gallons': 2.2 } },
   { name: 'Diesel (WTT)', translationKey: 'dieselWTT', units: ['liters', 'gallons'], factors: { 'liters': 0.7, 'gallons': 2.7 } },
-  { name: 'Heating Oil (WTT)', translationKey: 'heatingOilWTT', units: ['liters', 'gallons'], factors: { 'liters': 0.75, 'gallons': 2.8 } },
+  { name: 'Kerosene / Heating Oil (WTT)', translationKey: 'heatingOilWTT', units: ['liters', 'gallons'], factors: { 'liters': 0.75, 'gallons': 2.8 } },
 ];
 
 // Simplified upstream factors for purchased energy (steam, heat, etc.), representing WTT of fuel used for generation.

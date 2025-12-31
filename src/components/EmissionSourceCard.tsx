@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 // Fix: Removed non-existent 'Fuel' type from import.
-import { EmissionCategory, EmissionSource, Refrigerant, Facility, BoundaryApproach, CO2eFactorFuel } from '../types';
+import { EmissionCategory, EmissionSource, Refrigerant, Facility, BoundaryApproach, CO2eFactorFuel, CalculationResult } from '../types';
 import { SourceInputRow } from './SourceInputRow';
 import { IconFactory, IconCar, IconFugitive, IconChevronDown, IconProcess, IconSteam, IconInfo, IconWaste, IconBriefcase, IconUsers, IconRecycle, IconValueChain } from './IconComponents';
 import { useTranslation } from '../context/LanguageContext';
@@ -15,13 +15,14 @@ interface EmissionSourceCardProps {
   // Fix: Removed non-existent 'Fuel' type.
   fuels: any;
   // Fix: Updated calculateEmissions prop type to align with implementation and remove unused 'biogenic' property.
-  calculateEmissions: (source: EmissionSource) => { scope1: number, scope2Location: number, scope2Market: number, scope3: number };
+  calculateEmissions: (source: EmissionSource) => CalculationResult;
   description: string;
   facilities: Facility[];
   isOpen: boolean;
   onToggle: () => void;
   boundaryApproach: BoundaryApproach;
   isDisabled?: boolean;
+  isAuditModeEnabled?: boolean;
 }
 
 const ICONS: Record<EmissionCategory, React.ReactNode> = {
@@ -65,6 +66,7 @@ export const EmissionSourceCard: React.FC<EmissionSourceCardProps> = ({
   onToggle,
   boundaryApproach,
   isDisabled = false,
+  isAuditModeEnabled = false,
 }) => {
   const { t } = useTranslation();
 
@@ -155,6 +157,7 @@ export const EmissionSourceCard: React.FC<EmissionSourceCardProps> = ({
                   fuels={fuels}
                   facilities={facilities}
                   calculateEmissions={calculateEmissions}
+                  isAuditModeEnabled={isAuditModeEnabled}
                 />
               ))
             ) : (

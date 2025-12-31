@@ -21,6 +21,7 @@ interface ReportGeneratorProps {
         scope3Total: number;
         facilityBreakdown: { [facilityId: string]: { scope1: number; scope2Location: number, scope2Market: number, scope3: number } };
         scope3CategoryBreakdown: { [key: string]: number };
+        sourceFormulas?: { [sourceId: string]: string };
     };
     facilities: Facility[];
     boundaryApproach: BoundaryApproach;
@@ -604,6 +605,44 @@ export const ReportGenerator: React.FC<ReportGeneratorProps> = ({
                             <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded border-l-4 border-gray-400">
                                 {t('ch7PolicyText')}
                             </p>
+                        </section>
+
+                        <div className="page-break"></div>
+
+                        {/* --- ANNEX: CALCULATION DETAIL --- */}
+                        <section className="mb-12">
+                            <h2 className="report-h1 border-b-4 border-amber-500 pb-2 mb-6">
+                                {language === 'ko' ? '부록: 산정 인벤토리 및 상세 수식' : 'Annex: Calculation Inventory & Formulas'}
+                            </h2>
+                            <p className="text-sm text-gray-700 mb-6 font-medium">
+                                {language === 'ko' ? '본 부록은 투명성 강화를 위해 각 배출원별로 적용된 상세 산정 수식과 계수를 명시합니다.' : 'This annex provides transparency into the specific calculation formulas and factors applied for each emission source.'}
+                            </p>
+
+                            <table className="report-table">
+                                <thead>
+                                    <tr className="bg-amber-50">
+                                        <th className="w-1/4">{t('description')}</th>
+                                        <th className="w-1/6">{t('category')}</th>
+                                        <th>{language === 'ko' ? '산정 수식 (검증 모드)' : 'Calculation Formula (Audit Mode)'}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {Object.values(EmissionCategory).map(category => (
+                                        (sources[category] || []).map(source => (
+                                            <tr key={source.id} className="keep-together">
+                                                <td className="font-semibold text-xs">{source.description || source.fuelType || '-'}</td>
+                                                <td className="text-[11px] text-gray-500">{t(category as TranslationKey)}</td>
+                                                <td className="font-mono text-[10px] text-amber-900 bg-amber-50/50 p-2 border border-amber-100 rounded">
+                                                    {results.sourceFormulas?.[source.id] || '-'}
+                                                </td>
+                                            </tr>
+                                        ))
+                                    ))}
+                                    {Object.values(sources).flat().length === 0 && (
+                                        <tr><td colSpan={3} className="text-center text-gray-400 py-8">No emission sources found.</td></tr>
+                                    )}
+                                </tbody>
+                            </table>
                         </section>
 
                         {/* --- FOOTER --- */}

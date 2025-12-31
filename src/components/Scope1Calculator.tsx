@@ -1,6 +1,6 @@
 import React from 'react';
 import { EmissionSourceCard } from './EmissionSourceCard';
-import { EmissionCategory, EmissionSource, Refrigerant, Facility, BoundaryApproach, CO2eFactorFuel } from '../types';
+import { EmissionCategory, EmissionSource, Refrigerant, Facility, BoundaryApproach, CO2eFactorFuel, CalculationResult } from '../types';
 
 interface ScopeCalculatorProps {
   sources: { [key in EmissionCategory]?: EmissionSource[] };
@@ -9,12 +9,13 @@ interface ScopeCalculatorProps {
   onRemoveSource: (id: string, category: EmissionCategory) => void;
   onFuelTypeChange: (id: string, newFuelType: string, category: EmissionCategory) => void;
   fuelsMap: { [key in EmissionCategory]?: (CO2eFactorFuel | Refrigerant)[] };
-  calculateEmissions: (source: EmissionSource) => { scope1: number, scope2Location: number, scope2Market: number, scope3: number };
+  calculateEmissions: (source: EmissionSource) => CalculationResult;
   categoryDescriptions: Record<EmissionCategory, string>;
   facilities: Facility[];
   openCategory: EmissionCategory | null;
   onToggleCategory: (category: EmissionCategory) => void;
   boundaryApproach: BoundaryApproach;
+  isAuditModeEnabled?: boolean;
 }
 
 const scope1Categories = [
@@ -44,6 +45,7 @@ export const Scope1Calculator: React.FC<ScopeCalculatorProps> = (props) => {
           isOpen={props.openCategory === category}
           onToggle={() => props.onToggleCategory(category)}
           boundaryApproach={props.boundaryApproach}
+          isAuditModeEnabled={props.isAuditModeEnabled}
         />
       ))}
     </>

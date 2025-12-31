@@ -16,6 +16,7 @@ export interface ExcelExportData {
         totalEmissionsMarket: number;
         facilityBreakdown: { [facilityId: string]: { scope1: number, scope2Location: number, scope2Market: number, scope3: number } };
         scope3CategoryBreakdown: { [category: string]: number };
+        sourceFormulas?: { [sourceId: string]: string };
     };
 }
 
@@ -136,7 +137,7 @@ export function exportToExcel(data: ExcelExportData, language: 'en' | 'ko' = 'ko
         [],
         [isKorean ? '시설' : 'Facility', isKorean ? '카테고리' : 'Category', isKorean ? '설명' : 'Description',
         isKorean ? '연료/물질' : 'Fuel/Material', isKorean ? '단위' : 'Unit',
-        ...months, isKorean ? '연간 합계' : 'Annual Total'],
+        ...months, isKorean ? '연간 합계' : 'Annual Total', isKorean ? '산정 경로' : 'Calculation Path'],
     ];
 
     scope1Categories.forEach(category => {
@@ -152,13 +153,14 @@ export function exportToExcel(data: ExcelExportData, language: 'en' | 'ko' = 'ko
                 source.unit || '-',
                 ...source.monthlyQuantities.map(q => formatNumber(q, 2)),
                 formatNumber(total, 2),
+                data.results.sourceFormulas?.[source.id] || '-',
             ]);
         });
     });
 
     const scope1Sheet = XLSX.utils.aoa_to_sheet(scope1Data);
     scope1Sheet['!cols'] = [{ wch: 20 }, { wch: 25 }, { wch: 25 }, { wch: 20 }, { wch: 10 },
-    ...Array(12).fill({ wch: 10 }), { wch: 12 }];
+    ...Array(12).fill({ wch: 10 }), { wch: 12 }, { wch: 60 }];
     XLSX.utils.book_append_sheet(workbook, scope1Sheet, 'Scope 1');
 
     // ========================================
@@ -169,7 +171,7 @@ export function exportToExcel(data: ExcelExportData, language: 'en' | 'ko' = 'ko
         [],
         [isKorean ? '시설' : 'Facility', isKorean ? '설명' : 'Description',
         isKorean ? '에너지 유형' : 'Energy Type', isKorean ? '단위' : 'Unit',
-        ...months, isKorean ? '연간 합계' : 'Annual Total'],
+        ...months, isKorean ? '연간 합계' : 'Annual Total', isKorean ? '산정 경로' : 'Calculation Path'],
     ];
 
     const scope2Sources = data.sources[EmissionCategory.PurchasedEnergy] || [];
@@ -183,12 +185,13 @@ export function exportToExcel(data: ExcelExportData, language: 'en' | 'ko' = 'ko
             source.unit || '-',
             ...source.monthlyQuantities.map(q => formatNumber(q, 2)),
             formatNumber(total, 2),
+            data.results.sourceFormulas?.[source.id] || '-',
         ]);
     });
 
     const scope2Sheet = XLSX.utils.aoa_to_sheet(scope2Data);
     scope2Sheet['!cols'] = [{ wch: 20 }, { wch: 25 }, { wch: 20 }, { wch: 10 },
-    ...Array(12).fill({ wch: 10 }), { wch: 12 }];
+    ...Array(12).fill({ wch: 10 }), { wch: 12 }, { wch: 60 }];
     XLSX.utils.book_append_sheet(workbook, scope2Sheet, 'Scope 2');
 
     // ========================================
@@ -217,7 +220,7 @@ export function exportToExcel(data: ExcelExportData, language: 'en' | 'ko' = 'ko
         [],
         [isKorean ? '시설' : 'Facility', isKorean ? '카테고리' : 'Category', isKorean ? '설명' : 'Description',
         isKorean ? '항목' : 'Item', isKorean ? '산정 방법' : 'Calculation Method', isKorean ? '단위' : 'Unit',
-        ...months, isKorean ? '연간 합계' : 'Annual Total'],
+        ...months, isKorean ? '연간 합계' : 'Annual Total', isKorean ? '산정 경로' : 'Calculation Path'],
     ];
 
     scope3Categories.forEach(category => {
@@ -234,13 +237,14 @@ export function exportToExcel(data: ExcelExportData, language: 'en' | 'ko' = 'ko
                 source.unit || '-',
                 ...source.monthlyQuantities.map(q => formatNumber(q, 2)),
                 formatNumber(total, 2),
+                data.results.sourceFormulas?.[source.id] || '-',
             ]);
         });
     });
 
     const scope3Sheet = XLSX.utils.aoa_to_sheet(scope3Data);
     scope3Sheet['!cols'] = [{ wch: 20 }, { wch: 35 }, { wch: 25 }, { wch: 20 }, { wch: 15 }, { wch: 10 },
-    ...Array(12).fill({ wch: 10 }), { wch: 12 }];
+    ...Array(12).fill({ wch: 10 }), { wch: 12 }, { wch: 60 }];
     XLSX.utils.book_append_sheet(workbook, scope3Sheet, 'Scope 3');
 
     // ========================================

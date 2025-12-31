@@ -45,6 +45,7 @@ const AddEditForm: React.FC<{
     const [name, setName] = useState(initialData?.name || '');
     const [unitsStr, setUnitsStr] = useState(initialData?.units?.join(', ') || '');
     const [factors, setFactors] = useState(initialData?.factors || {});
+    const [source, setSource] = useState(initialData?.source || '');
     const [gwp, setGwp] = useState(initialData?.gwp || 0);
 
     const handleUnitsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -70,7 +71,7 @@ const AddEditForm: React.FC<{
         } else {
             const units = unitsStr.split(',').map((u: string) => u.trim()).filter(Boolean);
             if (units.length === 0) return;
-            itemData = { name, units, factors };
+            itemData = { name, units, factors, source };
         }
 
         if (isEditing) {
@@ -85,6 +86,7 @@ const AddEditForm: React.FC<{
             <h4 className="font-semibold text-ghg-dark dark:text-gray-100 mb-2">{isEditing ? t('edit') : t('addNewSource')}</h4>
             <div className="space-y-3">
                 <input type="text" placeholder={t('sourceName')} value={name} onChange={e => setName(e.target.value)} className="w-full bg-white text-gray-900 border border-gray-300 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100 rounded-md shadow-sm py-1 px-2 text-sm focus:outline-none focus:ring-ghg-green focus:border-ghg-green" />
+                <input type="text" placeholder={t('source') + " (Optional)"} value={source} onChange={e => setSource(e.target.value)} className="w-full bg-white text-gray-900 border border-gray-300 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100 rounded-md shadow-sm py-1 px-2 text-sm focus:outline-none focus:ring-ghg-green focus:border-ghg-green mt-2" />
                 {isFugitive ? (
                     <div className="flex items-center gap-2">
                         <label className="text-sm w-1/3">{t('gwp')}</label>
@@ -472,6 +474,22 @@ export const FactorManager: React.FC<FactorManagerProps> = ({
 
     const [formState, setFormState] = useState<{ mode: 'hidden' | 'add' | 'edit', item?: any, categoryKey?: FactorCategoryKey }>({ mode: 'hidden' });
 
+    // State for tracking which items have their detail panel expanded
+    const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+
+    const toggleExpand = (itemId: string) => {
+        setExpandedItems(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(itemId)) {
+                newSet.delete(itemId);
+            } else {
+                newSet.add(itemId);
+            }
+            return newSet;
+        });
+    };
+
+
     const [selectedRegion, setSelectedRegion] = useState<string>(() => {
         const electricitySource = allFactors.scope2?.find((s: any) => s.name === 'Grid Electricity');
         if (electricitySource && 'factors' in electricitySource) {
@@ -557,42 +575,131 @@ export const FactorManager: React.FC<FactorManagerProps> = ({
                         )}
                     </div>
                 )}
-                {data.map((item: any, index) => (
-                    <div key={item.id || item.name} className="p-3 bg-gray-50 rounded-lg border dark:bg-gray-800 dark:border-gray-600">
-                        <div className="flex justify-between items-center">
-                            <h3 className="font-semibold text-ghg-dark dark:text-gray-100">
-                                {language === 'ko' && item.translationKey ? t(item.translationKey as TranslationKey) : item.name}
-                                {item.isCustom && <span className="ml-2 text-xs font-semibold bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full dark:bg-blue-900 dark:text-blue-200">{t('custom')}</span>}
-                            </h3>
-                            {item.isCustom && (
-                                <div className="flex gap-2">
-                                    <button onClick={() => { if (onRequireAuth && !onRequireAuth()) return; setFormState({ mode: 'edit', item, categoryKey }) }} className="text-gray-500 hover:text-ghg-green"><IconPencil className="w-4 h-4" /></button>
-                                    <button onClick={() => { if (onRequireAuth && !onRequireAuth()) return; onDeleteFactor(categoryKey, item.id) }} className="text-gray-400 hover:text-red-500"><IconTrash className="w-4 h-4" /></button>
+                {data.map((item: any, index) => {
+                    const itemId = item.id || item.name;
+                    const isExpanded = expandedItems.has(itemId);
+                    const hasDetailedData = item.netHeatingValue || item.co2EF || item.ch4EF || item.n2oEF;
+
+                    return (
+                        <div key={itemId} className="p-3 bg-gray-50 rounded-lg border dark:bg-gray-800 dark:border-gray-600">
+                            <div className="flex justify-between items-center">
+                                <h3 className="font-semibold text-ghg-dark dark:text-gray-100">
+                                    {language === 'ko' && item.translationKey ? t(item.translationKey as TranslationKey) : item.name}
+                                    {item.isCustom && <span className="ml-2 text-xs font-semibold bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full dark:bg-blue-900 dark:text-blue-200">{t('custom')}</span>}
+                                    {item.isVerified && <span className="ml-2 text-xs font-semibold bg-green-100 text-green-800 px-2 py-0.5 rounded-full dark:bg-green-900 dark:text-green-200">✓ {t('verifiedData')}</span>}
+                                </h3>
+                                <div className="flex gap-2 items-center">
+                                    {/* Detail toggle button - only show if there's detailed data */}
+                                    {hasDetailedData && !isFugitive && (
+                                        <button
+                                            onClick={() => toggleExpand(itemId)}
+                                            className="text-xs px-2 py-1 rounded-md bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors flex items-center gap-1"
+                                        >
+                                            {isExpanded ? (
+                                                <><IconChevronUp className="w-3 h-3" /> {t('hideDetails')}</>
+                                            ) : (
+                                                <><IconChevronDown className="w-3 h-3" /> {t('viewDetails')}</>
+                                            )}
+                                        </button>
+                                    )}
+                                    {item.isCustom && (
+                                        <>
+                                            <button onClick={() => { if (onRequireAuth && !onRequireAuth()) return; setFormState({ mode: 'edit', item, categoryKey }) }} className="text-gray-500 hover:text-ghg-green"><IconPencil className="w-4 h-4" /></button>
+                                            <button onClick={() => { if (onRequireAuth && !onRequireAuth()) return; onDeleteFactor(categoryKey, item.id) }} className="text-gray-400 hover:text-red-500"><IconTrash className="w-4 h-4" /></button>
+                                        </>
+                                    )}
                                 </div>
+                            </div>
+                            {item.source && (
+                                <p className="text-xs text-ghg-green dark:text-ghg-light-green mt-1 mb-2 font-medium">
+                                    {t('source')}: {item.source}
+                                    {item.sourceUrl && <a href={item.sourceUrl} target="_blank" rel="noopener noreferrer" className="ml-1 underline">({t('link')})</a>}
+                                </p>
                             )}
-                        </div>
-                        <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2">
-                            {isFugitive ? (
-                                <div>
-                                    <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">{t('gwpColumnHeader')}</label>
-                                    <input type="number" step="any" value={item.gwp} onChange={(e) => onGWPChange(index, e.target.value)} className="w-full mt-1 bg-white text-gray-900 border border-gray-300 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100 rounded-md shadow-sm py-1 px-2 text-sm" />
-                                </div>
-                            ) : (
-                                Object.entries(item.factors).map(([unit, factor]) => (
-                                    <div key={unit}>
-                                        <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">{t(unit as TranslationKey) || unit}</label>
-                                        <div className="flex items-center gap-2">
-                                            <input type="number" step="any" value={factor as number} onChange={(e) => onProportionalFactorChange(categoryKey, index, unit, e.target.value)} className="w-full mt-1 bg-white text-gray-900 border border-gray-300 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100 rounded-md shadow-sm py-1 px-2 text-sm" />
-                                            <span className="mt-1 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                                                {t('kgCO2ePer')} {t(unit as TranslationKey) || unit}
-                                            </span>
-                                        </div>
+
+                            {/* Expandable Detail Panel */}
+                            {isExpanded && hasDetailedData && !isFugitive && (
+                                <div className="mt-3 mb-3 p-3 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-500 animate-fade-in">
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                                        {/* Net Heating Value */}
+                                        {item.netHeatingValue !== undefined && (
+                                            <div className="bg-blue-50 dark:bg-blue-900/30 p-2 rounded">
+                                                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{t('netHeatingValue')}</p>
+                                                <p className="font-semibold text-blue-700 dark:text-blue-300">
+                                                    {item.netHeatingValue} {item.heatingValueUnit || ''}
+                                                </p>
+                                            </div>
+                                        )}
+
+                                        {/* CO2 EF */}
+                                        {item.co2EF !== undefined && (
+                                            <div className="bg-gray-100 dark:bg-gray-600 p-2 rounded">
+                                                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{t('co2EF')}</p>
+                                                <p className="font-semibold text-gray-800 dark:text-gray-100">
+                                                    {item.co2EF.toLocaleString()} <span className="text-xs font-normal">{t('kgPerTJ')}</span>
+                                                </p>
+                                            </div>
+                                        )}
+
+                                        {/* CH4 EF */}
+                                        {item.ch4EF !== undefined && (
+                                            <div className="bg-orange-50 dark:bg-orange-900/30 p-2 rounded">
+                                                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{t('ch4EF')}</p>
+                                                <p className="font-semibold text-orange-700 dark:text-orange-300">
+                                                    {item.ch4EF} <span className="text-xs font-normal">{t('kgPerTJ')}</span>
+                                                </p>
+                                                {item.gwpCH4 && (
+                                                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">GWP: {item.gwpCH4}</p>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {/* N2O EF */}
+                                        {item.n2oEF !== undefined && (
+                                            <div className="bg-purple-50 dark:bg-purple-900/30 p-2 rounded">
+                                                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{t('n2oEF')}</p>
+                                                <p className="font-semibold text-purple-700 dark:text-purple-300">
+                                                    {item.n2oEF} <span className="text-xs font-normal">{t('kgPerTJ')}</span>
+                                                </p>
+                                                {item.gwpN2O && (
+                                                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">GWP: {item.gwpN2O}</p>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
-                                ))
+
+                                    {/* CSV Reference */}
+                                    {item.csvLineRef && (
+                                        <p className="mt-2 text-xs text-gray-400 dark:text-gray-500">
+                                            📋 {t('csvRef')}: <span className="font-mono">{item.csvLineRef}</span>
+                                        </p>
+                                    )}
+                                </div>
                             )}
+
+                            <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2">
+                                {isFugitive ? (
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">{t('gwpColumnHeader')}</label>
+                                        <input type="number" step="any" value={item.gwp} onChange={(e) => onGWPChange(index, e.target.value)} className="w-full mt-1 bg-white text-gray-900 border border-gray-300 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100 rounded-md shadow-sm py-1 px-2 text-sm" />
+                                    </div>
+                                ) : (
+                                    Object.entries(item.factors).map(([unit, factor]) => (
+                                        <div key={unit}>
+                                            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">{t(unit as TranslationKey) || unit}</label>
+                                            <div className="flex items-center gap-2">
+                                                <input type="number" step="any" value={factor as number} onChange={(e) => onProportionalFactorChange(categoryKey, index, unit, e.target.value)} className="w-full mt-1 bg-white text-gray-900 border border-gray-300 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100 rounded-md shadow-sm py-1 px-2 text-sm" />
+                                                <span className="mt-1 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                                                    {t('kgCO2ePer')} {t(unit as TranslationKey) || unit}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
                         </div>
-                    </div>
-                ))}
+                    )
+                })}
                 {formState.mode === 'hidden' && <button onClick={() => { if (onRequireAuth && !onRequireAuth()) return; setFormState({ mode: 'add', categoryKey }) }} className="mt-4 w-full text-sm bg-ghg-light-green text-white font-semibold py-2 px-4 rounded-lg hover:bg-ghg-green transition-colors">{t('addNewSource')}</button>}
                 {formState.mode !== 'hidden' && formState.categoryKey === categoryKey && (
                     <AddEditForm
@@ -632,7 +739,7 @@ export const FactorManager: React.FC<FactorManagerProps> = ({
                 );
             default: return null;
         }
-    }, [activeTab, activeScope3Category, allFactors, formState, enabledScope3Categories, language]);
+    }, [activeTab, activeScope3Category, allFactors, formState, enabledScope3Categories, language, expandedItems]);
 
     if (!isOpen) {
         return (

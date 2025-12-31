@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { EmissionSource, EmissionCategory } from '../types';
+import { EmissionSource, EmissionCategory, CalculationResult } from '../types';
 import { DefaultRow } from './source_rows/DefaultRow';
 import { Category1_2Row } from './source_rows/Category1_2Row';
 import { Category3Row } from './source_rows/Category3Row';
@@ -25,7 +25,8 @@ interface SourceInputRowProps {
   onFuelTypeChange: (newFuelType: string) => void;
   fuels: any;
   facilities: any[]; // Kept as any[] to match the props passed down
-  calculateEmissions: (source: EmissionSource) => { scope1: number, scope2Location: number, scope2Market: number, scope3: number };
+  calculateEmissions: (source: EmissionSource) => CalculationResult;
+  isAuditModeEnabled?: boolean;
 }
 
 export const SourceInputRow: React.FC<SourceInputRowProps> = (props) => {

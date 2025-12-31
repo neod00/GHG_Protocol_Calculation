@@ -594,6 +594,21 @@ export const en = {
   location: 'Location',
   facilityBreakdown: 'Emissions by Facility',
   ungroupedFacilities: 'Ungrouped Facilities',
+  // Detailed Factor Panel
+  viewDetails: 'View Details',
+  hideDetails: 'Hide Details',
+  netHeatingValue: 'Net Heating Value',
+  heatingValueUnit: 'Unit',
+  co2EF: 'CO₂ EF',
+  ch4EF: 'CH₄ EF',
+  n2oEF: 'N₂O EF',
+  gwpCH4: 'GWP CH₄',
+  gwpN2O: 'GWP N₂O',
+  kgPerTJ: 'kg/TJ',
+  dataSource: 'Data Source',
+  csvRef: 'CSV Reference',
+  verifiedData: 'Verified Data',
+  unverifiedData: 'Unverified Data',
 };
 
 export const ko = {
@@ -1184,4 +1199,19 @@ export const ko = {
   facilityBreakdown: '시설별 배출량',
   emissionsByScope: '스코프별 배출량',
   ungroupedFacilities: '그룹 미지정 시설',
+  // Detailed Factor Panel
+  viewDetails: '세부정보 보기',
+  hideDetails: '세부정보 숨기기',
+  netHeatingValue: '순발열량',
+  heatingValueUnit: '단위',
+  co2EF: 'CO₂ 배출계수',
+  ch4EF: 'CH₄ 배출계수',
+  n2oEF: 'N₂O 배출계수',
+  gwpCH4: 'GWP CH₄',
+  gwpN2O: 'GWP N₂O',
+  kgPerTJ: 'kg/TJ',
+  dataSource: '데이터 출처',
+  csvRef: 'CSV 참조',
+  verifiedData: '검증된 데이터',
+  unverifiedData: '미검증 데이터',
 };

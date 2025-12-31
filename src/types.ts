@@ -8,20 +8,53 @@ export interface Refrigerant {
   translationKey?: string;
   gwp: number;
   isCustom?: boolean;
+  source?: string;
+  sourceUrl?: string;
 }
 
 // Represents a simple CO2e factor, used for all combustion, process, waste, and Scope 2 sources.
 export interface CO2eFactorFuel {
-    id?: string;
-    name: string;
-    translationKey?: string;
-    units: string[];
-    factors: { [key: string]: number }; // kg CO2e / unit
-    isCustom?: boolean;
+  id?: string;
+  name: string;
+  translationKey?: string;
+  units: string[];
+  factors: { [key: string]: number }; // kg CO2e / unit
+  isCustom?: boolean;
+  source?: string;
+  sourceUrl?: string;
+  // --- 상세 성분 필드 (GHG Protocol 투명성 강화) ---
+  netHeatingValue?: number;         // 순발열량 (MJ/단위)
+  heatingValueUnit?: string;        // 발열량 단위 (예: MJ/L, MJ/Nm³)
+  co2EF?: number;                   // CO2 배출계수 (kg/TJ)
+  ch4EF?: number;                   // CH4 배출계수 (kg/TJ)
+  n2oEF?: number;                   // N2O 배출계수 (kg/TJ)
+  gwpCH4?: number;                  // CH4 지구온난화지수 (기본: 21)
+  gwpN2O?: number;                  // N2O 지구온난화지수 (기본: 310)
+  isVerified?: boolean;             // CSV 기반 검증 데이터 여부
+  csvLineRef?: string;              // CSV 출처 참조 (예: "GHG_EmissionFactor.csv:5")
 }
 
-export interface EditableCO2eFactorFuel extends CO2eFactorFuel {}
-export interface EditableRefrigerant extends Refrigerant {}
+// 산정 수식 결과를 위한 인터페이스
+export interface CalculationResult {
+  scope1: number;
+  scope2Location: number;
+  scope2Market: number;
+  scope3: number;
+  formula?: string;                 // 상세 산정 수식 문자열
+  formulaComponents?: {             // 수식 구성 요소
+    activityAmount: number;
+    activityUnit: string;
+    netHeatingValue?: number;
+    co2EF?: number;
+    ch4EF?: number;
+    n2oEF?: number;
+    gwpCH4?: number;
+    gwpN2O?: number;
+  };
+}
+
+export interface EditableCO2eFactorFuel extends CO2eFactorFuel { }
+export interface EditableRefrigerant extends Refrigerant { }
 
 export enum EmissionCategory {
   // Scope 1
@@ -33,7 +66,7 @@ export enum EmissionCategory {
 
   // Scope 2
   PurchasedEnergy = 'Purchased Energy',
-  
+
   // Scope 3
   PurchasedGoodsAndServices = 'Purchased Goods and Services',
   CapitalGoods = 'Capital Goods',
@@ -91,7 +124,7 @@ export type InvestmentType = 'Equity' | 'Debt' | 'ProjectFinance' | 'RealEstate'
 export type CapitalGoodsType = 'Building' | 'Vehicle' | 'ManufacturingEquipment' | 'ITEquipment' | 'OfficeEquipment' | 'Other';
 
 // Category 1 Factor Types for UI grouping
-export type Category1FactorType = 
+export type Category1FactorType =
   | 'rawMaterials_metals'
   | 'rawMaterials_plastics'
   | 'rawMaterials_chemicals'
@@ -124,14 +157,14 @@ export const calculateDQIScore = (dqi: DataQualityIndicator): number => {
     completeness: 0.20,
     reliability: 0.15,
   };
-  
-  const weightedSum = 
+
+  const weightedSum =
     dqi.technologicalRep * weights.technologicalRep +
     dqi.temporalRep * weights.temporalRep +
     dqi.geographicalRep * weights.geographicalRep +
     dqi.completeness * weights.completeness +
     dqi.reliability * weights.reliability;
-  
+
   return Math.round(weightedSum * 100) / 100;
 };
 
@@ -186,13 +219,13 @@ export interface HybridCalculationData {
     allocationBasis: 'revenue' | 'quantity' | 'custom'; // 할당 기준
     allocationPercentage: number; // 할당 비율 (%)
   };
-  
+
   // 2. 투입 물질별 배출량
   materialInputs: HybridMaterialInput[];
-  
+
   // 3. 운송 배출량
   transportInputs: HybridTransportInput[];
-  
+
   // 4. 폐기물 처리 배출량
   wasteInputs: HybridWasteInput[];
 }
@@ -206,7 +239,7 @@ export interface EmissionSource {
   monthlyQuantities: number[];
   unit: string;
   marketBasedFactor?: number;
-  
+
   // Scope 2 혼합 전력 사용 상세 정보 (PPA/REC/녹색프리미엄/일반전력)
   powerMix?: {
     // PPA 전력
@@ -217,7 +250,7 @@ export interface EmissionSource {
       supplierName?: string;
       verificationStatus?: 'verified' | 'pending' | 'not-verified';
     };
-    
+
     // REC 전력
     rec?: {
       quantity: number[]; // 월별 사용량
@@ -231,7 +264,7 @@ export interface EmissionSource {
       ownershipMatch?: boolean; // 소유권 일치성
       periodMatch?: boolean; // 사용기간 일치성
     };
-    
+
     // 녹색프리미엄 (Green Tariff) - 한국 특화
     greenPremium?: {
       quantity: number[]; // 월별 사용량
@@ -243,7 +276,7 @@ export interface EmissionSource {
       supplierFactor?: number; // 공급사 제공 배출계수
       verificationStatus?: 'verified' | 'pending' | 'not-verified';
     };
-    
+
     // 일반 전력 (나머지)
     conventional?: {
       quantity: number[]; // 월별 사용량
@@ -252,7 +285,7 @@ export interface EmissionSource {
       supplierName?: string;
     };
   };
-  
+
   // New fields for advanced Scope 3 calculation
   calculationMethod?: CalculationMethod | Cat4CalculationMethod | Cat5CalculationMethod | Cat6CalculationMethod | Cat7CalculationMethod | Cat8CalculationMethod | Cat10CalculationMethod | Cat11CalculationMethod | Cat12CalculationMethod | Cat14CalculationMethod | Cat15CalculationMethod;
   supplierProvidedCO2e?: number; // Total annual kg CO2e from supplier
@@ -267,13 +300,13 @@ export interface EmissionSource {
   dataQualityIndicator?: DataQualityIndicator; // Detailed DQI for GHG Protocol compliance
   assumptions?: string;
   activityDataSource?: string; // e.g., "Monthly electricity bills", "Fuel purchase records"
-  
+
   // Category 1 specific fields
   cat1FactorType?: Category1FactorType; // Selected factor category for UI
   selectedFactorName?: string; // Name of selected factor from database
   isFactorFromDatabase?: boolean; // Whether factor was selected from DB or manually entered
   hybridData?: HybridCalculationData; // Data for hybrid calculation method
-  
+
   // New fields for advanced Scope 3 Category 3 calculation
   activityType?: 'fuel_wtt' | 'energy_upstream' | 'spend_based';
   isAutoGenerated?: boolean;

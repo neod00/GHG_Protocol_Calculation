@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { EmissionSource, Facility, Refrigerant, CO2eFactorFuel, EmissionCategory } from '../../types';
+import { EmissionSource, Facility, Refrigerant, CO2eFactorFuel, EmissionCategory, CalculationResult } from '../../types';
 import { useTranslation } from '../../context/LanguageContext';
 // FIX: Changed import path to be more explicit.
 import { TranslationKey } from '../../translations/index';
@@ -12,7 +12,8 @@ interface SourceInputRowProps {
   onFuelTypeChange: (newFuelType: string) => void;
   fuels: any;
   facilities: Facility[];
-  calculateEmissions: (source: EmissionSource) => { scope1: number, scope2Location: number, scope2Market: number, scope3: number };
+  calculateEmissions: (source: EmissionSource) => CalculationResult;
+  isAuditModeEnabled?: boolean;
 }
 
 const getPlaceholderKey = (category: EmissionCategory): TranslationKey => {
@@ -33,7 +34,7 @@ const getPlaceholderKey = (category: EmissionCategory): TranslationKey => {
   }
 }
 
-export const DefaultRow: React.FC<SourceInputRowProps> = ({ source, onUpdate, onRemove, onFuelTypeChange, fuels, facilities, calculateEmissions }) => {
+export const DefaultRow: React.FC<SourceInputRowProps> = ({ source, onUpdate, onRemove, onFuelTypeChange, fuels, facilities, calculateEmissions, isAuditModeEnabled = false }) => {
   const { t, language } = useTranslation();
   const [isEditing, setIsEditing] = useState(false);
   const [editedQuantities, setEditedQuantities] = useState([...source.monthlyQuantities]);
@@ -195,7 +196,7 @@ export const DefaultRow: React.FC<SourceInputRowProps> = ({ source, onUpdate, on
               {t('scope2DualReportingInfoText')}
             </p>
           </div>
-          
+
           {/* 기존 시장 배출계수 입력 (하위 호환성) */}
           <div>
             <label className="flex items-center space-x-2 text-sm text-blue-800 dark:text-blue-200">
@@ -221,26 +222,26 @@ export const DefaultRow: React.FC<SourceInputRowProps> = ({ source, onUpdate, on
               </div>
             )}
           </div>
-          
+
           {/* 녹색프리미엄 입력 (한국 특화) */}
           <div className="border-t border-blue-200 dark:border-blue-700 pt-3">
             <label className="flex items-center space-x-2 text-sm font-medium text-green-800 dark:text-green-200 mb-2">
-              <input 
-                type="checkbox" 
+              <input
+                type="checkbox"
                 checked={!!source.powerMix?.greenPremium}
                 onChange={(e) => {
                   if (e.target.checked) {
                     const currentPowerMix = source.powerMix || {};
-                    onUpdate({ 
-                      powerMix: { 
-                        ...currentPowerMix, 
-                        greenPremium: { 
-                          quantity: [0,0,0,0,0,0,0,0,0,0,0,0], 
+                    onUpdate({
+                      powerMix: {
+                        ...currentPowerMix,
+                        greenPremium: {
+                          quantity: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                           factor: 0,
                           treatAsRenewable: false,
                           supplierFactorProvided: false
-                        } 
-                      } 
+                        }
+                      }
                     });
                   } else {
                     const { greenPremium, ...rest } = source.powerMix || {};
@@ -251,7 +252,7 @@ export const DefaultRow: React.FC<SourceInputRowProps> = ({ source, onUpdate, on
               />
               <span>{t('greenPremiumTitle')}</span>
             </label>
-            
+
             {source.powerMix?.greenPremium && (
               <div className="mt-2 space-y-3">
                 {/* 녹색프리미엄 전력 사용량 (월별) */}
@@ -269,14 +270,14 @@ export const DefaultRow: React.FC<SourceInputRowProps> = ({ source, onUpdate, on
                           onChange={(e) => {
                             const newQty = [...source.powerMix!.greenPremium!.quantity];
                             newQty[idx] = parseFloat(e.target.value) || 0;
-                            onUpdate({ 
-                              powerMix: { 
-                                ...source.powerMix!, 
-                                greenPremium: { 
-                                  ...source.powerMix!.greenPremium!, 
-                                  quantity: newQty 
-                                } 
-                              } 
+                            onUpdate({
+                              powerMix: {
+                                ...source.powerMix!,
+                                greenPremium: {
+                                  ...source.powerMix!.greenPremium!,
+                                  quantity: newQty
+                                }
+                              }
                             });
                           }}
                           className={commonInputClass}
@@ -286,7 +287,7 @@ export const DefaultRow: React.FC<SourceInputRowProps> = ({ source, onUpdate, on
                     ))}
                   </div>
                 </div>
-                
+
                 {/* 재생에너지 계약수단으로 간주 여부 */}
                 <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded border border-green-200 dark:border-green-800">
                   <label className="flex items-center space-x-2 text-sm font-semibold text-green-800 dark:text-green-200 mb-2">
@@ -294,21 +295,21 @@ export const DefaultRow: React.FC<SourceInputRowProps> = ({ source, onUpdate, on
                       type="checkbox"
                       checked={source.powerMix.greenPremium.treatAsRenewable || false}
                       onChange={(e) => {
-                        onUpdate({ 
-                          powerMix: { 
-                            ...source.powerMix!, 
-                            greenPremium: { 
-                              ...source.powerMix!.greenPremium!, 
-                              treatAsRenewable: e.target.checked 
-                            } 
-                          } 
+                        onUpdate({
+                          powerMix: {
+                            ...source.powerMix!,
+                            greenPremium: {
+                              ...source.powerMix!.greenPremium!,
+                              treatAsRenewable: e.target.checked
+                            }
+                          }
                         });
                       }}
                       className="rounded text-ghg-green"
                     />
                     <span>{t('treatAsRenewable')}</span>
                   </label>
-                  
+
                   {source.powerMix.greenPremium.treatAsRenewable ? (
                     <div className="mt-2 space-y-2">
                       <p className="text-xs text-green-700 dark:text-green-300">
@@ -317,7 +318,7 @@ export const DefaultRow: React.FC<SourceInputRowProps> = ({ source, onUpdate, on
                       <p className="text-xs text-yellow-700 dark:text-yellow-300">
                         ⚠️ {t('greenPremiumKETSWarning')}
                       </p>
-                      
+
                       {/* 공급사 배출계수 입력 */}
                       <div className="mt-2">
                         <label className="flex items-center space-x-2 text-xs">
@@ -325,14 +326,14 @@ export const DefaultRow: React.FC<SourceInputRowProps> = ({ source, onUpdate, on
                             type="checkbox"
                             checked={source.powerMix.greenPremium.supplierFactorProvided || false}
                             onChange={(e) => {
-                              onUpdate({ 
-                                powerMix: { 
-                                  ...source.powerMix!, 
-                                  greenPremium: { 
-                                    ...source.powerMix!.greenPremium!, 
-                                    supplierFactorProvided: e.target.checked 
-                                  } 
-                                } 
+                              onUpdate({
+                                powerMix: {
+                                  ...source.powerMix!,
+                                  greenPremium: {
+                                    ...source.powerMix!.greenPremium!,
+                                    supplierFactorProvided: e.target.checked
+                                  }
+                                }
                               });
                             }}
                             className="rounded text-ghg-green"
@@ -341,7 +342,7 @@ export const DefaultRow: React.FC<SourceInputRowProps> = ({ source, onUpdate, on
                             {t('supplierFactorProvided')}
                           </span>
                         </label>
-                        
+
                         {source.powerMix.greenPremium.supplierFactorProvided && (
                           <div className="mt-2">
                             <label className="block text-xs text-green-700 dark:text-green-300 mb-1">
@@ -353,14 +354,14 @@ export const DefaultRow: React.FC<SourceInputRowProps> = ({ source, onUpdate, on
                                 step="any"
                                 value={source.powerMix.greenPremium.supplierFactor ?? 0}
                                 onChange={(e) => {
-                                  onUpdate({ 
-                                    powerMix: { 
-                                      ...source.powerMix!, 
-                                      greenPremium: { 
-                                        ...source.powerMix!.greenPremium!, 
-                                        supplierFactor: parseFloat(e.target.value) || 0 
-                                      } 
-                                    } 
+                                  onUpdate({
+                                    powerMix: {
+                                      ...source.powerMix!,
+                                      greenPremium: {
+                                        ...source.powerMix!.greenPremium!,
+                                        supplierFactor: parseFloat(e.target.value) || 0
+                                      }
+                                    }
                                   });
                                 }}
                                 className={commonInputClass}
@@ -371,7 +372,7 @@ export const DefaultRow: React.FC<SourceInputRowProps> = ({ source, onUpdate, on
                             </div>
                           </div>
                         )}
-                        
+
                         {!source.powerMix.greenPremium.supplierFactorProvided && (
                           <p className="text-xs text-green-600 dark:text-green-400 mt-1">
                             배출계수 0 적용
@@ -387,7 +388,7 @@ export const DefaultRow: React.FC<SourceInputRowProps> = ({ source, onUpdate, on
                     </div>
                   )}
                 </div>
-                
+
                 {/* 계약 정보 */}
                 <div>
                   <label className="block text-xs font-medium text-green-700 dark:text-green-300 mb-1">
@@ -397,14 +398,14 @@ export const DefaultRow: React.FC<SourceInputRowProps> = ({ source, onUpdate, on
                     type="text"
                     value={source.powerMix.greenPremium.contractId || ''}
                     onChange={(e) => {
-                      onUpdate({ 
-                        powerMix: { 
-                          ...source.powerMix!, 
-                          greenPremium: { 
-                            ...source.powerMix!.greenPremium!, 
-                            contractId: e.target.value 
-                          } 
-                        } 
+                      onUpdate({
+                        powerMix: {
+                          ...source.powerMix!,
+                          greenPremium: {
+                            ...source.powerMix!.greenPremium!,
+                            contractId: e.target.value
+                          }
+                        }
                       });
                     }}
                     className={commonInputClass}
@@ -464,6 +465,23 @@ export const DefaultRow: React.FC<SourceInputRowProps> = ({ source, onUpdate, on
           </div>
         )}
       </div>
+
+      {/* Audit Mode: Formula Display Panel */}
+      {isAuditModeEnabled && emissionResults.formula && (
+        <div className="mt-2 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg">
+          <div className="flex items-start gap-2">
+            <span className="text-amber-600 dark:text-amber-400 text-lg">🔍</span>
+            <div className="flex-1">
+              <p className="text-xs font-medium text-amber-800 dark:text-amber-300 mb-1">
+                {language === 'ko' ? '산정 수식 (Calculation Formula)' : 'Calculation Formula'}
+              </p>
+              <p className="text-sm font-mono text-amber-900 dark:text-amber-200 bg-amber-100 dark:bg-amber-900/40 px-2 py-1 rounded">
+                {emissionResults.formula}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

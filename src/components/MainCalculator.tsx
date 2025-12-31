@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useTranslation } from '../context/LanguageContext';
 // Fix: Import 'EditableCO2eFactorFuel' to resolve type error.
-import { EmissionCategory, EmissionSource, Refrigerant, Facility, BoundaryApproach, EditableRefrigerant, EditableCO2eFactorFuel, CO2eFactorFuel, TransportMode, Cat5CalculationMethod, WasteType, TreatmentMethod, Cat6CalculationMethod, BusinessTravelMode, EmployeeCommutingMode, PersonalCarType, PublicTransportType, Cat7CalculationMethod, Cat8CalculationMethod, BuildingType, LeasedAssetType, Cat4CalculationMethod, Cat10CalculationMethod, Cat11CalculationMethod, Cat12CalculationMethod, Cat14CalculationMethod, Cat15CalculationMethod } from '../types';
+import { EmissionCategory, EmissionSource, Refrigerant, Facility, BoundaryApproach, EditableRefrigerant, EditableCO2eFactorFuel, CO2eFactorFuel, TransportMode, Cat5CalculationMethod, WasteType, TreatmentMethod, Cat6CalculationMethod, BusinessTravelMode, EmployeeCommutingMode, PersonalCarType, PublicTransportType, Cat7CalculationMethod, Cat8CalculationMethod, BuildingType, LeasedAssetType, Cat4CalculationMethod, Cat10CalculationMethod, Cat11CalculationMethod, Cat12CalculationMethod, Cat14CalculationMethod, Cat15CalculationMethod, CalculationResult } from '../types';
 import { IconBuilding } from './IconComponents';
 import {
     STATIONARY_FUELS, MOBILE_FUELS, PROCESS_MATERIALS, FUGITIVE_GASES, WASTE_SOURCES,
@@ -69,13 +69,44 @@ const ensureIdsForCustomFactors = <T extends { id?: string; isCustom?: boolean; 
     });
 };
 
+/**
+ * Merges default system factors with saved factors from localStorage.
+ * This ensures new fuels added to the codebase are made available to existing users.
+ */
+const mergeFactors = (categoryKey: FactorCategoryKey, defaultFactors: any, savedFactors: any) => {
+    // If it's not an array (e.g., Category 4/9/6/7 detailed objects), 
+    // we use the codebase version for updates, but could implement object merging if needed later.
+    if (!Array.isArray(defaultFactors)) {
+        return defaultFactors;
+    }
+
+    if (!Array.isArray(savedFactors)) return defaultFactors;
+
+    // Use codebase factors as the base to ensure latest EFs and new fuels are included
+    const merged = [...defaultFactors];
+    const systemIds = new Set(defaultFactors.map((f: any) => f.translationKey || f.name));
+
+    // Add back custom factors created by the user
+    savedFactors.forEach((sf: any) => {
+        if (sf.isCustom) {
+            const sfId = sf.translationKey || sf.name;
+            // Prevent duplicates if by some chance names collide
+            if (!systemIds.has(sfId)) {
+                merged.push(sf);
+            }
+        }
+    });
+
+    return merged;
+};
+
 const factorConfig = {
-    stationary: { key: 'ghg-calc-stationaryFuels', default: STATIONARY_FUELS },
-    mobile: { key: 'ghg-calc-mobileFuels', default: MOBILE_FUELS },
+    stationary: { key: 'ghg-calc-stationaryFuels-2025-v2', default: STATIONARY_FUELS },
+    mobile: { key: 'ghg-calc-mobileFuels-2025-v2', default: MOBILE_FUELS },
     process: { key: 'ghg-calc-processMaterials', default: PROCESS_MATERIALS },
     fugitive: { key: 'ghg-calc-fugitiveGases', default: FUGITIVE_GASES },
     waste: { key: 'ghg-calc-wasteSources', default: WASTE_SOURCES },
-    scope2: { key: 'ghg-calc-scope2EnergySources', default: SCOPE2_ENERGY_SOURCES },
+    scope2: { key: 'ghg-calc-scope2EnergySources-2025-v2', default: SCOPE2_ENERGY_SOURCES },
     purchasedGoods: { key: 'ghg-calc-purchasedGoodsFactors', default: PURCHASED_GOODS_SERVICES_FACTORS },
     capitalGoods: { key: 'ghg-calc-capitalGoodsFactors', default: CAPITAL_GOODS_FACTORS },
     fuelEnergy: { key: 'ghg-calc-fuelEnergyActivitiesFactors', default: FUEL_ENERGY_ACTIVITIES_FACTORS },
@@ -99,6 +130,41 @@ const getInitialFactors = () => {
         loadedFactors[categoryKey as FactorCategoryKey] = structuredClone(config.default);
     }
     return loadedFactors as { [key in FactorCategoryKey]: any };
+};
+
+// ============================================================================
+// 수식 생성 유틸리티 (GHG Protocol 투명성 원칙)
+// ============================================================================
+const generateCalculationFormula = (
+    fuel: CO2eFactorFuel | { name: string, gwp: number },
+    totalQuantity: number,
+    unit: string,
+    result: number
+): string => {
+    // GWP 기반 데이터 (Fugitive Gases 등)
+    if ('gwp' in fuel) {
+        return `${totalQuantity.toLocaleString()} ${unit} × ${fuel.gwp} GWP = ${(result / 1000).toFixed(4)} tCO₂e`;
+    }
+
+    const co2eFuel = fuel as CO2eFactorFuel;
+
+    // 상세 성분 데이터가 있는 경우 (검증된 데이터)
+    if (co2eFuel.netHeatingValue && co2eFuel.co2EF !== undefined) {
+        const co2 = co2eFuel.co2EF;
+        const ch4 = co2eFuel.ch4EF || 0;
+        const n2o = co2eFuel.n2oEF || 0;
+        const gwpCH4 = co2eFuel.gwpCH4 || 21;
+        const gwpN2O = co2eFuel.gwpN2O || 310;
+        const heatingValue = co2eFuel.netHeatingValue;
+        const heatingUnit = co2eFuel.heatingValueUnit || 'MJ';
+
+        // CO2e 총량 계산식
+        return `${totalQuantity.toLocaleString()} ${unit} × ${heatingValue} ${heatingUnit} × (${co2.toLocaleString()} + ${ch4}×${gwpCH4} + ${n2o}×${gwpN2O}) kg/TJ ÷ 10⁶ = ${(result / 1000).toFixed(4)} tCO₂e`;
+    }
+
+    // 단순 계수만 있는 경우
+    const factor = co2eFuel.factors[unit] || 0;
+    return `${totalQuantity.toLocaleString()} ${unit} × ${factor.toFixed(4)} kgCO₂e/${unit} = ${(result / 1000).toFixed(4)} tCO₂e`;
 };
 
 interface MainCalculatorProps {
@@ -258,7 +324,13 @@ export const MainCalculator: React.FC<MainCalculatorProps> = ({
             try {
                 const saved = localStorage.getItem(config.key);
                 if (saved) {
-                    loadedFactors[categoryKey as FactorCategoryKey] = JSON.parse(saved);
+                    const savedData = JSON.parse(saved);
+                    // MERGE: Combine default factors from code with custom factors from localStorage
+                    loadedFactors[categoryKey as FactorCategoryKey] = mergeFactors(
+                        categoryKey as FactorCategoryKey,
+                        config.default,
+                        savedData
+                    );
                     hasUpdates = true;
                 }
             } catch (error) {
@@ -309,6 +381,9 @@ export const MainCalculator: React.FC<MainCalculatorProps> = ({
 
     // Version history modal status
     const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false);
+
+    // Audit Mode (GHG Protocol 투명성 원칙)
+    const [isAuditModeEnabled, setIsAuditModeEnabled] = useState(false);
 
     // Auth Check Helper
     const checkAuth = useCallback((actionName?: string) => {
@@ -999,32 +1074,40 @@ export const MainCalculator: React.FC<MainCalculatorProps> = ({
     }, [FUELS_MAP, handleUpdateSource]);
 
 
-    const calculateSourceEmissions = useCallback((source: EmissionSource): { scope1: number, scope2Location: number, scope2Market: number, scope3: number } => {
+    const calculateSourceEmissions = useCallback((source: EmissionSource): CalculationResult => {
         if (source.isAutoGenerated && source.category === EmissionCategory.FuelAndEnergyRelatedActivities) {
-            return { scope1: 0, scope2Location: 0, scope2Market: 0, scope3: source.supplierProvidedCO2e || 0 };
+            const val = source.supplierProvidedCO2e || 0;
+            return {
+                scope1: 0, scope2Location: 0, scope2Market: 0, scope3: val,
+                formula: `Auto-generated from Scope 2 data (WTT + T&D): ${val.toLocaleString()} kg CO₂e`
+            };
         }
 
         if (source.category === EmissionCategory.PurchasedGoodsAndServices || source.category === EmissionCategory.CapitalGoods) {
             if (source.calculationMethod === 'supplier_co2e') {
-                return { scope1: 0, scope2Location: 0, scope2Market: 0, scope3: source.supplierProvidedCO2e || 0 };
+                const val = source.supplierProvidedCO2e || 0;
+                return {
+                    scope1: 0, scope2Location: 0, scope2Market: 0, scope3: val,
+                    formula: `Supplier Specific: ${val.toLocaleString()} kg CO₂e`
+                };
             }
-            
+
             // Hybrid method calculation
             if (source.calculationMethod === 'hybrid' && source.hybridData) {
                 let total = 0;
                 const hd = source.hybridData;
-                
+
                 // 1. Supplier Scope 1,2 allocation
                 if (hd.supplierScope12) {
                     total += (hd.supplierScope12.totalEmissions * hd.supplierScope12.allocationPercentage) / 100;
                 }
-                
+
                 // 2. Material inputs (Cradle-to-Gate)
                 hd.materialInputs.forEach(m => {
                     const quantityKg = m.unit === 'tonnes' ? m.quantity * 1000 : m.quantity;
                     total += quantityKg * m.emissionFactor;
                 });
-                
+
                 // 3. Transport inputs (upstream transport of materials to supplier)
                 const transportFactors: Record<string, number> = {
                     'Road': 0.062,
@@ -1036,7 +1119,7 @@ export const MainCalculator: React.FC<MainCalculatorProps> = ({
                     const factor = tr.emissionFactor || transportFactors[tr.transportMode] || 0;
                     total += tr.weightTonnes * tr.distanceKm * factor;
                 });
-                
+
                 // 4. Waste inputs (waste from production at supplier)
                 const wasteFactors: Record<string, number> = {
                     'Landfill': 0.587,
@@ -1050,13 +1133,20 @@ export const MainCalculator: React.FC<MainCalculatorProps> = ({
                     const quantityKg = w.unit === 'tonnes' ? w.quantity * 1000 : w.quantity;
                     total += quantityKg * factor;
                 });
-                
-                return { scope1: 0, scope2Location: 0, scope2Market: 0, scope3: total };
+
+                return {
+                    scope1: 0, scope2Location: 0, scope2Market: 0, scope3: total,
+                    formula: `Hybrid Method: Sum(Allocation, Materials, Transport, Waste) = ${(total / 1000).toFixed(4)} tCO₂e`
+                };
             }
-            
+
             const totalActivity = source.monthlyQuantities.reduce((sum, q) => sum + q, 0);
-            const emissions = totalActivity * (source.factor || 0);
-            return { scope1: 0, scope2Location: 0, scope2Market: 0, scope3: emissions };
+            const factor = source.factor || 0;
+            const emissions = totalActivity * factor;
+            return {
+                scope1: 0, scope2Location: 0, scope2Market: 0, scope3: emissions,
+                formula: `${totalActivity.toLocaleString()} ${source.unit} × ${factor} kg CO₂e/${source.unit} = ${(emissions / 1000).toFixed(4)} tCO₂e`
+            };
         }
 
         if (
@@ -1544,7 +1634,10 @@ export const MainCalculator: React.FC<MainCalculatorProps> = ({
                     scope3 = investmentVal * sectorFactor;
                     break;
             }
-            return { scope1: 0, scope2Location: 0, scope2Market: 0, scope3 };
+            return {
+                scope1: 0, scope2Location: 0, scope2Market: 0, scope3,
+                formula: `Investment (${source.calculationMethod}): ${(scope3 / 1000).toFixed(4)} tCO₂e`
+            };
         }
 
         // 전체 사용량 계산: monthlyQuantities와 powerMix의 모든 사용량 합산
@@ -1596,7 +1689,11 @@ export const MainCalculator: React.FC<MainCalculatorProps> = ({
         const scope = getScopeForCategory(source.category);
 
         if ('gwp' in fuel) {
-            return { scope1: totalQuantity * fuel.gwp, scope2Location: 0, scope2Market: 0, scope3: 0 };
+            const val = totalQuantity * fuel.gwp;
+            return {
+                scope1: val, scope2Location: 0, scope2Market: 0, scope3: 0,
+                formula: generateCalculationFormula(fuel as any, totalQuantity, source.unit, val)
+            };
         }
 
         if ('factors' in fuel) {
@@ -1704,16 +1801,37 @@ export const MainCalculator: React.FC<MainCalculatorProps> = ({
                     marketEmissions = totalQuantity * marketFactor;
                 }
 
-                return { scope1: 0, scope2Location: locationEmissions, scope2Market: marketEmissions, scope3: 0 };
+                return {
+                    scope1: 0,
+                    scope2Location: locationEmissions,
+                    scope2Market: marketEmissions,
+                    scope3: 0,
+                    formula: generateCalculationFormula(co2eFuel, totalQuantity, source.unit, locationEmissions)
+                };
 
             } else if (scope === 'scope1') {
-                return { scope1: emissions, scope2Location: 0, scope2Market: 0, scope3: 0 };
+                return {
+                    scope1: emissions,
+                    scope2Location: 0,
+                    scope2Market: 0,
+                    scope3: 0,
+                    formula: generateCalculationFormula(co2eFuel, totalQuantity, source.unit, emissions)
+                };
             } else {
-                return { scope1: 0, scope2Location: 0, scope2Market: 0, scope3: emissions };
+                return {
+                    scope1: 0,
+                    scope2Location: 0,
+                    scope2Market: 0,
+                    scope3: emissions,
+                    formula: generateCalculationFormula(co2eFuel, totalQuantity, source.unit, emissions)
+                };
             }
         }
 
-        return { scope1: 0, scope2Location: 0, scope2Market: 0, scope3: 0 };
+        return {
+            scope1: 0, scope2Location: 0, scope2Market: 0, scope3: 0,
+            formula: 'No specific calculation logic found for this source type/unit.'
+        };
     }, [FUELS_MAP, getScopeForCategory, allFactors]);
 
     const results = useMemo(() => {
@@ -1723,6 +1841,7 @@ export const MainCalculator: React.FC<MainCalculatorProps> = ({
         let scope3Total = 0;
         const scope3CategoryBreakdown: { [category: string]: number } = {};
 
+        const sourceFormulas: { [sourceId: string]: string } = {};
         const facilityBreakdown: { [facilityId: string]: { scope1: number, scope2Location: number, scope2Market: number, scope3: number } } = {};
         facilities.forEach(f => {
             facilityBreakdown[f.id] = { scope1: 0, scope2Location: 0, scope2Market: 0, scope3: 0 };
@@ -1745,6 +1864,10 @@ export const MainCalculator: React.FC<MainCalculatorProps> = ({
 
                 const ownershipFactor = boundaryApproach === 'equity' ? (facility.equityShare / 100) : 1;
                 const emissions = calculateSourceEmissions(source);
+
+                if (emissions.formula) {
+                    sourceFormulas[source.id] = emissions.formula;
+                }
 
                 const adjScope1 = emissions.scope1 * ownershipFactor;
                 const adjScope2L = emissions.scope2Location * ownershipFactor;
@@ -1773,7 +1896,7 @@ export const MainCalculator: React.FC<MainCalculatorProps> = ({
         const totalEmissionsMarket = scope1Total + scope2MarketTotal + scope3Total;
         const totalEmissionsLocation = scope1Total + scope2LocationTotal + scope3Total;
 
-        return { totalEmissionsMarket, totalEmissionsLocation, scope1Total, scope2LocationTotal, scope2MarketTotal, scope3Total, facilityBreakdown, scope3CategoryBreakdown };
+        return { totalEmissionsMarket, totalEmissionsLocation, scope1Total, scope2LocationTotal, scope2MarketTotal, scope3Total, facilityBreakdown, scope3CategoryBreakdown, sourceFormulas };
     }, [sources, facilities, boundaryApproach, scope3Settings, calculateSourceEmissions, getScopeForCategory]);
 
     const boundaryApproachText = useMemo(() => {
@@ -2054,6 +2177,22 @@ export const MainCalculator: React.FC<MainCalculatorProps> = ({
                         )}
                     </button>
 
+                    {/* Audit Mode Toggle (GHG Protocol 투명성) */}
+                    <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 rounded-lg">
+                        <label className="flex items-center cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={isAuditModeEnabled}
+                                onChange={(e) => setIsAuditModeEnabled(e.target.checked)}
+                                className="sr-only peer"
+                            />
+                            <div className="relative w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-amber-300 dark:peer-focus:ring-amber-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-amber-500"></div>
+                            <span className="ms-2 text-sm font-medium text-amber-800 dark:text-amber-300">
+                                🔍 {language === 'ko' ? '검증 모드' : 'Audit Mode'}
+                            </span>
+                        </label>
+                    </div>
+
                     {/* Excel Export Button */}
                     <button
                         onClick={handleExportToExcel}
@@ -2168,6 +2307,7 @@ export const MainCalculator: React.FC<MainCalculatorProps> = ({
                                     openCategory={openCategory}
                                     onToggleCategory={handleToggleCategory}
                                     boundaryApproach={boundaryApproach}
+                                    isAuditModeEnabled={isAuditModeEnabled}
                                 />
                             )}
 
@@ -2185,6 +2325,7 @@ export const MainCalculator: React.FC<MainCalculatorProps> = ({
                                     openCategory={openCategory}
                                     onToggleCategory={handleToggleCategory}
                                     boundaryApproach={boundaryApproach}
+                                    isAuditModeEnabled={isAuditModeEnabled}
                                 />
                             )}
 
@@ -2204,6 +2345,7 @@ export const MainCalculator: React.FC<MainCalculatorProps> = ({
                                     boundaryApproach={boundaryApproach}
                                     enabledScope3Categories={scope3Settings.enabledCategories}
                                     onManageScope3={openScope3Settings}
+                                    isAuditModeEnabled={isAuditModeEnabled}
                                 />
                             )}
                         </div>

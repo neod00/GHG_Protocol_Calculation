@@ -10,14 +10,22 @@ export const en = {
   digesterGas: 'Digester Gas',
   propane: 'Propane',
   butane: 'Butane',
-  heatingOilDiesel: 'Heating Oil / Diesel',
-  heavyFuelOil: 'Heavy Fuel Oil (HFO)',
-  lightFuelOil: 'Light Fuel Oil',
-  naphtha: 'Naphtha',
-  jetKeroseneStationary: 'Jet Kerosene (Stationary)',
-  marineGasOil: 'Marine Gas Oil (MGO)',
-  wasteOil: 'Waste Oil',
-  biodiesel: 'Biodiesel',
+  heatingOilDiesel: 'Kerosene (Heating Oil / Diesel)',
+  heavyFuelOil: 'B-C Oil (Heavy Fuel Oil / Bunker-C)',
+  lightFuelOil: 'B-A Oil (Light Fuel Oil / Bunker-A)',
+  bbOil: 'B-B Oil (Bunker-B)',
+  naturalGasKg: 'Natural Gas (kg)',
+  anthraciteImportFuel: 'Imported Anthracite (Fuel)',
+  anthraciteImportRaw: 'Imported Anthracite (Raw Material)',
+  coalBituminousRaw: 'Bituminous Coal (Raw Material)',
+  subBituminousCoal: 'Sub-bituminous Coal',
+  cokeStationary: 'Coke',
+  byproductFuelOil1: 'By-product Fuel Oil No.1',
+  byproductFuelOil2: 'By-product Fuel Oil No.2',
+  petroleumCoke: 'Petroleum Coke',
+  solvent: 'Solvent',
+  asphalt: 'Asphalt',
+  lubricatingOil: 'Lubricating Oil',
   bioHeavyOil: 'Bio-heavy Oil',
   coalBituminous: 'Bituminous Coal',
   anthracite: 'Anthracite',
@@ -51,7 +59,7 @@ export const en = {
   hfoMarine: 'Heavy Fuel Oil (HFO, Marine)',
   lngMarine: 'LNG (Marine)',
   lpgMarine: 'LPG (Marine)',
-  
+
   // Process materials
   cementProduction: 'Cement Production (Clinker)',
   limeProduction: 'Lime Production',
@@ -61,25 +69,27 @@ export const en = {
   aluminumProduction: 'Aluminum Production (Smelting)',
   semiconductorCF4: 'Semiconductor Manufacturing (CF4 usage)',
   semiconductorNF3: 'Semiconductor Manufacturing (NF3 usage)',
-  
+
   // Fugitive gases
   hfc134a: 'HFC-134a (Refrigerant)',
   r404a: 'R-404A (Refrigerant)',
   r410a: 'R-410A (Refrigerant)',
   r22: 'R-22 (HCFC-22, Refrigerant)',
   sf6: 'SF6 (from electrical equipment)',
-  
+
   // Waste (Scope 1)
   mswIncineration: 'MSW Incineration',
   industrialWasteIncineration: 'Industrial Waste Incineration',
   sewageSludgeIncineration: 'Sewage Sludge Incineration',
   wastewaterAnaerobic: 'Wastewater Treatment (Anaerobic)',
   wastewaterAerobic: 'Wastewater Treatment (Aerobic)',
-  
+
   // Scope 2 Energy
   gridElectricity: 'Grid Electricity',
-  purchasedSteam: 'Purchased Steam',
-  purchasedHeating: 'Purchased Heating',
+  purchasedSteam: 'Purchased Steam (Heat Only)',
+  purchasedSteamCHP: 'Purchased Steam (CHP)',
+  purchasedSteamGeneral: 'Purchased Steam (General)',
+  purchasedHeating: 'Purchased Heating (District)',
   purchasedCooling: 'Purchased Cooling',
   countrySouthKorea: 'South Korea',
   countryUSA: 'USA',
@@ -91,7 +101,7 @@ export const en = {
   itServicesSpend: 'IT Services (spend)',
   computerHardwareSpend: 'Computer Hardware (spend)',
   heavyMachinerySpend: 'Heavy Machinery (spend)',
-  
+
   // Category 1 - Raw Materials: Metals
   steelPrimaryBOF: 'Steel - Primary (BOF)',
   steelSecondaryEAF: 'Steel - Secondary (EAF)',
@@ -106,7 +116,7 @@ export const en = {
   lead: 'Lead',
   nickel: 'Nickel',
   titanium: 'Titanium',
-  
+
   // Category 1 - Raw Materials: Plastics
   peHDPE: 'PE - Polyethylene (HDPE)',
   peLDPE: 'PE - Polyethylene (LDPE)',
@@ -118,7 +128,7 @@ export const en = {
   pcPolycarbonate: 'PC - Polycarbonate',
   nylonPA6: 'Nylon (PA6)',
   recycledPlasticAvg: 'Recycled Plastic - Average',
-  
+
   // Category 1 - Raw Materials: Chemicals
   industrialSolvents: 'Industrial Solvents - Average',
   adhesivesAverage: 'Adhesives - Average',
@@ -129,7 +139,7 @@ export const en = {
   sulfuricAcid: 'Sulfuric Acid',
   sodiumHydroxide: 'Sodium Hydroxide (Caustic Soda)',
   ammonia: 'Ammonia',
-  
+
   // Category 1 - Raw Materials: Construction
   cementPortland: 'Cement - Portland',
   concreteReadyMix: 'Concrete - Ready-mix',
@@ -140,7 +150,7 @@ export const en = {
   insulationGlassWool: 'Insulation - Glass Wool',
   insulationEPS: 'Insulation - EPS',
   bricks: 'Bricks',
-  
+
   // Category 1 - Packaging
   corrugatedCardboard: 'Corrugated Cardboard',
   paperVirgin: 'Paper - Virgin',
@@ -151,7 +161,7 @@ export const en = {
   steelCans: 'Steel Cans',
   woodenPallets: 'Wooden Pallets',
   plasticPallets: 'Plastic Pallets',
-  
+
   // Category 1 - Electronics
   semiconductorIC: 'Semiconductor - IC Chips',
   pcbBoard: 'PCB - Printed Circuit Board',
@@ -161,7 +171,7 @@ export const en = {
   electricMotorsSmall: 'Electric Motors (small)',
   cablesWiring: 'Cables & Wiring',
   connectors: 'Connectors',
-  
+
   // Category 1 - Office Supplies
   officePaperA4: 'Office Paper (A4)',
   printerCartridgesInkjet: 'Printer Cartridges - Inkjet',
@@ -173,7 +183,7 @@ export const en = {
   monitor: 'Monitor',
   mobilePhone: 'Mobile Phone',
   tablet: 'Tablet',
-  
+
   // Category 1 - PPE & Safety
   safetyHelmet: 'Safety Helmet',
   safetyShoes: 'Safety Shoes',
@@ -183,7 +193,7 @@ export const en = {
   disposableMasksN95: 'Disposable Masks (N95)',
   coverallsDisposable: 'Coveralls - Disposable',
   highVisVest: 'High-Vis Vest',
-  
+
   // Category 1 - Services (Spend-based)
   cloudComputingServices: 'Cloud Computing Services',
   softwareSaaS: 'Software as a Service (SaaS)',
@@ -207,7 +217,7 @@ export const en = {
   printingServices: 'Printing Services',
   courierPostalServices: 'Courier & Postal Services',
   travelAgencyServices: 'Travel Agency Services',
-  
+
   // Category 1 - Food & Agricultural
   rice: 'Rice',
   wheat: 'Wheat',
@@ -223,7 +233,7 @@ export const en = {
   sugar: 'Sugar',
   coffeeRoasted: 'Coffee (roasted)',
   palmOil: 'Palm Oil',
-  
+
   // Category 1 - Textiles
   cottonFabric: 'Cotton Fabric',
   polyesterFabric: 'Polyester Fabric',
@@ -236,7 +246,7 @@ export const en = {
   naturalGasWTT: 'Natural Gas (WTT)',
   gasolineWTT: 'Gasoline (WTT)',
   dieselWTT: 'Diesel (WTT)',
-  heatingOilWTT: 'Heating Oil (WTT)',
+  heatingOilWTT: 'Kerosene / Heating Oil (WTT)',
 
   // Scope 3, Cat 4 & 9
   roadLightTruck: 'Light-duty Truck',
@@ -253,7 +263,7 @@ export const en = {
   railElectricTrain: 'Electric Freight Train',
   freightSpend: 'Freight Forwarding Services (spend)',
   warehousingSpend: 'Warehousing and Storage (spend)',
-  
+
   // Scope 3, Cat 6
   railNational: 'National Rail',
   railHighSpeed: 'High-speed Rail',
@@ -263,7 +273,7 @@ export const en = {
 
   // Scope 3, Cat 7
   subway: 'Subway',
-  
+
   // Scope 3, Cat 10
   chemProcessing: 'Chemical Processing',
   metalForging: 'Metal Forging',
@@ -273,7 +283,7 @@ export const en = {
   moldingForming: 'Molding/Forming',
   welding: 'Welding',
   downstreamProcessingSpend: 'Downstream Processing Services (spend)',
-  
+
   // Scope 3, Cat 11, 12, 14, 15
   electronicsLifetime: 'Electronics Lifetime Energy',
   vehicleLifetime: 'Vehicle Lifetime Fuel',
@@ -304,14 +314,22 @@ export const ko = {
   digesterGas: '소화조 가스',
   propane: '프로판',
   butane: '부탄',
-  heatingOilDiesel: '난방유 / 경유',
-  heavyFuelOil: '중유 (HFO)',
-  lightFuelOil: '경질유',
-  naphtha: '나프타',
-  jetKeroseneStationary: '항공 등유 (고정)',
-  marineGasOil: '선박용 경유 (MGO)',
-  wasteOil: '폐유',
-  biodiesel: '바이오디젤',
+  heatingOilDiesel: '등유 (난방유 / 경유)',
+  heavyFuelOil: 'B-C유 (중유 3종)',
+  lightFuelOil: 'B-A유 (중유 1종)',
+  bbOil: 'B-B유 (중유 2종)',
+  naturalGasKg: '천연가스 (kg)',
+  anthraciteImportFuel: '수입 무연탄 (연료용)',
+  anthraciteImportRaw: '수입 무연탄 (원료용)',
+  coalBituminousRaw: '유연탄 (역청탄, 원료용)',
+  subBituminousCoal: '아역청탄',
+  cokeStationary: '코크스',
+  byproductFuelOil1: '부생연료유1호',
+  byproductFuelOil2: '부생연료유2호',
+  petroleumCoke: '석유코크스',
+  solvent: '용제',
+  asphalt: '아스팔트',
+  lubricatingOil: '윤활유',
   bioHeavyOil: '바이오중유',
   coalBituminous: '역청탄',
   anthracite: '무연탄',
@@ -372,8 +390,10 @@ export const ko = {
 
   // Scope 2 Energy
   gridElectricity: '그리드 전력',
-  purchasedSteam: '구매 스팀',
-  purchasedHeating: '구매 난방',
+  purchasedSteam: '구매 스팀 (열전용)',
+  purchasedSteamCHP: '구매 스팀 (열병합)',
+  purchasedSteamGeneral: '구매 스팀 (일반)',
+  purchasedHeating: '구매 난방 (지역난방)',
   purchasedCooling: '구매 냉방',
   countrySouthKorea: '대한민국',
   countryUSA: '미국',
@@ -385,7 +405,7 @@ export const ko = {
   itServicesSpend: 'IT 서비스 (지출)',
   computerHardwareSpend: '컴퓨터 하드웨어 (지출)',
   heavyMachinerySpend: '중장비 (지출)',
-  
+
   // Category 1 - 원자재: 금속
   steelPrimaryBOF: '철강 - 1차 (고로)',
   steelSecondaryEAF: '철강 - 2차 (전기로)',
@@ -400,7 +420,7 @@ export const ko = {
   lead: '납',
   nickel: '니켈',
   titanium: '티타늄',
-  
+
   // Category 1 - 원자재: 플라스틱
   peHDPE: 'PE - 폴리에틸렌 (HDPE)',
   peLDPE: 'PE - 폴리에틸렌 (LDPE)',
@@ -412,7 +432,7 @@ export const ko = {
   pcPolycarbonate: 'PC - 폴리카보네이트',
   nylonPA6: '나일론 (PA6)',
   recycledPlasticAvg: '재활용 플라스틱 - 평균',
-  
+
   // Category 1 - 원자재: 화학제품
   industrialSolvents: '산업용 용제 - 평균',
   adhesivesAverage: '접착제 - 평균',
@@ -423,7 +443,7 @@ export const ko = {
   sulfuricAcid: '황산',
   sodiumHydroxide: '수산화나트륨 (가성소다)',
   ammonia: '암모니아',
-  
+
   // Category 1 - 원자재: 건설자재
   cementPortland: '시멘트 - 포틀랜드',
   concreteReadyMix: '레미콘',
@@ -434,7 +454,7 @@ export const ko = {
   insulationGlassWool: '단열재 - 유리솜',
   insulationEPS: '단열재 - EPS',
   bricks: '벽돌',
-  
+
   // Category 1 - 포장재
   corrugatedCardboard: '골판지',
   paperVirgin: '종이 - 버진',
@@ -445,7 +465,7 @@ export const ko = {
   steelCans: '철제 캔',
   woodenPallets: '목재 팔레트',
   plasticPallets: '플라스틱 팔레트',
-  
+
   // Category 1 - 전자부품
   semiconductorIC: '반도체 - IC 칩',
   pcbBoard: 'PCB - 인쇄회로기판',
@@ -455,7 +475,7 @@ export const ko = {
   electricMotorsSmall: '전기 모터 (소형)',
   cablesWiring: '케이블 및 배선',
   connectors: '커넥터',
-  
+
   // Category 1 - 사무용품
   officePaperA4: '사무용지 (A4)',
   printerCartridgesInkjet: '프린터 카트리지 - 잉크젯',
@@ -467,7 +487,7 @@ export const ko = {
   monitor: '모니터',
   mobilePhone: '휴대폰',
   tablet: '태블릿',
-  
+
   // Category 1 - PPE 및 안전장비
   safetyHelmet: '안전모',
   safetyShoes: '안전화',
@@ -477,7 +497,7 @@ export const ko = {
   disposableMasksN95: '일회용 마스크 (N95)',
   coverallsDisposable: '일회용 작업복',
   highVisVest: '반사 조끼',
-  
+
   // Category 1 - 서비스 (지출 기반)
   cloudComputingServices: '클라우드 컴퓨팅 서비스',
   softwareSaaS: '서비스형 소프트웨어 (SaaS)',
@@ -501,7 +521,7 @@ export const ko = {
   printingServices: '인쇄 서비스',
   courierPostalServices: '택배 및 우편 서비스',
   travelAgencyServices: '여행사 서비스',
-  
+
   // Category 1 - 식품/농산물
   rice: '쌀',
   wheat: '밀',
@@ -517,7 +537,7 @@ export const ko = {
   sugar: '설탕',
   coffeeRoasted: '커피 (로스팅)',
   palmOil: '팜유',
-  
+
   // Category 1 - 섬유/가죽
   cottonFabric: '면 직물',
   polyesterFabric: '폴리에스터 직물',
@@ -530,7 +550,7 @@ export const ko = {
   naturalGasWTT: '천연가스 (WTT)',
   gasolineWTT: '휘발유 (WTT)',
   dieselWTT: '경유 (WTT)',
-  heatingOilWTT: '난방유 (WTT)',
+  heatingOilWTT: '등유 / 난방유 (WTT)',
 
   // Scope 3, Cat 4 & 9
   roadLightTruck: '소형 트럭',
@@ -557,7 +577,7 @@ export const ko = {
 
   // Scope 3, Cat 7
   subway: '지하철',
-  
+
   // Scope 3, Cat 10
   chemProcessing: '화학 처리',
   metalForging: '금속 단조',
