@@ -60,7 +60,7 @@ export const en = {
   lngMarine: 'LNG (Marine)',
   lpgMarine: 'LPG (Marine)',
 
-  // Process materials
+  // Process materials (scope1.ts PROCESS_MATERIALS)
   cementProduction: 'Cement Production (Clinker)',
   limeProduction: 'Lime Production',
   ammoniaProduction: 'Ammonia Production',
@@ -69,6 +69,45 @@ export const en = {
   aluminumProduction: 'Aluminum Production (Smelting)',
   semiconductorCF4: 'Semiconductor Manufacturing (CF4 usage)',
   semiconductorNF3: 'Semiconductor Manufacturing (NF3 usage)',
+  // Lime and Minerals
+  quicklime: 'Quickite (CaO)',
+  dolomiticLime: 'Dolomitic Lime (CaO·MgO)',
+  limestone: 'Limestone (CaCO₃)',
+  magnesite: 'Magnesite (MgCO₃)',
+  dolomite: 'Dolomite (CaMg(CO₃)₂)',
+  siderite: 'Siderite (FeCO₃)',
+  ankerite: 'Ankerite',
+  rhodochrosite: 'Rhodochrosite (MnCO₃)',
+  sodaAsh: 'Soda Ash (Na₂CO₃)',
+  // Glass Production
+  flatGlass: 'Flat Glass',
+  containerGlass: 'Container Glass',
+  continuousGlassFiber: 'Continuous Filament Glass Fiber',
+  glassWool: 'Glass Wool',
+  crtGlassPanel: 'CRT Glass Panel',
+  crtGlassFunnel: 'CRT Glass Funnel',
+  householdGlass: 'Household Glass Products',
+  laboratoryGlassware: 'Laboratory Glassware',
+  lightingGlass: 'Lighting Glass',
+  // Carbide Production
+  calciumCarbide: 'Calcium Carbide (CaC₂)',
+  siliconCarbide: 'Silicon Carbide (SiC)',
+  sodaAshProduction: 'Soda Ash Production',
+  // Ferroalloy Production
+  ferroalloySi45: 'Ferroalloy (Si 45%)',
+  ferroalloySi65: 'Ferroalloy (Si 65%)',
+  ferroalloySi75: 'Ferroalloy (Si 75%)',
+  ferroalloySi90: 'Ferroalloy (Si 90%)',
+  ferromanganeseC7: 'Ferromanganese (C 7%)',
+  ferromanganeseC1: 'Ferromanganese (C 1%)',
+  silicomanganese: 'Silicomanganese',
+  siliconMetal: 'Silicon Metal',
+  // Zinc and Lead Production
+  zincUnspecified: 'Zinc Production (Unspecified)',
+  zincWaelzKiln: 'Zinc Production (Waelz Kiln)',
+  zincElectrothermic: 'Zinc Production (Electrothermic)',
+  zincPyrometallurgical: 'Zinc Production (Pyrometallurgical)',
+  leadProduction: 'Lead Production',
 
   // Fugitive gases
   hfc134a: 'HFC-134a (Refrigerant)',
@@ -77,12 +116,40 @@ export const en = {
   r22: 'R-22 (HCFC-22, Refrigerant)',
   sf6: 'SF6 (from electrical equipment)',
 
-  // Waste (Scope 1)
+  // Waste (Scope 1) - Household
   mswIncineration: 'MSW Incineration',
   industrialWasteIncineration: 'Industrial Waste Incineration',
   sewageSludgeIncineration: 'Sewage Sludge Incineration',
   wastewaterAnaerobic: 'Wastewater Treatment (Anaerobic)',
   wastewaterAerobic: 'Wastewater Treatment (Aerobic)',
+  wasteHouseholdPaper: 'Paper Waste (Household)',
+  wasteHouseholdTextile: 'Textile Waste (Household)',
+  wasteHouseholdFood: 'Food Waste (Household)',
+  wasteHouseholdWood: 'Wood Waste (Household)',
+  wasteHouseholdGarden: 'Garden/Park Waste (Household)',
+  wasteHouseholdDiapers: 'Diapers',
+  wasteHouseholdRubber: 'Rubber/Leather Waste (Household)',
+  wasteHouseholdPlastic: 'Plastic Waste (Household)',
+  wasteHouseholdMetal: 'Metal Waste (Household)',
+  wasteHouseholdGlass: 'Glass Waste (Household)',
+  wasteHouseholdOther: 'Other Household Waste',
+  // Waste - Industrial
+  wasteIndustrialFood: 'Industrial Food Waste',
+  wasteIndustrialTextile: 'Industrial Textile Waste',
+  wasteIndustrialWood: 'Industrial Wood Waste',
+  wasteIndustrialPaper: 'Industrial Paper Waste',
+  wasteIndustrialPlastic: 'Industrial Plastic/Solvent Waste',
+  wasteIndustrialRubber: 'Industrial Synthetic Rubber Waste',
+  wasteIndustrialConstruction: 'Construction & Demolition Waste',
+  wasteIndustrialOther: 'Other Industrial Waste',
+  wasteIndustrialSludge: 'Wastewater Sludge',
+  wasteIndustrialMedical: 'Medical Waste',
+  wasteSewageSludge: 'Sewage Sludge',
+  wasteLiquidHousehold: 'Liquid Household Waste',
+  wasteLiquidIndustrial: 'Liquid Industrial Waste',
+  wasteGas: 'Waste Gas',
+  wasteBiogas: 'Biogas (Methane)',
+
 
   // Scope 2 Energy
   gridElectricity: 'Grid Electricity',
@@ -364,7 +431,7 @@ export const ko = {
   lngMarine: 'LNG (선박용)',
   lpgMarine: 'LPG (선박용)',
 
-  // Process materials
+  // Process materials (scope1.ts PROCESS_MATERIALS)
   cementProduction: '시멘트 생산 (클링커)',
   limeProduction: '석회 생산',
   ammoniaProduction: '암모니아 생산',
@@ -373,6 +440,45 @@ export const ko = {
   aluminumProduction: '알루미늄 생산 (제련)',
   semiconductorCF4: '반도체 제조 (CF4 사용)',
   semiconductorNF3: '반도체 제조 (NF3 사용)',
+  // Lime and Minerals
+  quicklime: '생석회 (CaO)',
+  dolomiticLime: '백운석회 (CaO·MgO)',
+  limestone: '석회석 (CaCO₃)',
+  magnesite: '마그네사이트 (MgCO₃)',
+  dolomite: '돌로마이트 (CaMg(CO₃)₂)',
+  siderite: '능철광 (FeCO₃)',
+  ankerite: '철백운석',
+  rhodochrosite: '망간광 (MnCO₃)',
+  sodaAsh: '소다회 (Na₂CO₃)',
+  // Glass Production
+  flatGlass: '판유리',
+  containerGlass: '유리용기',
+  continuousGlassFiber: '유리장섬유',
+  glassWool: '유리단섬유',
+  crtGlassPanel: '브라운관 Panel',
+  crtGlassFunnel: '브라운관 Funnel',
+  householdGlass: '가정용 유리제품',
+  laboratoryGlassware: '실험용 유리기구',
+  lightingGlass: '조명용 유리',
+  // Carbide Production
+  calciumCarbide: '칼슘카바이드 (CaC₂)',
+  siliconCarbide: '실리콘카바이드 (SiC)',
+  sodaAshProduction: '소다회 생산',
+  // Ferroalloy Production
+  ferroalloySi45: '합금철 (Si 45%)',
+  ferroalloySi65: '합금철 (Si 65%)',
+  ferroalloySi75: '합금철 (Si 75%)',
+  ferroalloySi90: '합금철 (Si 90%)',
+  ferromanganeseC7: '페로망간 (C 7%)',
+  ferromanganeseC1: '페로망간 (C 1%)',
+  silicomanganese: '실리코망간',
+  siliconMetal: '실리콘메탈',
+  // Zinc and Lead Production
+  zincUnspecified: '아연 생산 (미특정)',
+  zincWaelzKiln: '아연 생산 (Waelz Kiln)',
+  zincElectrothermic: '아연 생산 (전열법)',
+  zincPyrometallurgical: '아연 생산 (건식야금법)',
+  leadProduction: '납 생산',
 
   // Fugitive gases
   hfc134a: 'HFC-134a (냉매)',
@@ -381,12 +487,40 @@ export const ko = {
   r22: 'R-22 (HCFC-22, 냉매)',
   sf6: 'SF6 (전기 장비)',
 
-  // Waste (Scope 1)
+  // Waste (Scope 1) - Household
   mswIncineration: '도시 고형 폐기물 소각',
   industrialWasteIncineration: '산업 폐기물 소각',
   sewageSludgeIncineration: '하수 슬러지 소각',
   wastewaterAnaerobic: '폐수 처리 (혐기성)',
   wastewaterAerobic: '폐수 처리 (호기성)',
+  wasteHouseholdPaper: '종이류 (생활폐기물)',
+  wasteHouseholdTextile: '섬유류 (생활폐기물)',
+  wasteHouseholdFood: '음식물류 (생활폐기물)',
+  wasteHouseholdWood: '나무류 (생활폐기물)',
+  wasteHouseholdGarden: '정원 및 공원 폐기물류',
+  wasteHouseholdDiapers: '기저귀',
+  wasteHouseholdRubber: '고무 피혁류 (생활폐기물)',
+  wasteHouseholdPlastic: '플라스틱류 (생활폐기물)',
+  wasteHouseholdMetal: '금속류 (생활폐기물)',
+  wasteHouseholdGlass: '유리류 (생활폐기물)',
+  wasteHouseholdOther: '기타 생활폐기물',
+  // Waste - Industrial
+  wasteIndustrialFood: '사업장 음식물류',
+  wasteIndustrialTextile: '사업장 폐섬유류',
+  wasteIndustrialWood: '사업장 폐목재류',
+  wasteIndustrialPaper: '사업장 폐지류',
+  wasteIndustrialPlastic: '사업장 플라스틱류',
+  wasteIndustrialRubber: '사업장 폐합성고무',
+  wasteIndustrialConstruction: '건설 및 파쇄 잔재물',
+  wasteIndustrialOther: '기타 사업장 폐기물',
+  wasteIndustrialSludge: '폐수 슬러지',
+  wasteIndustrialMedical: '의료폐기물',
+  wasteSewageSludge: '하수 슬러지',
+  wasteLiquidHousehold: '액상 생활폐기물',
+  wasteLiquidIndustrial: '액상 사업장폐기물',
+  wasteGas: '폐가스',
+  wasteBiogas: '바이오가스',
+
 
   // Scope 2 Energy
   gridElectricity: '그리드 전력',
