@@ -609,6 +609,25 @@ export const en = {
   csvRef: 'CSV Reference',
   verifiedData: 'Verified Data',
   unverifiedData: 'Unverified Data',
+  // Table UI
+  searchPlaceholder: 'Search...',
+  filterAll: 'All',
+  filterVerified: 'Verified',
+  filterCustom: 'Custom',
+  items: 'items',
+  unit: 'Unit',
+  factor: 'Factor',
+  status: 'Status',
+  actions: 'Actions',
+  allUnits: 'All Units',
+  downloadCSV: 'Download CSV',
+  uploadCSV: 'Upload CSV',
+  // Confirmation UI
+  pendingChanges: 'Pending changes',
+  applyChanges: 'Apply Changes',
+  discardChanges: 'Discard',
+  resetScope3: 'Reset Scope 3',
+  confirmResetScope3: 'Are you sure you want to restore all Scope 3 factors to their original defaults? This will overwrite your manual edits.',
 };
 
 export const ko = {
@@ -1214,4 +1233,23 @@ export const ko = {
   csvRef: 'CSV 참조',
   verifiedData: '검증된 데이터',
   unverifiedData: '미검증 데이터',
+  // Table UI
+  searchPlaceholder: '검색...',
+  filterAll: '전체',
+  filterVerified: '검증됨',
+  filterCustom: '사용자 정의',
+  items: '항목',
+  unit: '단위',
+  factor: '배출계수',
+  status: '상태',
+  actions: '관리',
+  allUnits: '모든 단위',
+  downloadCSV: 'CSV 다운로드',
+  uploadCSV: 'CSV 업로드',
+  // Confirmation UI
+  pendingChanges: '수정 대기 중',
+  applyChanges: '변경 적용',
+  discardChanges: '취소',
+  resetScope3: 'Scope 3 복원',
+  confirmResetScope3: '모든 Scope 3 배출계수를 초기 상태(기본값)로 복원하시겠습니까? 직접 수정한 내용은 사라집니다.',
 };

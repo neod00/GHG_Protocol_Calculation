@@ -13,34 +13,34 @@ export const STATIONARY_FUELS: CO2eFactorFuel[] = [
     name: 'City Gas (LNG)',
     translationKey: 'naturalGas',
     units: ['Nm3', 'MJ'],
-    factors: { 'Nm3': 2.18758, 'MJ': 0.05624 },
-    // 상세 산정 근거
+    factors: { 'Nm3': 2.18474, 'MJ': 0.05617 }, // 38.9 * (56100 + 1*21 + 0.1*310) / 10^6
+    // 상세 산정 근거 - 제조업 부문 기준
     netHeatingValue: 38.9,
     heatingValueUnit: 'MJ/Nm3',
     co2EF: 56100,
-    ch4EF: 5,
+    ch4EF: 1,  // 제조업 부문 (에너지산업:1, 상업/가정:5)
     n2oEF: 0.1,
     gwpCH4: 21,
     gwpN2O: 310,
     isVerified: true,
     csvLineRef: 'GHG_EmissionFactor.csv:5',
-    source: '온실가스 배출권거래제 지침 (2024)',
+    source: '온실가스 배출권거래제 지침 (2024) - 제조업 부문',
   },
   {
     name: 'LPG (Propane)',
     translationKey: 'propane',
     units: ['kg', 'Nm3'],
-    factors: { 'kg': 2.92783, 'Nm3': 2.15209 },
+    factors: { 'kg': 2.92412, 'Nm3': 2.14936 }, // 46.3 * (63100 + 1*21 + 0.1*310) / 10^6
     netHeatingValue: 46.3,
     heatingValueUnit: 'MJ/kg',
     co2EF: 63100,
-    ch4EF: 5,
+    ch4EF: 1,  // 제조업 부문 (에너지산업:1, 상업/가정:5)
     n2oEF: 0.1,
     gwpCH4: 21,
     gwpN2O: 310,
     isVerified: true,
     csvLineRef: 'GHG_EmissionFactor.csv:6',
-    source: '온실가스 배출권거래제 지침 (2024)',
+    source: '온실가스 배출권거래제 지침 (2024) - 제조업 부문',
   },
   {
     name: 'LPG (Butane)',
@@ -63,17 +63,17 @@ export const STATIONARY_FUELS: CO2eFactorFuel[] = [
     name: 'Natural Gas (kg)',
     translationKey: 'naturalGasKg',
     units: ['kg'],
-    factors: { 'kg': 2.77651 }, // 49.4 * (56100 + 5*21 + 0.1*310) / 10^6
+    factors: { 'kg': 2.77257 }, // 49.4 * (56100 + 1*21 + 0.1*310) / 10^6
     netHeatingValue: 49.4,
     heatingValueUnit: 'MJ/kg',
     co2EF: 56100,
-    ch4EF: 5,
+    ch4EF: 1,  // 제조업 부문 (에너지산업:1, 상업/가정:5)
     n2oEF: 0.1,
     gwpCH4: 21,
     gwpN2O: 310,
     isVerified: true,
     csvLineRef: 'GHG_EmissionFactor.csv:13',
-    source: '온실가스 배출권거래제 지침 (2024)',
+    source: '온실가스 배출권거래제 지침 (2024) - 제조업 부문',
   },
   // ========== 액체 연료 (Liquid Fuels) ==========
   {
@@ -161,113 +161,113 @@ export const STATIONARY_FUELS: CO2eFactorFuel[] = [
     name: 'Anthracite (Domestic)',
     translationKey: 'anthracite',
     units: ['kg'],
-    factors: { 'kg': 1.91645 },
+    factors: { 'kg': 1.92032 }, // 19.4 * (98300 + 10*21 + 1.5*310) / 10^6
     netHeatingValue: 19.4,
     heatingValueUnit: 'MJ/kg',
     co2EF: 98300,
-    ch4EF: 1,
+    ch4EF: 10,  // 제조업 부문 (에너지산업:1, 제조업:10)
     n2oEF: 1.5,
     gwpCH4: 21,
     gwpN2O: 310,
     isVerified: true,
     csvLineRef: 'GHG_EmissionFactor.csv:16',
-    source: '온실가스 배출권거래제 지침 (2024)',
+    source: '온실가스 배출권거래제 지침 (2024) - 제조업 부문',
   },
   {
     name: 'Bituminous Coal',
     translationKey: 'coalBituminous',
     units: ['kg'],
-    factors: { 'kg': 2.24773 }, // 23.7 * (94600 + 1*21 + 1.5*310) / 10^6
+    factors: { 'kg': 2.25199 }, // 23.7 * (94600 + 10*21 + 1.5*310) / 10^6
     netHeatingValue: 23.7,
     heatingValueUnit: 'MJ/kg',
     co2EF: 94600,
-    ch4EF: 1,
+    ch4EF: 10,  // 제조업 부문 (에너지산업:1, 제조업:10)
     n2oEF: 1.5,
     gwpCH4: 21,
     gwpN2O: 310,
     isVerified: true,
     csvLineRef: 'GHG_EmissionFactor.csv:19',
-    source: '온실가스 배출권거래제 지침 (2024)',
+    source: '온실가스 배출권거래제 지침 (2024) - 제조업 부문',
   },
   {
     name: 'Bituminous Coal (Raw Materials)',
     translationKey: 'coalBituminousRaw',
     units: ['kg'],
-    factors: { 'kg': 2.65345 }, // 28.0 * (94600 + 1*21 + 1.5*310) / 10^6
+    factors: { 'kg': 2.65849 }, // 28.0 * (94600 + 10*21 + 1.5*310) / 10^6
     netHeatingValue: 28.0,
     heatingValueUnit: 'MJ/kg',
     co2EF: 94600,
-    ch4EF: 1,
+    ch4EF: 10,  // 제조업 부문 (에너지산업:1, 제조업:10)
     n2oEF: 1.5,
     gwpCH4: 21,
     gwpN2O: 310,
     isVerified: true,
     csvLineRef: 'GHG_EmissionFactor.csv:20',
-    source: '온실가스 배출권거래제 지침 (2024)',
+    source: '온실가스 배출권거래제 지침 (2024) - 제조업 부문',
   },
   {
     name: 'Imported Anthracite (Fuel)',
     translationKey: 'anthraciteImportFuel',
     units: ['kg'],
-    factors: { 'kg': 2.02511 }, // 20.5 * (98300 + 1*21 + 1.5*310) / 10^6
+    factors: { 'kg': 2.02919 }, // 20.5 * (98300 + 10*21 + 1.5*310) / 10^6
     netHeatingValue: 20.5,
     heatingValueUnit: 'MJ/kg',
     co2EF: 98300,
-    ch4EF: 1,
+    ch4EF: 10,  // 제조업 부문 (에너지산업:1, 제조업:10)
     n2oEF: 1.5,
     gwpCH4: 21,
     gwpN2O: 310,
     isVerified: true,
     csvLineRef: 'GHG_EmissionFactor.csv:17',
-    source: '온실가스 배출권거래제 지침 (2024)',
+    source: '온실가스 배출권거래제 지침 (2024) - 제조업 부문',
   },
   {
     name: 'Imported Anthracite (Raw Materials)',
     translationKey: 'anthraciteImportRaw',
     units: ['kg'],
-    factors: { 'kg': 2.43999 }, // 24.7 * (98300 + 1*21 + 1.5*310) / 10^6
+    factors: { 'kg': 2.44490 }, // 24.7 * (98300 + 10*21 + 1.5*310) / 10^6
     netHeatingValue: 24.7,
     heatingValueUnit: 'MJ/kg',
     co2EF: 98300,
-    ch4EF: 1,
+    ch4EF: 10,  // 제조업 부문 (에너지산업:1, 제조업:10)
     n2oEF: 1.5,
     gwpCH4: 21,
     gwpN2O: 310,
     isVerified: true,
     csvLineRef: 'GHG_EmissionFactor.csv:18',
-    source: '온실가스 배출권거래제 지침 (2024)',
+    source: '온실가스 배출권거래제 지침 (2024) - 제조업 부문',
   },
   {
     name: 'Sub-bituminous Coal',
     translationKey: 'subBituminousCoal',
     units: ['kg'],
-    factors: { 'kg': 1.92138 }, // 19.9 * (96100 + 1*21 + 1.5*310) / 10^6
+    factors: { 'kg': 1.92516 }, // 19.9 * (96100 + 10*21 + 1.5*310) / 10^6
     netHeatingValue: 19.9,
     heatingValueUnit: 'MJ/kg',
     co2EF: 96100,
-    ch4EF: 1,
+    ch4EF: 10,  // 제조업 부문 (에너지산업:1, 제조업:10)
     n2oEF: 1.5,
     gwpCH4: 21,
     gwpN2O: 310,
     isVerified: true,
     csvLineRef: 'GHG_EmissionFactor.csv:21',
-    source: '온실가스 배출권거래제 지침 (2024)',
+    source: '온실가스 배출권거래제 지침 (2024) - 제조업 부문',
   },
   {
     name: 'Coke',
     translationKey: 'cokeStationary',
     units: ['kg'],
-    factors: { 'kg': 3.10639 }, // 28.9 * (107000 + 1*21 + 1.5*310) / 10^6
+    factors: { 'kg': 3.09641 }, // 28.9 * (107000 + 3*21 + 0.1*310) / 10^6
     netHeatingValue: 28.9,
     heatingValueUnit: 'MJ/kg',
     co2EF: 107000,
-    ch4EF: 1,
-    n2oEF: 1.5,
+    ch4EF: 3,  // 제조업 부문 (에너지산업:1, 제조업:3)
+    n2oEF: 0.1,  // 제조업 부문 (에너지산업:0.1, 제조업:0.1)
     gwpCH4: 21,
     gwpN2O: 310,
     isVerified: true,
     csvLineRef: 'GHG_EmissionFactor.csv:22',
-    source: '온실가스 배출권거래제 지침 (2024)',
+    source: '온실가스 배출권거래제 지침 (2024) - 제조업 부문',
   },
   // ========== 기타 연료 (Additional Fuels from CSV 23-30) ==========
   {

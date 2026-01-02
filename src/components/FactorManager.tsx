@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { EditableRefrigerant, EditableCO2eFactorFuel, EmissionCategory } from '../types';
 import { useTranslation } from '../context/LanguageContext';
 // FIX: Changed import path to be more explicit.
@@ -6,6 +6,8 @@ import { ALL_SCOPE3_CATEGORIES, SCOPE2_FACTORS_BY_REGION } from '../constants/in
 import { IconTrash, IconInfo, IconPencil, IconChevronUp, IconChevronDown } from './IconComponents';
 // FIX: Changed import path to be more explicit.
 import { TranslationKey } from '../translations/index';
+import { exportFactorsToCSV, downloadCSV } from '../utils/factorExport';
+import { parseFactorsCSV, convertToInternalFormat } from '../utils/factorImport';
 
 type FactorCategoryKey = 'stationary' | 'mobile' | 'process' | 'fugitive' | 'waste' | 'scope2' | 'purchasedGoods' | 'capitalGoods' | 'fuelEnergy' | 'upstreamTransport' | 'downstreamTransport' | 'scope3Waste' | 'businessTravel' | 'employeeCommuting' | 'upstreamLeased' | 'downstreamLeased' | 'processingSold' | 'useSold' | 'endOfLife' | 'franchises' | 'investments';
 
@@ -127,6 +129,7 @@ interface FactorManagerProps {
     onAddFactor: (categoryKey: FactorCategoryKey, itemData: any) => void;
     onEditFactor: (categoryKey: FactorCategoryKey, itemData: any) => void;
     onDeleteFactor: (categoryKey: FactorCategoryKey, idToDelete: string) => void;
+    onBulkUpdateFactors?: (updatedFactors: Record<string, any[]>) => void;
     enabledScope3Categories: EmissionCategory[];
     onRequireAuth?: () => boolean;
 }
@@ -464,6 +467,7 @@ export const FactorManager: React.FC<FactorManagerProps> = ({
     onAddFactor,
     onEditFactor,
     onDeleteFactor,
+    onBulkUpdateFactors,
     enabledScope3Categories,
     onRequireAuth
 }) => {
@@ -476,6 +480,10 @@ export const FactorManager: React.FC<FactorManagerProps> = ({
 
     // State for tracking which items have their detail panel expanded
     const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+
+    // State for search and filter functionality
+    const [searchQuery, setSearchQuery] = useState('');
+    const [filterStatus, setFilterStatus] = useState<'all' | 'verified' | 'custom'>('all');
 
     const toggleExpand = (itemId: string) => {
         setExpandedItems(prev => {
@@ -526,6 +534,108 @@ export const FactorManager: React.FC<FactorManagerProps> = ({
             : 'text-gray-500 hover:text-ghg-dark dark:hover:text-gray-300'
         }`;
 
+    // CSV Management
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [uploadStatus, setUploadStatus] = useState<{ type: 'success' | 'error' | 'none'; message: string }>({ type: 'none', message: '' });
+
+    // Pending Changes Management - for confirmation before applying
+    const [pendingChanges, setPendingChanges] = useState<Map<string, { categoryKey: FactorCategoryKey; index: number; unit: string; value: number; originalValue: number }>>(new Map());
+    const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+
+    const hasPendingChanges = pendingChanges.size > 0;
+
+    const handlePendingFactorChange = (categoryKey: FactorCategoryKey, index: number, unit: string, value: string, originalValue: number) => {
+        const key = `${categoryKey}-${index}-${unit}`;
+        const numValue = parseFloat(value) || 0;
+
+        if (numValue === originalValue) {
+            // Remove from pending if restored to original
+            setPendingChanges(prev => {
+                const newMap = new Map(prev);
+                newMap.delete(key);
+                return newMap;
+            });
+        } else {
+            setPendingChanges(prev => new Map(prev).set(key, { categoryKey, index, unit, value: numValue, originalValue }));
+        }
+    };
+
+    const handlePendingGWPChange = (index: number, value: string, originalValue: number) => {
+        const key = `fugitive-${index}-gwp`;
+        const numValue = parseFloat(value) || 0;
+
+        if (numValue === originalValue) {
+            setPendingChanges(prev => {
+                const newMap = new Map(prev);
+                newMap.delete(key);
+                return newMap;
+            });
+        } else {
+            setPendingChanges(prev => new Map(prev).set(key, { categoryKey: 'fugitive', index, unit: 'gwp', value: numValue, originalValue }));
+        }
+    };
+
+    const applyPendingChanges = () => {
+        if (onRequireAuth && !onRequireAuth()) return;
+
+        pendingChanges.forEach((change) => {
+            if (change.unit === 'gwp') {
+                onGWPChange(change.index, String(change.value));
+            } else {
+                onProportionalFactorChange(change.categoryKey, change.index, change.unit, String(change.value));
+            }
+        });
+
+        setPendingChanges(new Map());
+        setShowConfirmDialog(false);
+    };
+
+    const discardPendingChanges = () => {
+        setPendingChanges(new Map());
+        setShowConfirmDialog(false);
+    };
+
+    const getPendingValue = (categoryKey: FactorCategoryKey, index: number, unit: string): number | undefined => {
+        const key = `${categoryKey}-${index}-${unit}`;
+        return pendingChanges.get(key)?.value;
+    };
+
+    const handleDownloadCSV = () => {
+        if (onRequireAuth && !onRequireAuth()) return;
+        const csvContent = exportFactorsToCSV(allFactors);
+        const timestamp = new Date().toISOString().slice(0, 10);
+        downloadCSV(csvContent, `emission_factors_${timestamp}.csv`);
+    };
+
+    const handleUploadCSV = (event: React.ChangeEvent<HTMLInputElement>) => {
+        if (onRequireAuth && !onRequireAuth()) return;
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const content = e.target?.result as string;
+            const result = parseFactorsCSV(content);
+
+            if (result.errors.length > 0) {
+                setUploadStatus({ type: 'error', message: result.errors.join('; ') });
+            } else {
+                setUploadStatus({ type: 'success', message: `${result.data.length} ${t('items') || 'items'} parsed. ${result.warnings.length} warnings.` });
+
+                if (onBulkUpdateFactors) {
+                    const internalData = convertToInternalFormat(result.data);
+                    onBulkUpdateFactors(internalData);
+                }
+            }
+        };
+        reader.readAsText(file);
+
+        // Reset file input
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
+    };
+
     const renderFactorList = (categoryKey: FactorCategoryKey) => {
         const data = allFactors[categoryKey];
         const isFugitive = categoryKey === 'fugitive';
@@ -575,131 +685,219 @@ export const FactorManager: React.FC<FactorManagerProps> = ({
                         )}
                     </div>
                 )}
-                {data.map((item: any, index) => {
-                    const itemId = item.id || item.name;
-                    const isExpanded = expandedItems.has(itemId);
-                    const hasDetailedData = item.netHeatingValue || item.co2EF || item.ch4EF || item.n2oEF;
 
-                    return (
-                        <div key={itemId} className="p-3 bg-gray-50 rounded-lg border dark:bg-gray-800 dark:border-gray-600">
-                            <div className="flex justify-between items-center">
-                                <h3 className="font-semibold text-ghg-dark dark:text-gray-100">
-                                    {language === 'ko' && item.translationKey ? t(item.translationKey as TranslationKey) : item.name}
-                                    {item.isCustom && <span className="ml-2 text-xs font-semibold bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full dark:bg-blue-900 dark:text-blue-200">{t('custom')}</span>}
-                                    {item.isVerified && <span className="ml-2 text-xs font-semibold bg-green-100 text-green-800 px-2 py-0.5 rounded-full dark:bg-green-900 dark:text-green-200">✓ {t('verifiedData')}</span>}
-                                </h3>
-                                <div className="flex gap-2 items-center">
-                                    {/* Detail toggle button - only show if there's detailed data */}
-                                    {hasDetailedData && !isFugitive && (
-                                        <button
-                                            onClick={() => toggleExpand(itemId)}
-                                            className="text-xs px-2 py-1 rounded-md bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors flex items-center gap-1"
-                                        >
-                                            {isExpanded ? (
-                                                <><IconChevronUp className="w-3 h-3" /> {t('hideDetails')}</>
-                                            ) : (
-                                                <><IconChevronDown className="w-3 h-3" /> {t('viewDetails')}</>
+                {/* Search and Filter Bar */}
+                <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
+                    <div className="flex gap-2 flex-1">
+                        <input
+                            type="text"
+                            placeholder={t('searchPlaceholder') || '검색...'}
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="flex-1 max-w-xs bg-white text-gray-900 border border-gray-300 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100 rounded-md shadow-sm py-1.5 px-3 text-sm focus:outline-none focus:ring-ghg-green focus:border-ghg-green"
+                        />
+                        <select
+                            value={filterStatus}
+                            onChange={(e) => setFilterStatus(e.target.value as 'all' | 'verified' | 'custom')}
+                            className="bg-white text-gray-900 border border-gray-300 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100 rounded-md shadow-sm py-1.5 px-2 text-sm focus:outline-none focus:ring-ghg-green focus:border-ghg-green"
+                        >
+                            <option value="all">{t('filterAll') || '전체'}</option>
+                            <option value="verified">{t('filterVerified') || '검증됨'}</option>
+                            <option value="custom">{t('filterCustom') || '사용자 정의'}</option>
+                        </select>
+                    </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {(() => {
+                            const filtered = data.filter((item: any) => {
+                                const itemName = language === 'ko' && item.translationKey ? t(item.translationKey as TranslationKey) : item.name;
+                                const matchesSearch = itemName.toLowerCase().includes(searchQuery.toLowerCase()) || item.name.toLowerCase().includes(searchQuery.toLowerCase());
+                                const matchesFilter = filterStatus === 'all' || (filterStatus === 'verified' && item.isVerified) || (filterStatus === 'custom' && item.isCustom);
+                                return matchesSearch && matchesFilter;
+                            });
+                            return `${filtered.length} / ${data.length} ${t('items') || '항목'}`;
+                        })()}
+                    </p>
+                </div>
+
+                {/* Data Table */}
+                <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-600">
+                    <table className="w-full text-sm">
+                        <thead className="bg-gray-100 dark:bg-gray-700 text-left">
+                            <tr>
+                                <th className="px-3 py-2 font-semibold text-gray-700 dark:text-gray-200">{t('sourceName') || '이름'}</th>
+                                <th className="px-3 py-2 font-semibold text-gray-700 dark:text-gray-200 hidden sm:table-cell">{isFugitive ? 'GWP' : t('unit') || '단위'}</th>
+                                <th className="px-3 py-2 font-semibold text-gray-700 dark:text-gray-200">{isFugitive ? '' : t('factor') || '배출계수'}</th>
+                                <th className="px-3 py-2 font-semibold text-gray-700 dark:text-gray-200 hidden md:table-cell">{t('status') || '상태'}</th>
+                                <th className="px-3 py-2 font-semibold text-gray-700 dark:text-gray-200 text-right">{t('actions') || '관리'}</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200 dark:divide-gray-600">
+                            {data
+                                .map((item: any, index: number) => ({ item, index }))
+                                .filter(({ item }: { item: any }) => {
+                                    const itemName = language === 'ko' && item.translationKey ? t(item.translationKey as TranslationKey) : item.name;
+                                    const matchesSearch = itemName.toLowerCase().includes(searchQuery.toLowerCase()) || item.name.toLowerCase().includes(searchQuery.toLowerCase());
+                                    const matchesFilter = filterStatus === 'all' || (filterStatus === 'verified' && item.isVerified) || (filterStatus === 'custom' && item.isCustom);
+                                    return matchesSearch && matchesFilter;
+                                })
+                                .map(({ item, index }: { item: any; index: number }) => {
+                                    const itemId = item.id || item.name;
+                                    const isExpanded = expandedItems.has(itemId);
+                                    const hasDetailedData = item.netHeatingValue || item.co2EF || item.ch4EF || item.n2oEF;
+                                    const displayName = language === 'ko' && item.translationKey ? t(item.translationKey as TranslationKey) : item.name;
+                                    const primaryUnit = item.units?.[0] || Object.keys(item.factors || {})[0] || '';
+                                    const primaryFactor = item.factors?.[primaryUnit];
+
+                                    return (
+                                        <React.Fragment key={itemId}>
+                                            {/* Main Row */}
+                                            <tr
+                                                className={`hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer ${isExpanded ? 'bg-gray-50 dark:bg-gray-700/30' : ''}`}
+                                                onClick={() => hasDetailedData && !isFugitive && toggleExpand(itemId)}
+                                            >
+                                                <td className="px-3 py-2">
+                                                    <div className="flex items-center gap-2">
+                                                        {hasDetailedData && !isFugitive && (
+                                                            <span className="text-gray-400">
+                                                                {isExpanded ? <IconChevronUp className="w-4 h-4" /> : <IconChevronDown className="w-4 h-4" />}
+                                                            </span>
+                                                        )}
+                                                        <span className="font-medium text-gray-900 dark:text-gray-100">{displayName}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-3 py-2 text-gray-600 dark:text-gray-300 hidden sm:table-cell">
+                                                    {isFugitive ? (() => {
+                                                        const pendingGWP = getPendingValue('fugitive', index, 'gwp');
+                                                        const displayValue = pendingGWP !== undefined ? pendingGWP : item.gwp;
+                                                        const hasChange = pendingGWP !== undefined;
+                                                        return (
+                                                            <input
+                                                                type="number"
+                                                                step="any"
+                                                                value={displayValue}
+                                                                onChange={(e) => { e.stopPropagation(); handlePendingGWPChange(index, e.target.value, item.gwp); }}
+                                                                onClick={(e) => e.stopPropagation()}
+                                                                className={`w-20 bg-white text-gray-900 border dark:bg-gray-600 dark:text-gray-100 rounded py-0.5 px-1 text-sm ${hasChange ? 'border-yellow-400 ring-1 ring-yellow-400' : 'border-gray-300 dark:border-gray-500'}`}
+                                                            />
+                                                        );
+                                                    })() : (
+                                                        <span className="text-xs">{primaryUnit}</span>
+                                                    )}
+                                                </td>
+                                                <td className="px-3 py-2 text-gray-600 dark:text-gray-300">
+                                                    {!isFugitive && primaryFactor !== undefined && (() => {
+                                                        const pendingFactor = getPendingValue(categoryKey, index, primaryUnit);
+                                                        const displayValue = pendingFactor !== undefined ? pendingFactor : primaryFactor;
+                                                        const hasChange = pendingFactor !== undefined;
+                                                        return (
+                                                            <div className="flex items-center gap-1">
+                                                                <input
+                                                                    type="number"
+                                                                    step="any"
+                                                                    value={displayValue}
+                                                                    onChange={(e) => { e.stopPropagation(); handlePendingFactorChange(categoryKey, index, primaryUnit, e.target.value, primaryFactor); }}
+                                                                    onClick={(e) => e.stopPropagation()}
+                                                                    className={`w-24 bg-white text-gray-900 border dark:bg-gray-600 dark:text-gray-100 rounded py-0.5 px-1 text-sm ${hasChange ? 'border-yellow-400 ring-1 ring-yellow-400' : 'border-gray-300 dark:border-gray-500'}`}
+                                                                />
+                                                                <span className="text-xs text-gray-400 hidden lg:inline">kg CO₂e/{primaryUnit}</span>
+                                                            </div>
+                                                        );
+                                                    })()}
+                                                </td>
+                                                <td className="px-3 py-2 hidden md:table-cell">
+                                                    {item.isVerified && (
+                                                        <span className="text-xs font-medium bg-green-100 text-green-800 px-1.5 py-0.5 rounded dark:bg-green-900 dark:text-green-200">✓</span>
+                                                    )}
+                                                    {item.isCustom && (
+                                                        <span className="text-xs font-medium bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded dark:bg-blue-900 dark:text-blue-200">{t('custom')}</span>
+                                                    )}
+                                                </td>
+                                                <td className="px-3 py-2 text-right">
+                                                    <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                                                        {item.isCustom && (
+                                                            <>
+                                                                <button onClick={() => { if (onRequireAuth && !onRequireAuth()) return; setFormState({ mode: 'edit', item, categoryKey }) }} className="p-1 text-gray-500 hover:text-ghg-green"><IconPencil className="w-4 h-4" /></button>
+                                                                <button onClick={() => { if (onRequireAuth && !onRequireAuth()) return; onDeleteFactor(categoryKey, item.id) }} className="p-1 text-gray-400 hover:text-red-500"><IconTrash className="w-4 h-4" /></button>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                            </tr>
+
+                                            {/* Expanded Detail Row */}
+                                            {isExpanded && hasDetailedData && !isFugitive && (
+                                                <tr className="bg-gray-50 dark:bg-gray-800/50">
+                                                    <td colSpan={5} className="px-3 py-3">
+                                                        <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs">
+                                                            {item.netHeatingValue !== undefined && (
+                                                                <div className="bg-blue-50 dark:bg-blue-900/30 p-2 rounded">
+                                                                    <p className="text-gray-500 dark:text-gray-400">{t('netHeatingValue')}</p>
+                                                                    <p className="font-semibold text-blue-700 dark:text-blue-300">{item.netHeatingValue} {item.heatingValueUnit || ''}</p>
+                                                                </div>
+                                                            )}
+                                                            {item.co2EF !== undefined && (
+                                                                <div className="bg-gray-100 dark:bg-gray-600 p-2 rounded">
+                                                                    <p className="text-gray-500 dark:text-gray-400">{t('co2EF')}</p>
+                                                                    <p className="font-semibold text-gray-800 dark:text-gray-100">{item.co2EF.toLocaleString()} {t('kgPerTJ')}</p>
+                                                                </div>
+                                                            )}
+                                                            {item.ch4EF !== undefined && (
+                                                                <div className="bg-orange-50 dark:bg-orange-900/30 p-2 rounded">
+                                                                    <p className="text-gray-500 dark:text-gray-400">{t('ch4EF')}</p>
+                                                                    <p className="font-semibold text-orange-700 dark:text-orange-300">{item.ch4EF} {t('kgPerTJ')}</p>
+                                                                    {item.gwpCH4 && <p className="text-gray-400 dark:text-gray-500">GWP: {item.gwpCH4}</p>}
+                                                                </div>
+                                                            )}
+                                                            {item.n2oEF !== undefined && (
+                                                                <div className="bg-purple-50 dark:bg-purple-900/30 p-2 rounded">
+                                                                    <p className="text-gray-500 dark:text-gray-400">{t('n2oEF')}</p>
+                                                                    <p className="font-semibold text-purple-700 dark:text-purple-300">{item.n2oEF} {t('kgPerTJ')}</p>
+                                                                    {item.gwpN2O && <p className="text-gray-400 dark:text-gray-500">GWP: {item.gwpN2O}</p>}
+                                                                </div>
+                                                            )}
+                                                            {item.csvLineRef && (
+                                                                <div className="bg-gray-50 dark:bg-gray-700 p-2 rounded">
+                                                                    <p className="text-gray-500 dark:text-gray-400">{t('csvRef')}</p>
+                                                                    <p className="font-mono text-gray-600 dark:text-gray-300">{item.csvLineRef}</p>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        {/* Additional units if more than one */}
+                                                        {Object.keys(item.factors || {}).length > 1 && (
+                                                            <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-600">
+                                                                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{t('allUnits') || '모든 단위'}</p>
+                                                                <div className="flex flex-wrap gap-2">
+                                                                    {Object.entries(item.factors).map(([unit, factor]) => (
+                                                                        <div key={unit} className="flex items-center gap-1">
+                                                                            <input
+                                                                                type="number"
+                                                                                step="any"
+                                                                                value={factor as number}
+                                                                                onChange={(e) => onProportionalFactorChange(categoryKey, index, unit, e.target.value)}
+                                                                                className="w-20 bg-white text-gray-900 border border-gray-300 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100 rounded py-0.5 px-1 text-xs"
+                                                                            />
+                                                                            <span className="text-xs text-gray-500">kg CO₂e/{unit}</span>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                        {item.source && (
+                                                            <p className="mt-2 text-xs text-ghg-green dark:text-ghg-light-green">
+                                                                {t('source')}: {item.source}
+                                                                {item.sourceUrl && <a href={item.sourceUrl} target="_blank" rel="noopener noreferrer" className="ml-1 underline">({t('link')})</a>}
+                                                            </p>
+                                                        )}
+                                                    </td>
+                                                </tr>
                                             )}
-                                        </button>
-                                    )}
-                                    {item.isCustom && (
-                                        <>
-                                            <button onClick={() => { if (onRequireAuth && !onRequireAuth()) return; setFormState({ mode: 'edit', item, categoryKey }) }} className="text-gray-500 hover:text-ghg-green"><IconPencil className="w-4 h-4" /></button>
-                                            <button onClick={() => { if (onRequireAuth && !onRequireAuth()) return; onDeleteFactor(categoryKey, item.id) }} className="text-gray-400 hover:text-red-500"><IconTrash className="w-4 h-4" /></button>
-                                        </>
-                                    )}
-                                </div>
-                            </div>
-                            {item.source && (
-                                <p className="text-xs text-ghg-green dark:text-ghg-light-green mt-1 mb-2 font-medium">
-                                    {t('source')}: {item.source}
-                                    {item.sourceUrl && <a href={item.sourceUrl} target="_blank" rel="noopener noreferrer" className="ml-1 underline">({t('link')})</a>}
-                                </p>
-                            )}
+                                        </React.Fragment>
+                                    );
+                                })}
+                        </tbody>
+                    </table>
+                </div>
 
-                            {/* Expandable Detail Panel */}
-                            {isExpanded && hasDetailedData && !isFugitive && (
-                                <div className="mt-3 mb-3 p-3 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-500 animate-fade-in">
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                                        {/* Net Heating Value */}
-                                        {item.netHeatingValue !== undefined && (
-                                            <div className="bg-blue-50 dark:bg-blue-900/30 p-2 rounded">
-                                                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{t('netHeatingValue')}</p>
-                                                <p className="font-semibold text-blue-700 dark:text-blue-300">
-                                                    {item.netHeatingValue} {item.heatingValueUnit || ''}
-                                                </p>
-                                            </div>
-                                        )}
-
-                                        {/* CO2 EF */}
-                                        {item.co2EF !== undefined && (
-                                            <div className="bg-gray-100 dark:bg-gray-600 p-2 rounded">
-                                                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{t('co2EF')}</p>
-                                                <p className="font-semibold text-gray-800 dark:text-gray-100">
-                                                    {item.co2EF.toLocaleString()} <span className="text-xs font-normal">{t('kgPerTJ')}</span>
-                                                </p>
-                                            </div>
-                                        )}
-
-                                        {/* CH4 EF */}
-                                        {item.ch4EF !== undefined && (
-                                            <div className="bg-orange-50 dark:bg-orange-900/30 p-2 rounded">
-                                                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{t('ch4EF')}</p>
-                                                <p className="font-semibold text-orange-700 dark:text-orange-300">
-                                                    {item.ch4EF} <span className="text-xs font-normal">{t('kgPerTJ')}</span>
-                                                </p>
-                                                {item.gwpCH4 && (
-                                                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">GWP: {item.gwpCH4}</p>
-                                                )}
-                                            </div>
-                                        )}
-
-                                        {/* N2O EF */}
-                                        {item.n2oEF !== undefined && (
-                                            <div className="bg-purple-50 dark:bg-purple-900/30 p-2 rounded">
-                                                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{t('n2oEF')}</p>
-                                                <p className="font-semibold text-purple-700 dark:text-purple-300">
-                                                    {item.n2oEF} <span className="text-xs font-normal">{t('kgPerTJ')}</span>
-                                                </p>
-                                                {item.gwpN2O && (
-                                                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">GWP: {item.gwpN2O}</p>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* CSV Reference */}
-                                    {item.csvLineRef && (
-                                        <p className="mt-2 text-xs text-gray-400 dark:text-gray-500">
-                                            📋 {t('csvRef')}: <span className="font-mono">{item.csvLineRef}</span>
-                                        </p>
-                                    )}
-                                </div>
-                            )}
-
-                            <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2">
-                                {isFugitive ? (
-                                    <div>
-                                        <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">{t('gwpColumnHeader')}</label>
-                                        <input type="number" step="any" value={item.gwp} onChange={(e) => onGWPChange(index, e.target.value)} className="w-full mt-1 bg-white text-gray-900 border border-gray-300 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100 rounded-md shadow-sm py-1 px-2 text-sm" />
-                                    </div>
-                                ) : (
-                                    Object.entries(item.factors).map(([unit, factor]) => (
-                                        <div key={unit}>
-                                            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">{t(unit as TranslationKey) || unit}</label>
-                                            <div className="flex items-center gap-2">
-                                                <input type="number" step="any" value={factor as number} onChange={(e) => onProportionalFactorChange(categoryKey, index, unit, e.target.value)} className="w-full mt-1 bg-white text-gray-900 border border-gray-300 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100 rounded-md shadow-sm py-1 px-2 text-sm" />
-                                                <span className="mt-1 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                                                    {t('kgCO2ePer')} {t(unit as TranslationKey) || unit}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    ))
-                                )}
-                            </div>
-                        </div>
-                    )
-                })}
                 {formState.mode === 'hidden' && <button onClick={() => { if (onRequireAuth && !onRequireAuth()) return; setFormState({ mode: 'add', categoryKey }) }} className="mt-4 w-full text-sm bg-ghg-light-green text-white font-semibold py-2 px-4 rounded-lg hover:bg-ghg-green transition-colors">{t('addNewSource')}</button>}
                 {formState.mode !== 'hidden' && formState.categoryKey === categoryKey && (
                     <AddEditForm
@@ -739,7 +937,7 @@ export const FactorManager: React.FC<FactorManagerProps> = ({
                 );
             default: return null;
         }
-    }, [activeTab, activeScope3Category, allFactors, formState, enabledScope3Categories, language, expandedItems]);
+    }, [activeTab, activeScope3Category, allFactors, formState, enabledScope3Categories, language, expandedItems, searchQuery, filterStatus]);
 
     if (!isOpen) {
         return (
@@ -758,12 +956,65 @@ export const FactorManager: React.FC<FactorManagerProps> = ({
 
     return (
         <div className="bg-white rounded-xl shadow-lg p-6 md:p-8 border border-gray-200 mt-8 dark:bg-gray-700 dark:border-gray-600">
-            <div className="flex justify-between items-start mb-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                 <h2 className="text-xl font-semibold text-ghg-dark dark:text-gray-100">{t('manageFactors')}</h2>
-                <button onClick={() => setIsOpen(false)} className="p-2 -mt-2 -mr-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-600">
-                    <IconChevronUp className="w-6 h-6" />
-                </button>
+                <div className="flex items-center gap-2">
+                    {/* CSV Download Button */}
+                    <button
+                        onClick={handleDownloadCSV}
+                        className="text-sm px-3 py-1.5 bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-md hover:bg-gray-200 dark:hover:bg-gray-500 transition-colors flex items-center gap-1"
+                    >
+                        📥 {t('downloadCSV')}
+                    </button>
+                    {/* CSV Upload Button */}
+                    <label className="text-sm px-3 py-1.5 bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-md hover:bg-gray-200 dark:hover:bg-gray-500 transition-colors flex items-center gap-1 cursor-pointer">
+                        📤 {t('uploadCSV')}
+                        <input
+                            type="file"
+                            ref={fileInputRef}
+                            accept=".csv"
+                            onChange={handleUploadCSV}
+                            className="hidden"
+                        />
+                    </label>
+                    {/* Close Button */}
+                    <button onClick={() => setIsOpen(false)} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-600">
+                        <IconChevronUp className="w-6 h-6" />
+                    </button>
+                </div>
             </div>
+            {/* Upload Status Message */}
+            {uploadStatus.type !== 'none' && (
+                <div className={`mb-4 p-3 rounded-lg text-sm ${uploadStatus.type === 'success' ? 'bg-green-50 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 'bg-red-50 text-red-800 dark:bg-red-900/30 dark:text-red-300'}`}>
+                    {uploadStatus.message}
+                    <button onClick={() => setUploadStatus({ type: 'none', message: '' })} className="ml-2 underline">✕</button>
+                </div>
+            )}
+            {/* Pending Changes Confirmation Bar */}
+            {hasPendingChanges && (
+                <div className="mb-4 p-3 rounded-lg bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-300 dark:border-yellow-700 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                        <span className="text-yellow-600 dark:text-yellow-400 text-lg">⚠️</span>
+                        <span className="text-sm text-yellow-800 dark:text-yellow-200">
+                            {t('pendingChanges') || '수정 대기 중'}: <strong>{pendingChanges.size}</strong> {t('items') || '항목'}
+                        </span>
+                    </div>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={discardPendingChanges}
+                            className="px-3 py-1 text-sm rounded-md bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors"
+                        >
+                            {t('discardChanges') || '취소'}
+                        </button>
+                        <button
+                            onClick={applyPendingChanges}
+                            className="px-3 py-1 text-sm rounded-md bg-green-600 text-white hover:bg-green-700 transition-colors font-medium"
+                        >
+                            {t('applyChanges') || '변경 적용'}
+                        </button>
+                    </div>
+                </div>
+            )}
             <div className="border-b border-gray-200 dark:border-gray-600 mb-6">
                 <nav className="-mb-px flex space-x-4 overflow-x-auto" aria-label="Tabs">
                     <button className={tabClasses('Scope 1 - Stationary')} onClick={() => { setActiveTab('Scope 1 - Stationary'); setFormState({ mode: 'hidden' }); }}>{t('Stationary Combustion')}</button>
