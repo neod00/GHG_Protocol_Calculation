@@ -3,7 +3,8 @@ import { EmissionSource, Facility, Refrigerant, CO2eFactorFuel, EmissionCategory
 import { useTranslation } from '../../context/LanguageContext';
 // FIX: Changed import path to be more explicit.
 import { TranslationKey } from '../../translations/index';
-import { IconTrash } from '../IconComponents';
+import { IconTrash, IconInfo } from '../IconComponents';
+import { convertUnit, isUSUnit, US_TO_SI_MAPPING, VOLUME_CONVERSIONS, MASS_CONVERSIONS } from '../../constants/unitConversions';
 
 interface SourceInputRowProps {
   source: EmissionSource;
@@ -88,6 +89,9 @@ export const DefaultRow: React.FC<SourceInputRowProps> = ({ source, onUpdate, on
   };
 
   const totalQuantity = source.monthlyQuantities.reduce((sum, q) => sum + q, 0);
+  const displayTotalQuantity = isEditing
+    ? editedQuantities.reduce((sum, q) => sum + q, 0)
+    : totalQuantity;
   const emissionResults = calculateEmissions(source);
   const totalEmissions = emissionResults.scope1 + emissionResults.scope2Location + emissionResults.scope2Market + emissionResults.scope3;
   const monthKeys: TranslationKey[] = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
@@ -188,6 +192,42 @@ export const DefaultRow: React.FC<SourceInputRowProps> = ({ source, onUpdate, on
           </select>
         }
       </div>
+
+      {/* US Unit Conversion Preview - 해외 사업장용 단위 환산 미리보기 */}
+      {isUSUnit(source.unit) && displayTotalQuantity > 0 && (() => {
+        const siUnit = US_TO_SI_MAPPING[source.unit];
+        if (!siUnit) return null;
+
+        const conversionResult = convertUnit(displayTotalQuantity, source.unit, siUnit);
+        if (!conversionResult.found) return null;
+
+        // Find source info from conversion tables
+        const allConversions = [...VOLUME_CONVERSIONS, ...MASS_CONVERSIONS];
+        const conversionInfo = allConversions.find(c => c.fromUnit === source.unit && c.toUnit === siUnit);
+
+        return (
+          <div className="mt-2 p-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg">
+            <div className="flex items-start gap-2">
+              <IconInfo className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+              <div className="flex-1 text-xs">
+                <p className="text-amber-800 dark:text-amber-200">
+                  <span className="font-medium">{t('unitConversionHint' as TranslationKey)}:</span>{' '}
+                  <span className="font-bold">{conversionResult.convertedValue.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>{' '}
+                  <span>{siUnit}</span>
+                </p>
+                <p className="text-amber-600 dark:text-amber-400 mt-0.5">
+                  {t('conversionFactor' as TranslationKey)}: {conversionResult.factor} {siUnit}/{source.unit}
+                  {conversionInfo?.source && (
+                    <span className="ml-2">
+                      ({t('conversionSource' as TranslationKey)}: {conversionInfo.source})
+                    </span>
+                  )}
+                </p>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {source.category === EmissionCategory.PurchasedEnergy && (
         <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg space-y-3">

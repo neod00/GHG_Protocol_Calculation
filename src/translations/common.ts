@@ -41,6 +41,18 @@ export const en = {
   signUpToSave: 'Sign Up to Save',
   guestModeDataNotSaved: 'Guest Mode: Data not saved',
   signUp: 'Sign Up',
+
+  // Unit Conversion
+  unitConversionHint: 'Converted to',
+  conversionFactor: 'Conversion factor',
+  usUnitsLabel: 'US Units',
+  siUnitsLabel: 'SI Units',
+  viewConversionDetails: 'View conversion details',
+  conversionSource: 'Source',
+  gal: 'gallon(s)',
+  bbl: 'barrel(s)',
+  lb: 'pound(s)',
+  shortTon: 'short ton(s)',
 };
 
 export const ko = {
@@ -86,4 +98,16 @@ export const ko = {
   signUpToSave: '저장하려면 가입하세요',
   guestModeDataNotSaved: '게스트 모드: 데이터가 저장되지 않음',
   signUp: '가입하기',
+
+  // Unit Conversion
+  unitConversionHint: '환산 결과',
+  conversionFactor: '환산 계수',
+  usUnitsLabel: '미국 단위',
+  siUnitsLabel: 'SI 단위',
+  viewConversionDetails: '환산 상세 보기',
+  conversionSource: '출처',
+  gal: '갤런',
+  bbl: '배럴',
+  lb: '파운드',
+  shortTon: '숏톤',
 };

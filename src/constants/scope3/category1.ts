@@ -22,16 +22,16 @@ export const RAW_MATERIALS_METALS: CO2eFactorFuel[] = [
   { name: 'Steel - Secondary (EAF)', translationKey: 'steelSecondaryEAF', units: ['kg', 'tonnes'], factors: { 'kg': 0.42, 'tonnes': 420 }, isCustom: false },
   { name: 'Steel - Average', translationKey: 'steelAverage', units: ['kg', 'tonnes'], factors: { 'kg': 1.85, 'tonnes': 1850 }, isCustom: false },
   { name: 'Stainless Steel', translationKey: 'stainlessSteel', units: ['kg', 'tonnes'], factors: { 'kg': 6.15, 'tonnes': 6150 }, isCustom: false },
-  
+
   // Aluminum (알루미늄)
   { name: 'Aluminum - Primary', translationKey: 'aluminumPrimary', units: ['kg', 'tonnes'], factors: { 'kg': 11.89, 'tonnes': 11890 }, isCustom: false },
   { name: 'Aluminum - Secondary (Recycled)', translationKey: 'aluminumSecondary', units: ['kg', 'tonnes'], factors: { 'kg': 0.52, 'tonnes': 520 }, isCustom: false },
   { name: 'Aluminum - Average', translationKey: 'aluminumAverage', units: ['kg', 'tonnes'], factors: { 'kg': 8.24, 'tonnes': 8240 }, isCustom: false },
-  
+
   // Copper (구리)
   { name: 'Copper - Primary', translationKey: 'copperPrimary', units: ['kg', 'tonnes'], factors: { 'kg': 3.81, 'tonnes': 3810 }, isCustom: false },
   { name: 'Copper - Secondary (Recycled)', translationKey: 'copperSecondary', units: ['kg', 'tonnes'], factors: { 'kg': 0.84, 'tonnes': 840 }, isCustom: false },
-  
+
   // Other Metals (기타 금속)
   { name: 'Zinc', translationKey: 'zinc', units: ['kg', 'tonnes'], factors: { 'kg': 3.09, 'tonnes': 3090 }, isCustom: false },
   { name: 'Lead', translationKey: 'lead', units: ['kg', 'tonnes'], factors: { 'kg': 1.91, 'tonnes': 1910 }, isCustom: false },
@@ -151,7 +151,7 @@ export const SERVICES_SPEND_BASED: CO2eFactorFuel[] = [
   { name: 'IT Support & Maintenance', translationKey: 'itSupportMaintenance', units: ['USD', 'KRW'], factors: { 'USD': 0.10, 'KRW': 0.000077 }, isCustom: false },
   { name: 'Data Center Services', translationKey: 'dataCenterServices', units: ['USD', 'KRW'], factors: { 'USD': 0.18, 'KRW': 0.000138 }, isCustom: false },
   { name: 'Telecommunications', translationKey: 'telecommunications', units: ['USD', 'KRW'], factors: { 'USD': 0.09, 'KRW': 0.000069 }, isCustom: false },
-  
+
   // Professional Services
   { name: 'Management Consulting', translationKey: 'managementConsulting', units: ['USD', 'KRW'], factors: { 'USD': 0.05, 'KRW': 0.000038 }, isCustom: false },
   { name: 'Legal Services', translationKey: 'legalServices', units: ['USD', 'KRW'], factors: { 'USD': 0.04, 'KRW': 0.000031 }, isCustom: false },
@@ -160,18 +160,18 @@ export const SERVICES_SPEND_BASED: CO2eFactorFuel[] = [
   { name: 'Marketing & Advertising', translationKey: 'marketingAdvertising', units: ['USD', 'KRW'], factors: { 'USD': 0.06, 'KRW': 0.000046 }, isCustom: false },
   { name: 'Training & Education', translationKey: 'trainingEducation', units: ['USD', 'KRW'], factors: { 'USD': 0.05, 'KRW': 0.000038 }, isCustom: false },
   { name: 'HR & Recruitment Services', translationKey: 'hrRecruitmentServices', units: ['USD', 'KRW'], factors: { 'USD': 0.05, 'KRW': 0.000038 }, isCustom: false },
-  
+
   // Facility Services
   { name: 'Cleaning Services', translationKey: 'cleaningServices', units: ['USD', 'KRW'], factors: { 'USD': 0.11, 'KRW': 0.000085 }, isCustom: false },
   { name: 'Security Services', translationKey: 'securityServices', units: ['USD', 'KRW'], factors: { 'USD': 0.08, 'KRW': 0.000061 }, isCustom: false },
   { name: 'Catering & Food Services', translationKey: 'cateringFoodServices', units: ['USD', 'KRW'], factors: { 'USD': 0.25, 'KRW': 0.000192 }, isCustom: false },
   { name: 'Maintenance & Repair Services', translationKey: 'maintenanceRepairServices', units: ['USD', 'KRW'], factors: { 'USD': 0.15, 'KRW': 0.000115 }, isCustom: false },
   { name: 'Waste Management Services', translationKey: 'wasteManagementServices', units: ['USD', 'KRW'], factors: { 'USD': 0.35, 'KRW': 0.000269 }, isCustom: false },
-  
+
   // Financial Services
   { name: 'Banking Services', translationKey: 'bankingServices', units: ['USD', 'KRW'], factors: { 'USD': 0.03, 'KRW': 0.000023 }, isCustom: false },
   { name: 'Insurance Services', translationKey: 'insuranceServices', units: ['USD', 'KRW'], factors: { 'USD': 0.03, 'KRW': 0.000023 }, isCustom: false },
-  
+
   // Other Services
   { name: 'Printing Services', translationKey: 'printingServices', units: ['USD', 'KRW'], factors: { 'USD': 0.22, 'KRW': 0.000169 }, isCustom: false },
   { name: 'Courier & Postal Services', translationKey: 'courierPostalServices', units: ['USD', 'KRW'], factors: { 'USD': 0.28, 'KRW': 0.000215 }, isCustom: false },
@@ -188,7 +188,7 @@ export const FOOD_AGRICULTURAL: CO2eFactorFuel[] = [
   { name: 'Wheat', translationKey: 'wheat', units: ['kg', 'tonnes'], factors: { 'kg': 0.72, 'tonnes': 720 }, isCustom: false },
   { name: 'Corn/Maize', translationKey: 'cornMaize', units: ['kg', 'tonnes'], factors: { 'kg': 0.65, 'tonnes': 650 }, isCustom: false },
   { name: 'Soybeans', translationKey: 'soybeans', units: ['kg', 'tonnes'], factors: { 'kg': 0.58, 'tonnes': 580 }, isCustom: false },
-  
+
   // Meat & Dairy
   { name: 'Beef', translationKey: 'beef', units: ['kg'], factors: { 'kg': 27.0 }, isCustom: false },
   { name: 'Pork', translationKey: 'pork', units: ['kg'], factors: { 'kg': 7.2 }, isCustom: false },
@@ -197,7 +197,7 @@ export const FOOD_AGRICULTURAL: CO2eFactorFuel[] = [
   { name: 'Milk', translationKey: 'milk', units: ['kg', 'L'], factors: { 'kg': 1.39, 'L': 1.43 }, isCustom: false },
   { name: 'Cheese', translationKey: 'cheese', units: ['kg'], factors: { 'kg': 8.55 }, isCustom: false },
   { name: 'Eggs', translationKey: 'eggs', units: ['kg', 'pcs'], factors: { 'kg': 3.46, 'pcs': 0.21 }, isCustom: false },
-  
+
   // Other
   { name: 'Sugar', translationKey: 'sugar', units: ['kg', 'tonnes'], factors: { 'kg': 0.68, 'tonnes': 680 }, isCustom: false },
   { name: 'Coffee (roasted)', translationKey: 'coffeeRoasted', units: ['kg'], factors: { 'kg': 8.3 }, isCustom: false },
@@ -260,7 +260,7 @@ export const ALL_CATEGORY1_FACTORS: CO2eFactorFuel[] = [
 ];
 
 // Category type definitions for UI grouping
-export type Category1FactorType = 
+export type Category1FactorType =
   | 'rawMaterials_metals'
   | 'rawMaterials_plastics'
   | 'rawMaterials_chemicals'

@@ -79,8 +79,8 @@ export const STATIONARY_FUELS: CO2eFactorFuel[] = [
   {
     name: 'Diesel',
     translationKey: 'diesel',
-    units: ['liters'],
-    factors: { 'liters': 2.61708 },
+    units: ['liters', 'gal'],
+    factors: { 'liters': 2.61708, 'gal': 9.91874 }, // gal = 2.61708 × 3.79
     netHeatingValue: 35.2,
     heatingValueUnit: 'MJ/L',
     co2EF: 74100,
@@ -95,8 +95,8 @@ export const STATIONARY_FUELS: CO2eFactorFuel[] = [
   {
     name: 'Gasoline',
     translationKey: 'gasoline',
-    units: ['liters'],
-    factors: { 'liters': 2.19807 },
+    units: ['liters', 'gal'],
+    factors: { 'liters': 2.19807, 'gal': 8.33069 }, // gal = 2.19807 × 3.79
     netHeatingValue: 30.4,
     heatingValueUnit: 'MJ/L',
     co2EF: 69300,
@@ -111,8 +111,8 @@ export const STATIONARY_FUELS: CO2eFactorFuel[] = [
   {
     name: 'Kerosene (Heating Oil)',
     translationKey: 'heatingOilDiesel',
-    units: ['liters'],
-    factors: { 'liters': 2.46750 },
+    units: ['liters', 'gal'],
+    factors: { 'liters': 2.46750, 'gal': 9.35183 }, // gal = 2.46750 × 3.79
     netHeatingValue: 34.2,
     heatingValueUnit: 'MJ/L',
     co2EF: 71900,
@@ -421,8 +421,8 @@ export const MOBILE_FUELS: CO2eFactorFuel[] = [
   {
     name: 'Gasoline (Petrol)',
     translationKey: 'gasoline',
-    units: ['liters'],
-    factors: { 'liters': 2.19807 },
+    units: ['liters', 'gal'],
+    factors: { 'liters': 2.19807, 'gal': 8.33069 }, // gal = 2.19807 × 3.79
     netHeatingValue: 30.4,
     heatingValueUnit: 'MJ/L',
     co2EF: 69300,
@@ -437,8 +437,8 @@ export const MOBILE_FUELS: CO2eFactorFuel[] = [
   {
     name: 'Diesel',
     translationKey: 'diesel',
-    units: ['liters'],
-    factors: { 'liters': 2.65383 },
+    units: ['liters', 'gal'],
+    factors: { 'liters': 2.65383, 'gal': 10.0580 }, // gal = 2.65383 × 3.79
     netHeatingValue: 35.2,
     heatingValueUnit: 'MJ/L',
     co2EF: 74100,
@@ -453,8 +453,8 @@ export const MOBILE_FUELS: CO2eFactorFuel[] = [
   {
     name: 'LPG (Vehicle)',
     translationKey: 'lpgVehicle',
-    units: ['liters', 'kg'],
-    factors: { 'liters': 1.603, 'kg': 2.94600 },
+    units: ['liters', 'kg', 'gal'],
+    factors: { 'liters': 1.603, 'kg': 2.94600, 'gal': 6.07537 }, // gal = 1.603 × 3.79
     netHeatingValue: 45.7,
     heatingValueUnit: 'MJ/kg',
     co2EF: 63100,
