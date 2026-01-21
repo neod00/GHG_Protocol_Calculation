@@ -121,7 +121,7 @@ export type PersonalCarType = 'Gasoline' | 'Diesel' | 'Hybrid' | 'Electric' | 'L
 export type PublicTransportType = 'Bus' | 'Subway';
 export type FranchiseType = 'Restaurant' | 'Retail' | 'Service' | 'ConvenienceStore' | 'CoffeeShop';
 export type InvestmentType = 'Equity' | 'Debt' | 'ProjectFinance' | 'RealEstate' | 'Other';
-export type CapitalGoodsType = 'Building' | 'Vehicle' | 'ManufacturingEquipment' | 'ITEquipment' | 'OfficeEquipment' | 'Other';
+export type CapitalGoodsType = 'Building' | 'Vehicle' | 'ManufacturingEquipment' | 'ITEquipment' | 'OfficeEquipment' | 'Software' | 'IntangibleAssets' | 'Infrastructure' | 'AssetsUnderConstruction' | 'Other';
 
 // Category 1 Factor Types for UI grouping
 export type Category1FactorType =

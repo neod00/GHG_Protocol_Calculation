@@ -110,30 +110,30 @@ const HybridMethodUI: React.FC<HybridMethodUIProps> = ({ source, onUpdate, langu
     // Calculate total emissions from hybrid components
     const calculateHybridEmissions = () => {
         let total = 0;
-        
+
         // 1. Supplier Scope 1,2 allocation
         if (hybridData.supplierScope12) {
             total += (hybridData.supplierScope12.totalEmissions * hybridData.supplierScope12.allocationPercentage) / 100;
         }
-        
+
         // 2. Material inputs
         hybridData.materialInputs.forEach(m => {
             total += m.quantity * m.emissionFactor;
         });
-        
+
         // 3. Transport inputs
         hybridData.transportInputs.forEach(tr => {
             const factor = tr.emissionFactor || TRANSPORT_MODES.find(tm => tm.value === tr.transportMode)?.defaultFactor || 0;
             total += tr.weightTonnes * tr.distanceKm * factor;
         });
-        
+
         // 4. Waste inputs
         hybridData.wasteInputs.forEach(w => {
             const factor = w.emissionFactor || TREATMENT_METHODS.find(tm => tm.value === w.treatmentMethod)?.defaultFactor || 0;
             const quantityKg = w.unit === 'tonnes' ? w.quantity * 1000 : w.quantity;
             total += quantityKg * factor;
         });
-        
+
         return total;
     };
 
@@ -155,7 +155,7 @@ const HybridMethodUI: React.FC<HybridMethodUIProps> = ({ source, onUpdate, langu
     };
 
     const updateMaterial = (id: string, updates: Partial<HybridMaterialInput>) => {
-        const newMaterials = hybridData.materialInputs.map(m => 
+        const newMaterials = hybridData.materialInputs.map(m =>
             m.id === id ? { ...m, ...updates } : m
         );
         updateHybridData({ materialInputs: newMaterials });
@@ -177,7 +177,7 @@ const HybridMethodUI: React.FC<HybridMethodUIProps> = ({ source, onUpdate, langu
     };
 
     const updateTransport = (id: string, updates: Partial<HybridTransportInput>) => {
-        const newTransports = hybridData.transportInputs.map(tr => 
+        const newTransports = hybridData.transportInputs.map(tr =>
             tr.id === id ? { ...tr, ...updates } : tr
         );
         updateHybridData({ transportInputs: newTransports });
@@ -200,7 +200,7 @@ const HybridMethodUI: React.FC<HybridMethodUIProps> = ({ source, onUpdate, langu
     };
 
     const updateWaste = (id: string, updates: Partial<HybridWasteInput>) => {
-        const newWastes = hybridData.wasteInputs.map(w => 
+        const newWastes = hybridData.wasteInputs.map(w =>
             w.id === id ? { ...w, ...updates } : w
         );
         updateHybridData({ wasteInputs: newWastes });
@@ -218,7 +218,7 @@ const HybridMethodUI: React.FC<HybridMethodUIProps> = ({ source, onUpdate, langu
                 <span className="text-lg">🔀</span>
                 <span>{language === 'ko' ? '하이브리드 산정법 입력' : 'Hybrid Method Input'}</span>
             </div>
-            
+
             {/* 1. Supplier Scope 1,2 Allocation */}
             <div className="space-y-2 p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
                 <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
@@ -311,13 +311,13 @@ const HybridMethodUI: React.FC<HybridMethodUIProps> = ({ source, onUpdate, langu
                         {language === 'ko' ? '물질 추가' : 'Add Material'}
                     </button>
                 </div>
-                
+
                 {hybridData.materialInputs.length === 0 && (
                     <p className="text-xs text-gray-500 dark:text-gray-400 italic py-2">
                         {language === 'ko' ? '투입 물질을 추가하세요' : 'Add input materials'}
                     </p>
                 )}
-                
+
                 {hybridData.materialInputs.map((material, idx) => (
                     <div key={material.id} className="grid grid-cols-12 gap-2 items-end p-2 bg-gray-50 dark:bg-gray-900/50 rounded">
                         <div className="col-span-3">
@@ -388,7 +388,7 @@ const HybridMethodUI: React.FC<HybridMethodUIProps> = ({ source, onUpdate, langu
                         </div>
                     </div>
                 ))}
-                
+
                 {hybridData.materialInputs.length > 0 && (
                     <div className="text-xs text-blue-600 dark:text-blue-400 mt-2">
                         → {language === 'ko' ? '물질 소계' : 'Materials Subtotal'}: {hybridData.materialInputs.reduce((sum, m) => sum + m.quantity * m.emissionFactor * (m.unit === 'tonnes' ? 1000 : 1), 0).toLocaleString()} kgCO₂e
@@ -411,18 +411,18 @@ const HybridMethodUI: React.FC<HybridMethodUIProps> = ({ source, onUpdate, langu
                         {language === 'ko' ? '운송 추가' : 'Add Transport'}
                     </button>
                 </div>
-                
+
                 {hybridData.transportInputs.length === 0 && (
                     <p className="text-xs text-gray-500 dark:text-gray-400 italic py-2">
                         {language === 'ko' ? '운송 정보를 추가하세요' : 'Add transport info'}
                     </p>
                 )}
-                
+
                 {hybridData.transportInputs.map((transport) => {
                     const defaultFactor = TRANSPORT_MODES.find(tm => tm.value === transport.transportMode)?.defaultFactor || 0;
                     const factor = transport.emissionFactor || defaultFactor;
                     const emissions = transport.weightTonnes * transport.distanceKm * factor;
-                    
+
                     return (
                         <div key={transport.id} className="grid grid-cols-12 gap-2 items-end p-2 bg-gray-50 dark:bg-gray-900/50 rounded">
                             <div className="col-span-2">
@@ -496,7 +496,7 @@ const HybridMethodUI: React.FC<HybridMethodUIProps> = ({ source, onUpdate, langu
                         </div>
                     );
                 })}
-                
+
                 {hybridData.transportInputs.length > 0 && (
                     <div className="text-xs text-orange-600 dark:text-orange-400 mt-2">
                         → {language === 'ko' ? '운송 소계' : 'Transport Subtotal'}: {hybridData.transportInputs.reduce((sum, tr) => {
@@ -522,19 +522,19 @@ const HybridMethodUI: React.FC<HybridMethodUIProps> = ({ source, onUpdate, langu
                         {language === 'ko' ? '폐기물 추가' : 'Add Waste'}
                     </button>
                 </div>
-                
+
                 {hybridData.wasteInputs.length === 0 && (
                     <p className="text-xs text-gray-500 dark:text-gray-400 italic py-2">
                         {language === 'ko' ? '폐기물 정보를 추가하세요' : 'Add waste info'}
                     </p>
                 )}
-                
+
                 {hybridData.wasteInputs.map((waste) => {
                     const defaultFactor = TREATMENT_METHODS.find(tm => tm.value === waste.treatmentMethod)?.defaultFactor || 0;
                     const factor = waste.emissionFactor || defaultFactor;
                     const quantityKg = waste.unit === 'tonnes' ? waste.quantity * 1000 : waste.quantity;
                     const emissions = quantityKg * factor;
-                    
+
                     return (
                         <div key={waste.id} className="grid grid-cols-12 gap-2 items-end p-2 bg-gray-50 dark:bg-gray-900/50 rounded">
                             <div className="col-span-2">
@@ -616,7 +616,7 @@ const HybridMethodUI: React.FC<HybridMethodUIProps> = ({ source, onUpdate, langu
                         </div>
                     );
                 })}
-                
+
                 {hybridData.wasteInputs.length > 0 && (
                     <div className="text-xs text-green-600 dark:text-green-400 mt-2">
                         → {language === 'ko' ? '폐기물 소계' : 'Waste Subtotal'}: {hybridData.wasteInputs.reduce((sum, w) => {
@@ -639,7 +639,7 @@ const HybridMethodUI: React.FC<HybridMethodUIProps> = ({ source, onUpdate, langu
                     </span>
                 </div>
                 <div className="mt-2 text-xs text-purple-600 dark:text-purple-400">
-                    {language === 'ko' 
+                    {language === 'ko'
                         ? '= 공급업체 Scope 1,2 할당 + 투입물질 Cradle-to-Gate + 운송 + 폐기물 처리'
                         : '= Supplier S1,2 Allocation + Material Cradle-to-Gate + Transport + Waste Treatment'}
                 </div>
@@ -656,15 +656,15 @@ export const Category1_2Row: React.FC<SourceInputRowProps> = ({ source, onUpdate
     const [isExpanded, setIsExpanded] = useState(false);
     const [isLoadingAI, setIsLoadingAI] = useState(false);
     const [aiAnalysisResult, setAiAnalysisResult] = useState<any>(null);
-    
+
     // New state for factor selection
     const [showFactorSelector, setShowFactorSelector] = useState(false);
     const [factorSearchQuery, setFactorSearchQuery] = useState('');
     const [selectedFactorCategory, setSelectedFactorCategory] = useState<Category1FactorType | 'all'>('all');
-    
+
     // New state for DQI panel
     const [showDQIPanel, setShowDQIPanel] = useState(false);
-    
+
     // New state for methodology wizard
     const [showMethodologyWizard, setShowMethodologyWizard] = useState(false);
 
@@ -688,29 +688,29 @@ export const Category1_2Row: React.FC<SourceInputRowProps> = ({ source, onUpdate
     // Filter factors based on search and category
     const filteredFactors = useMemo(() => {
         let factors: CO2eFactorFuel[] = [];
-        
+
         if (selectedFactorCategory === 'all') {
             factors = ALL_CATEGORY1_FACTORS;
         } else {
             factors = getFactorsByType(selectedFactorCategory);
         }
-        
+
         // Filter by calculation method (spend vs activity)
         if (source.calculationMethod === 'spend') {
             factors = factors.filter(f => f.units.includes('KRW') || f.units.includes('USD'));
         } else if (source.calculationMethod === 'activity') {
             factors = factors.filter(f => f.units.includes('kg') || f.units.includes('tonnes') || f.units.includes('pcs') || f.units.includes('m²') || f.units.includes('L'));
         }
-        
+
         // Filter by search query
         if (factorSearchQuery.trim()) {
             const query = factorSearchQuery.toLowerCase();
-            factors = factors.filter(f => 
-                f.name.toLowerCase().includes(query) || 
+            factors = factors.filter(f =>
+                f.name.toLowerCase().includes(query) ||
                 (f.translationKey && t(f.translationKey as TranslationKey).toLowerCase().includes(query))
             );
         }
-        
+
         return factors;
     }, [selectedFactorCategory, factorSearchQuery, source.calculationMethod, t]);
 
@@ -784,12 +784,12 @@ export const Category1_2Row: React.FC<SourceInputRowProps> = ({ source, onUpdate
 
     // Handle factor selection from database
     const handleFactorSelect = (factor: CO2eFactorFuel) => {
-        const primaryUnit = source.calculationMethod === 'spend' 
+        const primaryUnit = source.calculationMethod === 'spend'
             ? (factor.units.includes('KRW') ? 'KRW' : 'USD')
             : factor.units[0];
-        
+
         const factorValue = factor.factors[primaryUnit] || 0;
-        
+
         onUpdate({
             selectedFactorName: factor.name,
             factor: factorValue,
@@ -798,7 +798,7 @@ export const Category1_2Row: React.FC<SourceInputRowProps> = ({ source, onUpdate
             factorSource: 'GHG Protocol Category 1 Database (Ecoinvent/DEFRA/EEIO)',
             isFactorFromDatabase: true,
         });
-        
+
         setShowFactorSelector(false);
         setFactorSearchQuery('');
     };
@@ -812,15 +812,15 @@ export const Category1_2Row: React.FC<SourceInputRowProps> = ({ source, onUpdate
             completeness: 3,
             reliability: 3,
         };
-        
+
         const newDQI: DataQualityIndicator = {
             ...currentDQI,
             [dimension]: value as 1 | 2 | 3 | 4 | 5,
         };
-        
+
         const score = calculateDQIScore(newDQI);
         const rating = getDQIRating(score);
-        
+
         onUpdate({
             dataQualityIndicator: newDQI,
             dataQualityRating: rating,
@@ -839,10 +839,13 @@ export const Category1_2Row: React.FC<SourceInputRowProps> = ({ source, onUpdate
     const dqiRating = getDQIRating(dqiScore);
 
     const totalQuantity = source.monthlyQuantities.reduce((sum, q) => sum + q, 0);
+    const displayTotalQuantity = isEditing
+        ? editedQuantities.reduce((sum, q) => sum + q, 0)
+        : totalQuantity;
     const totalEmissions = calculateEmissions(source).scope3;
     const monthKeys: TranslationKey[] = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
     const commonSelectClass = "w-full bg-white text-gray-900 dark:bg-gray-900 dark:text-white border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 text-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500";
-    const commonLabelClass = "block text-xs font-medium text-gray-500 dark:text-gray-400";
+    const commonLabelClass = "block text-xs font-medium text-gray-500 dark:text-gray-300";
 
     const preventNonNumericKeys = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (['e', 'E', '+', '-'].includes(e.key)) {
@@ -855,7 +858,7 @@ export const Category1_2Row: React.FC<SourceInputRowProps> = ({ source, onUpdate
         : t('capitalGoodsPlaceholder');
 
     const handleMethodChange = (method: CalculationMethod) => {
-        let updates: Partial<EmissionSource> = { 
+        let updates: Partial<EmissionSource> = {
             calculationMethod: method,
             isFactorFromDatabase: false,
             selectedFactorName: undefined,
@@ -1094,8 +1097,24 @@ export const Category1_2Row: React.FC<SourceInputRowProps> = ({ source, onUpdate
                                 <option value="ManufacturingEquipment">{t('capitalGoodsTypeManufacturingEquipment')}</option>
                                 <option value="ITEquipment">{t('capitalGoodsTypeITEquipment')}</option>
                                 <option value="OfficeEquipment">{t('capitalGoodsTypeOfficeEquipment')}</option>
+                                <option value="Software">{t('capitalGoodsTypeSoftware')}</option>
+                                <option value="IntangibleAssets">{t('capitalGoodsTypeIntangibleAssets')}</option>
+                                <option value="Infrastructure">{t('capitalGoodsTypeInfrastructure')}</option>
+                                <option value="AssetsUnderConstruction">{t('capitalGoodsTypeAssetsUnderConstruction')}</option>
                                 <option value="Other">{t('capitalGoodsTypeOther')}</option>
                             </select>
+                            {(source.capitalGoodsType === 'Software' || source.capitalGoodsType === 'IntangibleAssets') && (
+                                <p className="mt-1 text-xs text-blue-600 dark:text-blue-400 flex items-start gap-1">
+                                    <IconInfo className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                                    <span>{t('cat2IntangibleGuidance')}</span>
+                                </p>
+                            )}
+                            {source.capitalGoodsType === 'OfficeEquipment' && (
+                                <p className="mt-1 text-xs text-yellow-600 dark:text-yellow-400 flex items-start gap-1">
+                                    <IconInfo className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                                    <span>{language === 'ko' ? '일회성 소모품이나 단기 자산은 카테고리 1(구매한 상품 및 서비스)로 산정해야 함을 유의하세요.' : 'Note: Short-term consumables or minor items should be reported in Category 1 (Purchased Goods and Services).'}</span>
+                                </p>
+                            )}
                         </div>
                         <div>
                             <label htmlFor={`acquisition-year-${source.id}`} className={commonLabelClass}>{t('acquisitionYear')}</label>
@@ -1133,7 +1152,7 @@ export const Category1_2Row: React.FC<SourceInputRowProps> = ({ source, onUpdate
                         t={t}
                     />
                 )}
-                
+
                 {/* Emission Factor Section - Enhanced with Factor Selector */}
                 {(source.calculationMethod === 'activity' || source.calculationMethod === 'spend') && (<>
                     {/* Factor Selector Button and Panel */}
@@ -1154,7 +1173,7 @@ export const Category1_2Row: React.FC<SourceInputRowProps> = ({ source, onUpdate
                             </div>
                             {showFactorSelector ? <IconChevronUp className="w-4 h-4 text-gray-500" /> : <IconChevronDown className="w-4 h-4 text-gray-500" />}
                         </button>
-                        
+
                         {showFactorSelector && (
                             <div className="p-3 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
                                 {/* Category Filter & Search */}
@@ -1176,7 +1195,7 @@ export const Category1_2Row: React.FC<SourceInputRowProps> = ({ source, onUpdate
                                         className={commonSelectClass}
                                     />
                                 </div>
-                                
+
                                 {/* Factor List */}
                                 <div className="max-h-48 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-md">
                                     {filteredFactors.length === 0 ? (
@@ -1208,7 +1227,7 @@ export const Category1_2Row: React.FC<SourceInputRowProps> = ({ source, onUpdate
                             </div>
                         )}
                     </div>
-                    
+
                     {/* Manual Factor Input */}
                     <div className="grid grid-cols-2 gap-2">
                         <div>
@@ -1262,7 +1281,7 @@ export const Category1_2Row: React.FC<SourceInputRowProps> = ({ source, onUpdate
                         className={commonSelectClass} placeholder={t('activityDataSourcePlaceholder')}
                     />
                 </div>
-                
+
                 {/* Enhanced DQI Section */}
                 <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
                     <button
@@ -1278,7 +1297,7 @@ export const Category1_2Row: React.FC<SourceInputRowProps> = ({ source, onUpdate
                                     {dqiScore.toFixed(2)}
                                 </span>
                                 <span className={`text-xs ${getDQIColor(dqiScore)}`}>
-                                    ({language === 'ko' ? 
+                                    ({language === 'ko' ?
                                         (dqiRating === 'high' ? '높음' : dqiRating === 'medium' ? '중간' : dqiRating === 'low' ? '낮음' : '추정')
                                         : dqiRating.charAt(0).toUpperCase() + dqiRating.slice(1)
                                     })
@@ -1287,19 +1306,18 @@ export const Category1_2Row: React.FC<SourceInputRowProps> = ({ source, onUpdate
                         </div>
                         {showDQIPanel ? <IconChevronUp className="w-4 h-4 text-gray-500" /> : <IconChevronDown className="w-4 h-4 text-gray-500" />}
                     </button>
-                    
+
                     {showDQIPanel && (
                         <div className="p-4 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 space-y-4">
                             {/* DQI Score Visualization */}
                             <div className="flex items-center gap-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
                                 <div className="flex-1">
                                     <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                                        <div 
-                                            className={`h-full transition-all duration-300 ${
-                                                dqiScore <= 1.5 ? 'bg-emerald-500' :
+                                        <div
+                                            className={`h-full transition-all duration-300 ${dqiScore <= 1.5 ? 'bg-emerald-500' :
                                                 dqiScore <= 2.5 ? 'bg-blue-500' :
-                                                dqiScore <= 3.5 ? 'bg-yellow-500' : 'bg-red-500'
-                                            }`}
+                                                    dqiScore <= 3.5 ? 'bg-yellow-500' : 'bg-red-500'
+                                                }`}
                                             style={{ width: `${(5 - dqiScore) / 4 * 100}%` }}
                                         />
                                     </div>
@@ -1312,7 +1330,7 @@ export const Category1_2Row: React.FC<SourceInputRowProps> = ({ source, onUpdate
                                     {dqiScore.toFixed(2)}
                                 </div>
                             </div>
-                            
+
                             {/* DQI Dimension Inputs */}
                             {([
                                 { key: 'technologicalRep', label: language === 'ko' ? '기술적 대표성' : 'Technological Rep.' },
@@ -1333,13 +1351,12 @@ export const Category1_2Row: React.FC<SourceInputRowProps> = ({ source, onUpdate
                                             <button
                                                 key={val}
                                                 onClick={() => handleDQIUpdate(key, val)}
-                                                className={`flex-1 py-1.5 text-xs font-medium rounded transition-colors ${
-                                                    currentDQI[key] === val
-                                                        ? val <= 2 ? 'bg-emerald-500 text-white' :
-                                                          val <= 3 ? 'bg-yellow-500 text-white' :
-                                                          'bg-red-500 text-white'
-                                                        : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
-                                                }`}
+                                                className={`flex-1 py-1.5 text-xs font-medium rounded transition-colors ${currentDQI[key] === val
+                                                    ? val <= 2 ? 'bg-emerald-500 text-white' :
+                                                        val <= 3 ? 'bg-yellow-500 text-white' :
+                                                            'bg-red-500 text-white'
+                                                    : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+                                                    }`}
                                             >
                                                 {val}
                                             </button>
@@ -1347,7 +1364,7 @@ export const Category1_2Row: React.FC<SourceInputRowProps> = ({ source, onUpdate
                                     </div>
                                 </div>
                             ))}
-                            
+
                             {/* DQI Legend */}
                             <div className="mt-3 p-2 bg-gray-50 dark:bg-gray-800 rounded text-xs text-gray-500 dark:text-gray-400">
                                 <p className="font-medium mb-1">{language === 'ko' ? '점수 기준:' : 'Score Guide:'}</p>
@@ -1373,7 +1390,7 @@ export const Category1_2Row: React.FC<SourceInputRowProps> = ({ source, onUpdate
                     <div className="flex justify-between items-center bg-gray-100 dark:bg-gray-900/50 p-2 rounded-md">
                         <div>
                             <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{t('totalYear')}: </span>
-                            <span className="text-sm font-bold text-gray-900 dark:text-white">{totalQuantity.toLocaleString()}&nbsp;{renderUnit(source.unit)}</span>
+                            <span className="text-sm font-bold text-gray-900 dark:text-white">{displayTotalQuantity.toLocaleString()}&nbsp;{renderUnit(source.unit)}</span>
                         </div>
                         {!isEditing && (
                             <button onClick={handleEdit} disabled={source.calculationMethod === 'supplier_co2e'} className="text-sm text-emerald-600 dark:text-emerald-400 font-semibold hover:underline disabled:text-gray-400 disabled:no-underline disabled:cursor-not-allowed">
@@ -1392,7 +1409,7 @@ export const Category1_2Row: React.FC<SourceInputRowProps> = ({ source, onUpdate
                                                 id={`quantity-${source.id}-${index}`}
                                                 type="number"
                                                 onKeyDown={preventNonNumericKeys}
-                                                value={editedQuantities[index] === 0 ? '' : editedQuantities[index]}
+                                                value={editedQuantities[index] === 0 && editedQuantities[index] !== source.monthlyQuantities[index] ? '0' : (editedQuantities[index] === 0 ? '' : editedQuantities[index])}
                                                 onChange={(e) => handleMonthlyChange(index, e.target.value)}
                                                 className="w-0 flex-grow bg-transparent text-gray-900 dark:text-white py-1 px-2 text-sm text-right focus:outline-none"
                                                 placeholder="0"
@@ -1413,13 +1430,14 @@ export const Category1_2Row: React.FC<SourceInputRowProps> = ({ source, onUpdate
                 </div>
 
             </div>}
-            
+
             {/* Methodology Selection Wizard */}
             <MethodologyWizard
                 isOpen={showMethodologyWizard}
                 onClose={() => setShowMethodologyWizard(false)}
                 onSelectMethod={(method) => handleMethodChange(method)}
                 currentMethod={source.calculationMethod as CalculationMethod}
+                category={source.category}
             />
         </div>
     );

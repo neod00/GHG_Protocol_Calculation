@@ -314,6 +314,16 @@ export const en = {
   gasolineWTT: 'Gasoline (WTT)',
   dieselWTT: 'Diesel (WTT)',
   heatingOilWTT: 'Kerosene / Heating Oil (WTT)',
+  lpgWTT: 'LPG (WTT)',
+  lngWTT: 'LNG (City Gas) (WTT)',
+  hfoWTT: 'Heavy Fuel Oil / B-C Oil (WTT)',
+  coalWTT: 'Coal (Anthracite/Bituminous) (WTT)',
+  jetFuelWTT: 'Jet Fuel (WTT)',
+  biomassWTT: 'Biomass (Wood/Pellets) (WTT)',
+  electricityWTT: 'Grid Electricity (WTT + T&D Losses)',
+  steamWTT: 'Purchased Steam (WTT)',
+  heatingWTT: 'Purchased Heating (WTT)',
+  coolingWTT: 'Purchased Cooling (WTT)',
 
   // Scope 3, Cat 4 & 9
   roadLightTruck: 'Light-duty Truck',
@@ -685,6 +695,16 @@ export const ko = {
   gasolineWTT: '휘발유 (WTT)',
   dieselWTT: '경유 (WTT)',
   heatingOilWTT: '등유 / 난방유 (WTT)',
+  lpgWTT: 'LPG (WTT)',
+  lngWTT: 'LNG (도시가스) (WTT)',
+  hfoWTT: 'B-C유 / 중유 (WTT)',
+  coalWTT: '석탄 (무연탄/역청탄) (WTT)',
+  jetFuelWTT: '항공유 (Jet Fuel) (WTT)',
+  biomassWTT: '바이오매스 (목재/펠릿) (WTT)',
+  electricityWTT: '그리드 전력 (WTT + 송배전 손실)',
+  steamWTT: '구매 스팀 (WTT)',
+  heatingWTT: '구매 난방 (WTT)',
+  coolingWTT: '구매 냉방 (WTT)',
 
   // Scope 3, Cat 4 & 9
   roadLightTruck: '소형 트럭',

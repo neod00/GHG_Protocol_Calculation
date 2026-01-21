@@ -97,7 +97,7 @@ export const DefaultRow: React.FC<SourceInputRowProps> = ({ source, onUpdate, on
   const monthKeys: TranslationKey[] = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
   const commonSelectClass = "w-full bg-white text-gray-900 dark:bg-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-500 rounded-md shadow-sm py-2 px-3 text-sm focus:outline-none focus:ring-ghg-green focus:border-ghg-green";
   const commonInputClass = "w-full bg-white text-gray-900 border border-gray-300 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-200 rounded-md shadow-sm py-1 px-2 text-sm focus:outline-none focus:ring-ghg-green focus:border-ghg-green";
-  const commonLabelClass = "block text-xs font-medium text-gray-500 dark:text-gray-400";
+  const commonLabelClass = "block text-xs font-medium text-gray-500 dark:text-gray-300";
   const placeholderKey = getPlaceholderKey(source.category);
 
   const groupedFacilities = useMemo(() => {
@@ -462,7 +462,7 @@ export const DefaultRow: React.FC<SourceInputRowProps> = ({ source, onUpdate, on
         <div className={`flex justify-between items-center bg-gray-100 dark:bg-gray-700 p-2 ${isEditing ? 'rounded-t-lg' : 'rounded-lg'}`}>
           <div>
             <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{t('totalYear')}: </span>
-            <span className="text-sm font-bold text-ghg-dark dark:text-gray-100">{totalQuantity.toLocaleString()}&nbsp;{renderUnit(source.unit)}</span>
+            <span className="text-sm font-bold text-ghg-dark dark:text-gray-100">{displayTotalQuantity.toLocaleString()}&nbsp;{renderUnit(source.unit)}</span>
           </div>
           <div className='flex items-center gap-4'>
             <span className="text-sm font-bold text-ghg-dark dark:text-gray-100">{(totalEmissions / 1000).toLocaleString('en-US', { minimumFractionDigits: 3 })} t CO₂e</span>
@@ -486,9 +486,9 @@ export const DefaultRow: React.FC<SourceInputRowProps> = ({ source, onUpdate, on
                       id={`quantity-${source.id}-${index}`}
                       type="number"
                       onKeyDown={preventNonNumericKeys}
-                      value={editedQuantities[index] === 0 ? '' : editedQuantities[index]}
+                      value={editedQuantities[index] === 0 && editedQuantities[index] !== source.monthlyQuantities[index] ? '0' : (editedQuantities[index] === 0 ? '' : editedQuantities[index])}
                       onChange={(e) => handleMonthlyChange(index, e.target.value)}
-                      className="w-0 flex-grow bg-transparent text-gray-900 dark:text-gray-200 py-1 px-2 text-sm text-right focus:outline-none"
+                      className="w-0 flex-grow bg-transparent text-gray-900 dark:text-white py-1 px-2 text-sm text-right focus:outline-none"
                       placeholder="0"
                     />
                     <span className="pr-3 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
