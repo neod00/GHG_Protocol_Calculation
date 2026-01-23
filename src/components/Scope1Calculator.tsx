@@ -16,6 +16,7 @@ interface ScopeCalculatorProps {
   onToggleCategory: (category: EmissionCategory) => void;
   boundaryApproach: BoundaryApproach;
   isAuditModeEnabled?: boolean;
+  reportingYear: string;
 }
 
 const scope1Categories = [
@@ -46,6 +47,7 @@ export const Scope1Calculator: React.FC<ScopeCalculatorProps> = (props) => {
           onToggle={() => props.onToggleCategory(category)}
           boundaryApproach={props.boundaryApproach}
           isAuditModeEnabled={props.isAuditModeEnabled}
+          reportingYear={props.reportingYear}
         />
       ))}
     </>

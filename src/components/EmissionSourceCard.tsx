@@ -23,6 +23,7 @@ interface EmissionSourceCardProps {
   boundaryApproach: BoundaryApproach;
   isDisabled?: boolean;
   isAuditModeEnabled?: boolean;
+  reportingYear: string;
 }
 
 const ICONS: Record<EmissionCategory, React.ReactNode> = {
@@ -67,6 +68,7 @@ export const EmissionSourceCard: React.FC<EmissionSourceCardProps> = ({
   boundaryApproach,
   isDisabled = false,
   isAuditModeEnabled = false,
+  reportingYear,
 }) => {
   const { t } = useTranslation();
 
@@ -99,7 +101,7 @@ export const EmissionSourceCard: React.FC<EmissionSourceCardProps> = ({
 
       {isOpen && !isDisabled && (
         <div className="px-6 pb-6 flex flex-col flex-grow">
-          {(category === EmissionCategory.ProcessEmissions || category === EmissionCategory.PurchasedEnergy || category === EmissionCategory.FuelAndEnergyRelatedActivities || category === EmissionCategory.PurchasedGoodsAndServices || category === EmissionCategory.CapitalGoods || category === EmissionCategory.BusinessTravel || category === EmissionCategory.EmployeeCommuting || category === EmissionCategory.UpstreamLeasedAssets || category === EmissionCategory.DownstreamTransportationAndDistribution || category === EmissionCategory.ProcessingOfSoldProducts || category === EmissionCategory.UpstreamTransportationAndDistribution) && (
+          {(category === EmissionCategory.ProcessEmissions || category === EmissionCategory.PurchasedEnergy || category === EmissionCategory.FuelAndEnergyRelatedActivities || category === EmissionCategory.PurchasedGoodsAndServices || category === EmissionCategory.CapitalGoods || category === EmissionCategory.BusinessTravel || category === EmissionCategory.EmployeeCommuting || category === EmissionCategory.UpstreamLeasedAssets || category === EmissionCategory.DownstreamTransportationAndDistribution || category === EmissionCategory.ProcessingOfSoldProducts) && (
             <div className="mb-4 p-3 bg-blue-50 border border-blue-100 rounded-lg text-blue-800 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-200 flex items-start gap-3">
               <IconInfo className="h-5 w-5 mt-0.5 flex-shrink-0" />
               <div>
@@ -115,11 +117,7 @@ export const EmissionSourceCard: React.FC<EmissionSourceCardProps> = ({
                   <p className="font-semibold">{t('cat3GuidanceTitle')}</p>
                   <p className="text-sm">{t('cat3GuidanceText')}</p>
                 </>}
-                {category === EmissionCategory.UpstreamTransportationAndDistribution && <>
-                  <p className="font-semibold">{t('cat4GuidanceTitle')}</p>
-                  <p className="text-sm">{t('cat4GuidanceText')}</p>
-                </>}
-                {/* Category 4 guidance is now shown here, removing notice from Category4Row */}
+                {/* Category 4 guidance is now shown in Category4_9Row component to avoid duplication */}
                 {category === EmissionCategory.DownstreamTransportationAndDistribution && <>
                   <p className="font-semibold">{t('cat9GuidanceTitle')}</p>
                   <p className="text-sm" dangerouslySetInnerHTML={{ __html: t('cat9GuidanceText') }} />
@@ -162,6 +160,7 @@ export const EmissionSourceCard: React.FC<EmissionSourceCardProps> = ({
                   facilities={facilities}
                   calculateEmissions={calculateEmissions}
                   isAuditModeEnabled={isAuditModeEnabled}
+                  reportingYear={reportingYear}
                 />
               ))
             ) : (

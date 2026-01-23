@@ -7,6 +7,8 @@ import { IconInfo, IconTrash, IconSparkles, IconChevronDown, IconChevronUp, Icon
 import { GoogleGenAI, Type } from '@google/genai';
 import { ALL_CATEGORY1_FACTORS, CATEGORY1_FACTORS_BY_TYPE, getFactorsByType } from '../../constants/scope3/category1';
 import { MethodologyWizard } from '../MethodologyWizard';
+import { DQI_DESCRIPTIONS, getDQIColor, getDQIBgColor, getDQIRatingLabel, suggestDQIFromMetadata } from '../../utils/dqiUtils';
+import { DQISection } from '../DQISection';
 
 interface SourceInputRowProps {
     source: EmissionSource;
@@ -15,47 +17,10 @@ interface SourceInputRowProps {
     onFuelTypeChange: (newFuelType: string) => void;
     fuels: any;
     facilities: any[];
-    calculateEmissions: (source: EmissionSource) => { scope1: number, scope2Location: number, scope2Market: number, scope3: number };
+    calculateEmissions: (source: EmissionSource) => any;
+    reportingYear: string;
 }
 
-// DQI Score descriptions for tooltips
-const DQI_DESCRIPTIONS = {
-    technologicalRep: {
-        1: 'Data from same technology/process',
-        2: 'Data from similar technology',
-        3: 'Data from related technology',
-        4: 'Data from different technology',
-        5: 'Unknown technology basis',
-    },
-    temporalRep: {
-        1: 'Same year (< 1 year old)',
-        2: '1-3 years old',
-        3: '3-5 years old',
-        4: '5-10 years old',
-        5: '> 10 years old',
-    },
-    geographicalRep: {
-        1: 'Same country/region',
-        2: 'Similar region',
-        3: 'Continent average',
-        4: 'Global average',
-        5: 'Unknown geography',
-    },
-    completeness: {
-        1: 'Full cradle-to-gate',
-        2: 'Most upstream included',
-        3: 'Main processes only',
-        4: 'Limited processes',
-        5: 'Single process only',
-    },
-    reliability: {
-        1: '3rd party verified EPD/PCF',
-        2: 'Supplier-provided data',
-        3: 'Industry LCI database',
-        4: 'EEIO/Spend-based',
-        5: 'Estimate/Assumption',
-    },
-};
 
 // Transport mode options
 const TRANSPORT_MODES: { value: TransportMode; labelKo: string; labelEn: string; defaultFactor: number }[] = [
@@ -648,7 +613,7 @@ const HybridMethodUI: React.FC<HybridMethodUIProps> = ({ source, onUpdate, langu
     );
 };
 
-export const Category1_2Row: React.FC<SourceInputRowProps> = ({ source, onUpdate, onRemove, calculateEmissions }) => {
+export const Category1_2Row: React.FC<SourceInputRowProps> = ({ source, onUpdate, onRemove, calculateEmissions, reportingYear }) => {
     const { t, language } = useTranslation();
     const [isEditing, setIsEditing] = useState(false);
     const [editedQuantities, setEditedQuantities] = useState([...source.monthlyQuantities]);
@@ -744,22 +709,60 @@ export const Category1_2Row: React.FC<SourceInputRowProps> = ({ source, onUpdate
                 return;
             }
             const ai = new GoogleGenAI({ apiKey: apiKey as string });
-            const promptText = `You are a GHG accounting expert specializing in Scope 3 emissions according to the GHG Protocol. Analyze the following purchased item description and provide a structured JSON response. Item Description: "${source.fuelType}"
-        
-        IMPORTANT: Respond in ${language === 'ko' ? 'Korean' : 'English'}.`;
+            const promptText = `You are a GHG accounting expert specializing in Scope 3 emissions according to the GHG Protocol and Ecoinvent DQI standards. 
+            Analyze the following purchased item description: "${source.fuelType}"
+            ${source.selectedFactorName ? `The user has selected the following emission factor: "${source.selectedFactorName}"` : ''}
+            
+            1. Suggest the most likely Scope 3 category.
+            2. Provide a justification.
+            3. Evaluate the "Technological Representation" (technologicalRep) according to Ecoinvent Pedigree Matrix:
+               - 1: Same technology, company and process
+               - 2: Same process/technology but different company
+               - 3: Same process/material but different technology
+               - 4: Related process or material
+               - 5: Different technology or lab scale
+            
+            IMPORTANT: Respond in ${language === 'ko' ? 'Korean' : 'English'}.`;
             const responseSchema = {
                 type: Type.OBJECT,
                 properties: {
-                    suggested_category: { type: Type.STRING, description: 'The most likely Scope 3 category (e.g., "1. Purchased Goods and Services", "2. Capital Goods", "4. Upstream Transportation and Distribution").' },
+                    suggested_category: { type: Type.STRING, description: 'The most likely Scope 3 category.' },
                     justification: { type: Type.STRING, description: "A brief explanation for your choice." },
+                    suggested_technological_rep: { type: Type.NUMBER, description: "Ecoinvent Grade (1-5) for Technological Representation." },
                 }
             };
             const response = await ai.models.generateContent({
-                model: 'gemini-2.5-flash',
+                model: 'gemini-1.5-flash',
                 contents: promptText,
                 config: { responseMimeType: "application/json", responseSchema },
             });
             const result = JSON.parse(response.text || '{}');
+
+            if (result.suggested_technological_rep) {
+                // Update DQI if technological rep is suggested
+                const newDQI: DataQualityIndicator = {
+                    ...(source.dataQualityIndicator || {
+                        technologicalRep: 3,
+                        temporalRep: 3,
+                        geographicalRep: 3,
+                        completeness: 3,
+                        reliability: 3,
+                    }),
+                    technologicalRep: (result.suggested_technological_rep as any) as 1 | 2 | 3 | 4 | 5,
+                };
+                const dqiScore = calculateDQIScore(newDQI);
+                const dqiRating = getDQIRating(dqiScore);
+
+                onUpdate({
+                    aiAnalysis: {
+                        suggestedCategory: result.suggested_category,
+                        justification: result.justification
+                    },
+                    dataQualityIndicator: newDQI,
+                    dataQualityRating: dqiRating
+                });
+            }
+
             setAiAnalysisResult(result);
         } catch (error) {
             console.error("AI analysis failed:", error);
@@ -790,13 +793,42 @@ export const Category1_2Row: React.FC<SourceInputRowProps> = ({ source, onUpdate
 
         const factorValue = factor.factors[primaryUnit] || 0;
 
+        // --- NEW: Automated DQI Estimation ---
+        const isOfficialDB = factor.source?.includes('Ecoinvent') || factor.source?.includes('DEFRA') || factor.source?.includes('GHG Protocol');
+        const localRegion = language === 'ko' ? 'KR' : 'US'; // Fallback if no specific facility region
+
+        const suggestedDQI = suggestDQIFromMetadata(
+            parseInt(reportingYear) || new Date().getFullYear(),
+            factor.year,
+            localRegion,
+            factor.region,
+            isOfficialDB,
+            factor.isVerified
+        );
+
+        const newDQI: DataQualityIndicator = {
+            ...(source.dataQualityIndicator || {
+                technologicalRep: 3,
+                temporalRep: 3,
+                geographicalRep: 3,
+                completeness: 3,
+                reliability: 3,
+            }),
+            ...suggestedDQI,
+        } as DataQualityIndicator;
+
+        const dqiScore = calculateDQIScore(newDQI);
+        const dqiRating = getDQIRating(dqiScore);
+
         onUpdate({
             selectedFactorName: factor.name,
             factor: factorValue,
             factorUnit: `kg CO₂e / ${primaryUnit}`,
             unit: primaryUnit,
-            factorSource: 'GHG Protocol Category 1 Database (Ecoinvent/DEFRA/EEIO)',
+            factorSource: factor.source || 'GHG Protocol Category 1 Database',
             isFactorFromDatabase: true,
+            dataQualityIndicator: newDQI,
+            dataQualityRating: dqiRating,
         });
 
         setShowFactorSelector(false);
@@ -905,20 +937,6 @@ export const Category1_2Row: React.FC<SourceInputRowProps> = ({ source, onUpdate
         { value: 'textiles', label: language === 'ko' ? '섬유/가죽' : 'Textiles & Leather' },
     ];
 
-    // DQI color based on score
-    const getDQIColor = (score: number) => {
-        if (score <= 1.5) return 'text-emerald-600 dark:text-emerald-400';
-        if (score <= 2.5) return 'text-blue-600 dark:text-blue-400';
-        if (score <= 3.5) return 'text-yellow-600 dark:text-yellow-400';
-        return 'text-red-600 dark:text-red-400';
-    };
-
-    const getDQIBgColor = (score: number) => {
-        if (score <= 1.5) return 'bg-emerald-100 dark:bg-emerald-900/30';
-        if (score <= 2.5) return 'bg-blue-100 dark:bg-blue-900/30';
-        if (score <= 3.5) return 'bg-yellow-100 dark:bg-yellow-900/30';
-        return 'bg-red-100 dark:bg-red-900/30';
-    };
 
     return (
         <div className="flex flex-col gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200 dark:bg-gray-800 dark:border-gray-700">
@@ -1282,98 +1300,11 @@ export const Category1_2Row: React.FC<SourceInputRowProps> = ({ source, onUpdate
                     />
                 </div>
 
-                {/* Enhanced DQI Section */}
-                <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-                    <button
-                        onClick={() => setShowDQIPanel(!showDQIPanel)}
-                        className="w-full flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors"
-                    >
-                        <div className="flex items-center gap-3">
-                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                {language === 'ko' ? '📋 데이터 품질 지표 (DQI)' : '📋 Data Quality Indicator (DQI)'}
-                            </span>
-                            <div className={`flex items-center gap-2 px-2 py-1 rounded-full ${getDQIBgColor(dqiScore)}`}>
-                                <span className={`text-sm font-bold ${getDQIColor(dqiScore)}`}>
-                                    {dqiScore.toFixed(2)}
-                                </span>
-                                <span className={`text-xs ${getDQIColor(dqiScore)}`}>
-                                    ({language === 'ko' ?
-                                        (dqiRating === 'high' ? '높음' : dqiRating === 'medium' ? '중간' : dqiRating === 'low' ? '낮음' : '추정')
-                                        : dqiRating.charAt(0).toUpperCase() + dqiRating.slice(1)
-                                    })
-                                </span>
-                            </div>
-                        </div>
-                        {showDQIPanel ? <IconChevronUp className="w-4 h-4 text-gray-500" /> : <IconChevronDown className="w-4 h-4 text-gray-500" />}
-                    </button>
-
-                    {showDQIPanel && (
-                        <div className="p-4 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 space-y-4">
-                            {/* DQI Score Visualization */}
-                            <div className="flex items-center gap-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                                <div className="flex-1">
-                                    <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                                        <div
-                                            className={`h-full transition-all duration-300 ${dqiScore <= 1.5 ? 'bg-emerald-500' :
-                                                dqiScore <= 2.5 ? 'bg-blue-500' :
-                                                    dqiScore <= 3.5 ? 'bg-yellow-500' : 'bg-red-500'
-                                                }`}
-                                            style={{ width: `${(5 - dqiScore) / 4 * 100}%` }}
-                                        />
-                                    </div>
-                                    <div className="flex justify-between mt-1 text-[10px] text-gray-500">
-                                        <span>{language === 'ko' ? '매우 좋음' : 'Very Good'}</span>
-                                        <span>{language === 'ko' ? '매우 나쁨' : 'Very Poor'}</span>
-                                    </div>
-                                </div>
-                                <div className={`text-2xl font-bold ${getDQIColor(dqiScore)}`}>
-                                    {dqiScore.toFixed(2)}
-                                </div>
-                            </div>
-
-                            {/* DQI Dimension Inputs */}
-                            {([
-                                { key: 'technologicalRep', label: language === 'ko' ? '기술적 대표성' : 'Technological Rep.' },
-                                { key: 'temporalRep', label: language === 'ko' ? '시간적 대표성' : 'Temporal Rep.' },
-                                { key: 'geographicalRep', label: language === 'ko' ? '지리적 대표성' : 'Geographical Rep.' },
-                                { key: 'completeness', label: language === 'ko' ? '완결성' : 'Completeness' },
-                                { key: 'reliability', label: language === 'ko' ? '신뢰성' : 'Reliability' },
-                            ] as { key: keyof DataQualityIndicator; label: string }[]).map(({ key, label }) => (
-                                <div key={key} className="space-y-1">
-                                    <div className="flex items-center justify-between">
-                                        <label className="text-xs font-medium text-gray-600 dark:text-gray-400">{label}</label>
-                                        <span className="text-xs text-gray-500">
-                                            {DQI_DESCRIPTIONS[key][currentDQI[key] as 1 | 2 | 3 | 4 | 5]}
-                                        </span>
-                                    </div>
-                                    <div className="flex gap-1">
-                                        {[1, 2, 3, 4, 5].map((val) => (
-                                            <button
-                                                key={val}
-                                                onClick={() => handleDQIUpdate(key, val)}
-                                                className={`flex-1 py-1.5 text-xs font-medium rounded transition-colors ${currentDQI[key] === val
-                                                    ? val <= 2 ? 'bg-emerald-500 text-white' :
-                                                        val <= 3 ? 'bg-yellow-500 text-white' :
-                                                            'bg-red-500 text-white'
-                                                    : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
-                                                    }`}
-                                            >
-                                                {val}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            ))}
-
-                            {/* DQI Legend */}
-                            <div className="mt-3 p-2 bg-gray-50 dark:bg-gray-800 rounded text-xs text-gray-500 dark:text-gray-400">
-                                <p className="font-medium mb-1">{language === 'ko' ? '점수 기준:' : 'Score Guide:'}</p>
-                                <p>1 = {language === 'ko' ? '매우 좋음' : 'Very Good'}, 5 = {language === 'ko' ? '매우 나쁨' : 'Very Poor'}</p>
-                                <p className="mt-1">{language === 'ko' ? '가중 평균 점수가 낮을수록 데이터 품질이 높습니다.' : 'Lower weighted average = Higher quality data'}</p>
-                            </div>
-                        </div>
-                    )}
-                </div>
+                <DQISection
+                    dataQualityIndicator={source.dataQualityIndicator}
+                    language={language}
+                    onUpdate={(indicator, rating) => onUpdate({ dataQualityIndicator: indicator, dataQualityRating: rating })}
+                />
 
                 <div>
                     <label htmlFor={`assumptions-${source.id}`} className={commonLabelClass}>{t('assumptionsNotes')}</label>

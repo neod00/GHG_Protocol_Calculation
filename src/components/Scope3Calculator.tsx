@@ -22,6 +22,7 @@ interface Scope3CalculatorProps {
   enabledScope3Categories: EmissionCategory[];
   onManageScope3: () => void;
   isAuditModeEnabled?: boolean;
+  reportingYear: string;
 }
 
 export const Scope3Calculator: React.FC<Scope3CalculatorProps> = (props) => {
@@ -61,6 +62,7 @@ export const Scope3Calculator: React.FC<Scope3CalculatorProps> = (props) => {
               boundaryApproach={props.boundaryApproach}
               isDisabled={!props.fuelsMap[category]}
               isAuditModeEnabled={props.isAuditModeEnabled}
+              reportingYear={props.reportingYear}
             />
           )
         })}

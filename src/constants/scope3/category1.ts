@@ -18,15 +18,15 @@ import { CO2eFactorFuel } from '../../types';
 // 1.1 Metals (금속)
 export const RAW_MATERIALS_METALS: CO2eFactorFuel[] = [
   // Steel (철강)
-  { name: 'Steel - Primary (BOF)', translationKey: 'steelPrimaryBOF', units: ['kg', 'tonnes'], factors: { 'kg': 2.33, 'tonnes': 2330 }, isCustom: false },
-  { name: 'Steel - Secondary (EAF)', translationKey: 'steelSecondaryEAF', units: ['kg', 'tonnes'], factors: { 'kg': 0.42, 'tonnes': 420 }, isCustom: false },
-  { name: 'Steel - Average', translationKey: 'steelAverage', units: ['kg', 'tonnes'], factors: { 'kg': 1.85, 'tonnes': 1850 }, isCustom: false },
-  { name: 'Stainless Steel', translationKey: 'stainlessSteel', units: ['kg', 'tonnes'], factors: { 'kg': 6.15, 'tonnes': 6150 }, isCustom: false },
+  { name: 'Steel - Primary (BOF)', translationKey: 'steelPrimaryBOF', units: ['kg', 'tonnes'], factors: { 'kg': 2.33, 'tonnes': 2330 }, isCustom: false, year: 2023, region: 'GLO' },
+  { name: 'Steel - Secondary (EAF)', translationKey: 'steelSecondaryEAF', units: ['kg', 'tonnes'], factors: { 'kg': 0.42, 'tonnes': 420 }, isCustom: false, year: 2023, region: 'GLO' },
+  { name: 'Steel - Average', translationKey: 'steelAverage', units: ['kg', 'tonnes'], factors: { 'kg': 1.85, 'tonnes': 1850 }, isCustom: false, year: 2023, region: 'GLO' },
+  { name: 'Stainless Steel', translationKey: 'stainlessSteel', units: ['kg', 'tonnes'], factors: { 'kg': 6.15, 'tonnes': 6150 }, isCustom: false, year: 2023, region: 'GLO' },
 
   // Aluminum (알루미늄)
-  { name: 'Aluminum - Primary', translationKey: 'aluminumPrimary', units: ['kg', 'tonnes'], factors: { 'kg': 11.89, 'tonnes': 11890 }, isCustom: false },
-  { name: 'Aluminum - Secondary (Recycled)', translationKey: 'aluminumSecondary', units: ['kg', 'tonnes'], factors: { 'kg': 0.52, 'tonnes': 520 }, isCustom: false },
-  { name: 'Aluminum - Average', translationKey: 'aluminumAverage', units: ['kg', 'tonnes'], factors: { 'kg': 8.24, 'tonnes': 8240 }, isCustom: false },
+  { name: 'Aluminum - Primary', translationKey: 'aluminumPrimary', units: ['kg', 'tonnes'], factors: { 'kg': 11.89, 'tonnes': 11890 }, isCustom: false, year: 2023, region: 'GLO' },
+  { name: 'Aluminum - Secondary (Recycled)', translationKey: 'aluminumSecondary', units: ['kg', 'tonnes'], factors: { 'kg': 0.52, 'tonnes': 520 }, isCustom: false, year: 2023, region: 'GLO' },
+  { name: 'Aluminum - Average', translationKey: 'aluminumAverage', units: ['kg', 'tonnes'], factors: { 'kg': 8.24, 'tonnes': 8240 }, isCustom: false, year: 2023, region: 'GLO' },
 
   // Copper (구리)
   { name: 'Copper - Primary', translationKey: 'copperPrimary', units: ['kg', 'tonnes'], factors: { 'kg': 3.81, 'tonnes': 3810 }, isCustom: false },

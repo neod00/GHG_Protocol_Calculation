@@ -16,7 +16,7 @@ import {
     LEASED_ASSETS_FACTORS_DETAILED,
     PROCESSING_SOLD_PRODUCTS_FACTORS_DETAILED,
     USE_SOLD_PRODUCTS_FACTORS, END_OF_LIFE_TREATMENT_OF_SOLD_PRODUCTS, FRANCHISES_FACTORS, INVESTMENTS_FACTORS,
-    FRANCHISES_FACTORS_DETAILED, CAT4_WAREHOUSE_FACTORS
+    FRANCHISES_FACTORS_DETAILED,
 } from '../constants';
 import { ResultsDisplay } from './ResultsDisplay';
 
@@ -1175,14 +1175,25 @@ export const MainCalculator: React.FC<MainCalculatorProps> = ({
                     scope3 = source.supplierProvidedCO2e || 0;
                 } else if (calcMethod === 'spend') {
                     const totalSpend = source.monthlyQuantities.reduce((s, q) => s + q, 0);
-                    const spendFactorData = allFactors.upstreamLeased.spend_based.find((f: any) => f.name.includes('Building') || f.name === source.fuelType); // Fallback to building spend
+                    const spendFactorData = TRANSPORTATION_SPEND_FACTORS.find((f: any) => f.name.includes('Warehousing') || f.name === source.fuelType);
                     const spendFactor = spendFactorData?.factors[source.unit] || 0;
                     scope3 = totalSpend * spendFactor;
+                } else if (calcMethod === 'average') {
+                    const totalActivity = source.monthlyQuantities.reduce((s, q) => s + q, 0);
+                    // Standard warehouse average factor: ~0.1 kg CO2e per tonne-day (illustrative)
+                    // In a real app, this would come from a database based on unit
+                    let factor = 0.1;
+                    if (source.unit === 'm2') factor = 50; // kg CO2e/m2/year
+                    scope3 = totalActivity * factor;
+                } else if (calcMethod === 'site_specific' || calcMethod === 'asset_specific') {
+                    // Logic handled in the following switch case
                 } else {
-                    // Default fallback for warehousing without specific logic yet
                     scope3 = 0;
                 }
-                return { scope1: 0, scope2Location: 0, scope2Market: 0, scope3 };
+
+                if (calcMethod !== 'site_specific' && calcMethod !== 'asset_specific') {
+                    return { scope1: 0, scope2Location: 0, scope2Market: 0, scope3 };
+                }
             }
 
 
@@ -1204,6 +1215,7 @@ export const MainCalculator: React.FC<MainCalculatorProps> = ({
                     const gridFactor = (allFactors.scope2.find((f: any) => f.name === 'Grid Electricity') as CO2eFactorFuel)?.factors['kWh'] || 0;
                     scope3 = totalKwh * gridFactor;
                     break;
+                case 'site_specific':
                 case 'asset_specific':
                     let totalEmissions = 0;
                     const allEnergyAndFuelFactors = [...allFactors.stationary, ...allFactors.mobile, ...allFactors.scope2];
@@ -1228,31 +1240,8 @@ export const MainCalculator: React.FC<MainCalculatorProps> = ({
         }
 
 
-        if (source.category === EmissionCategory.UpstreamTransportationAndDistribution || source.category === EmissionCategory.DownstreamTransportationAndDistribution) {
-            const calcMethod = source.calculationMethod as Cat4CalculationMethod;
-
-            // Handle Warehouse/Distribution specifically if needed, or unify under calc methods
-            switch (calcMethod) {
-                case 'site_based':
-                    let totalSiteEmissions = 0;
-                    const allEnergyAndFuelFactors = [...allFactors.stationary, ...allFactors.mobile, ...allFactors.scope2];
-                    for (const input of source.energyInputs || []) {
-                        const factorData = allEnergyAndFuelFactors.find((f: any) => f.name === input.type) as CO2eFactorFuel | undefined;
-                        if (factorData) {
-                            const factor = factorData.factors[input.unit] || 0;
-                            totalSiteEmissions += (input.value || 0) * factor; // Input value is annual
-                        }
-                    }
-                    return { scope1: 0, scope2Location: 0, scope2Market: 0, scope3: totalSiteEmissions };
-
-                case 'average_data':
-                    // Volume (m3) * storage duration (days) * factor (kg CO2e / m3-day)
-                    const totalVolume = source.monthlyQuantities.reduce((sum, q) => sum + q, 0);
-                    const storageDays = source.storageDays || 0;
-                    const warehouseType = source.warehouseType || 'Ambient Warehouse (Average)';
-                    const warehouseFactor = CAT4_WAREHOUSE_FACTORS[warehouseType] || 0;
-                    return { scope1: 0, scope2Location: 0, scope2Market: 0, scope3: totalVolume * storageDays * warehouseFactor };
-
+        if (source.category === EmissionCategory.UpstreamTransportationAndDistribution || (source.category === EmissionCategory.DownstreamTransportationAndDistribution && source.downstreamActivityType !== 'warehousing')) {
+            switch (source.calculationMethod as Cat4CalculationMethod) {
                 case 'activity':
                     const mode = source.transportMode;
                     const vehicle = source.vehicleType;
@@ -1265,7 +1254,7 @@ export const MainCalculator: React.FC<MainCalculatorProps> = ({
 
                     let adjustmentMultiplier = 1.0;
                     if (source.refrigerated) adjustmentMultiplier *= 1.2;
-                    if (source.emptyBackhaul) adjustmentMultiplier *= 2.0;
+                    if (source.emptyBackhaul) adjustmentMultiplier *= 2.0; // Simplified adjustment
                     if (source.loadFactor && source.loadFactor > 0 && source.loadFactor < 100) {
                         adjustmentMultiplier *= (100 / source.loadFactor);
                     }
@@ -1281,7 +1270,6 @@ export const MainCalculator: React.FC<MainCalculatorProps> = ({
 
                 case 'spend':
                     const totalSpend = source.monthlyQuantities.reduce((sum, q) => sum + q, 0);
-                    // Check if it's warehousing spend (from Category 4 logic)
                     const spendData = TRANSPORTATION_SPEND_FACTORS.find((f: any) => f.name === source.fuelType);
                     if (!spendData) return { scope1: 0, scope2Location: 0, scope2Market: 0, scope3: 0 };
                     const spendFactor = spendData.factors[source.unit] || 0;
@@ -1289,9 +1277,6 @@ export const MainCalculator: React.FC<MainCalculatorProps> = ({
 
                 case 'supplier_specific':
                     return { scope1: 0, scope2Location: 0, scope2Market: 0, scope3: source.supplierProvidedCO2e || 0 };
-
-                default:
-                    return { scope1: 0, scope2Location: 0, scope2Market: 0, scope3: 0 };
             }
         }
 
@@ -2344,6 +2329,7 @@ export const MainCalculator: React.FC<MainCalculatorProps> = ({
                                     onToggleCategory={handleToggleCategory}
                                     boundaryApproach={boundaryApproach}
                                     isAuditModeEnabled={isAuditModeEnabled}
+                                    reportingYear={reportingYear}
                                 />
                             )}
 
@@ -2362,6 +2348,7 @@ export const MainCalculator: React.FC<MainCalculatorProps> = ({
                                     onToggleCategory={handleToggleCategory}
                                     boundaryApproach={boundaryApproach}
                                     isAuditModeEnabled={isAuditModeEnabled}
+                                    reportingYear={reportingYear}
                                 />
                             )}
 
@@ -2382,6 +2369,7 @@ export const MainCalculator: React.FC<MainCalculatorProps> = ({
                                     enabledScope3Categories={scope3Settings.enabledCategories}
                                     onManageScope3={openScope3Settings}
                                     isAuditModeEnabled={isAuditModeEnabled}
+                                    reportingYear={reportingYear}
                                 />
                             )}
                         </div>
