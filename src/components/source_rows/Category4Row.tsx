@@ -98,10 +98,19 @@ export const Category4Row: React.FC<SourceInputRowProps> = ({ source, onUpdate, 
                 return;
             }
             const ai = new GoogleGenAI({ apiKey: apiKey as string });
-            const promptText = `As a GHG Protocol Scope 3 expert, analyze this logistics description: "${source.description}". 
-            Extract the Origin, Destination, likely Transport Mode (Road, Sea, Air, Rail), and Vehicle Type.
-            Estimate the distance between origin and destination in km using your knowledge of geography.
-            Check if the description implies company-owned vehicles (e.g., "our fleet", "company truck") which would be Scope 1, not Scope 3.
+            const promptText = `As a GHG Protocol expert for Scope 3, Category 4 (Upstream Transportation and Distribution), analyze the following description: "${source.description}". 
+
+            CRITICAL BOUNDARY CHECK:
+            If the description implies transport using vehicles OWNED or OPERATED by the reporting company (e.g., "our delivery fleet", "company-owned truck"), the combustion emissions are Scope 1. Category 4 only includes upstream transportation services purchased by the company.
+
+            Evaluate if this belongs to:
+            1. 'transportation': Upstream transportation of goods.
+            2. 'distribution': Storage/warehousing in third-party facilities.
+
+            Suggest the best calculation method among: 'activity' (distance-based), 'fuel' (fuel-based), 'spend' (spend-based), 'site_based', or 'average_data'.
+
+            Extract or estimate: Origin, Destination, estimated_distance_km, and weight_tonnes if applicable.
+
             Provide a structured JSON response.
             
             IMPORTANT: Respond in ${language === 'ko' ? 'Korean' : 'English'}.`;
@@ -109,19 +118,19 @@ export const Category4Row: React.FC<SourceInputRowProps> = ({ source, onUpdate, 
             const responseSchema = {
                 type: Type.OBJECT,
                 properties: {
+                    activity_group: { type: Type.STRING, description: "'transportation' or 'distribution'" },
+                    suggested_method: { type: Type.STRING, description: "One of: 'activity', 'fuel', 'spend', 'site_based', 'average_data'" },
                     origin: { type: Type.STRING },
                     destination: { type: Type.STRING },
                     estimated_distance_km: { type: Type.NUMBER },
-                    suggested_mode: { type: Type.STRING, description: 'Road, Sea, Air, or Rail' },
-                    suggested_vehicle: { type: Type.STRING },
                     weight_tonnes: { type: Type.NUMBER, nullable: true },
-                    scope_1_warning: { type: Type.BOOLEAN, description: "True if it sounds like Scope 1 (owned assets)." },
-                    justification: { type: Type.STRING },
+                    justification: { type: Type.STRING, description: "Detailed reason for your categorization and method choice." },
+                    boundary_warning: { type: Type.STRING, description: "'Scope 1' if owned assets are implied, otherwise null." },
                 }
             };
 
             const response = await ai.models.generateContent({
-                model: 'gemini-2.5-flash',
+                model: 'gemini-2.0-flash',
                 contents: promptText,
                 config: {
                     responseMimeType: "application/json",
@@ -141,18 +150,22 @@ export const Category4Row: React.FC<SourceInputRowProps> = ({ source, onUpdate, 
     const applyAiResult = () => {
         if (!aiAnalysisResult) return;
         const updates: Partial<EmissionSource> = {};
+
+        if (aiAnalysisResult.activity_group) {
+            const group = aiAnalysisResult.activity_group as 'transportation' | 'distribution';
+            // handleActivityGroupChange updates the actual calculation method
+            if (group === 'distribution') {
+                updates.calculationMethod = aiAnalysisResult.suggested_method || 'average_data';
+            } else {
+                updates.calculationMethod = aiAnalysisResult.suggested_method || 'activity';
+            }
+        }
+
         if (aiAnalysisResult.origin) updates.origin = aiAnalysisResult.origin;
         if (aiAnalysisResult.destination) updates.destination = aiAnalysisResult.destination;
         if (aiAnalysisResult.estimated_distance_km) updates.distanceKm = aiAnalysisResult.estimated_distance_km;
-        if (aiAnalysisResult.weight_tonnes) updates.weightTonnes = aiAnalysisResult.weightTonnes;
-        if (aiAnalysisResult.suggested_mode && ['Road', 'Sea', 'Air', 'Rail'].includes(aiAnalysisResult.suggested_mode)) {
-            updates.transportMode = aiAnalysisResult.suggested_mode as TransportMode;
-            const mode = aiAnalysisResult.suggested_mode;
-            const vehicles = Object.keys(fuels[mode] || {});
-            if (vehicles.length > 0) {
-                updates.vehicleType = vehicles[0];
-            }
-        }
+        if (aiAnalysisResult.weight_tonnes) updates.weightTonnes = aiAnalysisResult.weight_tonnes;
+
         onUpdate(updates);
     };
 
@@ -245,23 +258,35 @@ export const Category4Row: React.FC<SourceInputRowProps> = ({ source, onUpdate, 
 
                     {/* AI Result Panel */}
                     {aiAnalysisResult && (
-                        <div className={`p-3 border rounded-lg text-xs ${aiAnalysisResult.scope_1_warning ? 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/30 dark:border-red-700 dark:text-red-200' : 'bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/30 dark:border-blue-700 dark:text-blue-200'}`}>
-                            {aiAnalysisResult.scope_1_warning && (
-                                <div className="flex items-center gap-2 font-bold mb-2">
-                                    <IconX className="w-4 h-4" /> {t('scope1OverlapWarning')}
+                        <div className={`p-3 border rounded-lg shadow-sm animate-in fade-in slide-in-from-top-2 duration-300 ${aiAnalysisResult.boundary_warning ? 'bg-amber-50 border-amber-200 text-amber-900 dark:bg-amber-900/20 dark:border-amber-800' : 'bg-blue-50 border-blue-200 text-blue-900 dark:bg-blue-900/20 dark:border-blue-800'}`}>
+                            {aiAnalysisResult.boundary_warning && (
+                                <div className="flex items-center gap-2 font-bold mb-2 text-amber-700 dark:text-amber-400">
+                                    <IconInfo className="w-4 h-4" />
+                                    {t('categoryMismatch')}: {aiAnalysisResult.boundary_warning === 'Scope 1' ? t('cat3Scope1Warning') : aiAnalysisResult.boundary_warning}
                                 </div>
                             )}
-                            {aiAnalysisResult.scope_1_warning && <p className="mb-2">{t('scope1OverlapText')}</p>}
-
-                            <div className="grid grid-cols-2 gap-1">
-                                <p><span className="font-semibold">{t('origin')}:</span> {aiAnalysisResult.origin}</p>
-                                <p><span className="font-semibold">{t('destination')}:</span> {aiAnalysisResult.destination}</p>
-                                <p><span className="font-semibold">{t('estimatedDistance')}:</span> {aiAnalysisResult.estimated_distance_km} km</p>
-                                <p><span className="font-semibold">{t('suggestedTransportMode')}:</span> {aiAnalysisResult.suggested_mode}</p>
+                            <h4 className="font-bold text-xs mb-2 flex items-center gap-1.5">✨ {t('aiAnalysis')}</h4>
+                            <div className="space-y-1.5 opacity-90 text-[11px] leading-relaxed">
+                                <p><span className="font-bold text-gray-600 dark:text-gray-400">{t('suggestedActivityType')}:</span> {aiAnalysisResult.activity_group === 'transportation' ? t('cat4Transportation') : t('cat4Distribution')}</p>
+                                <p><span className="font-bold text-gray-600 dark:text-gray-400">{t('calculationMethod')}:</span> {t(
+                                    aiAnalysisResult.suggested_method === 'activity' ? 'cat4ActivityMethod' :
+                                        aiAnalysisResult.suggested_method === 'fuel' ? 'cat4FuelMethod' :
+                                            aiAnalysisResult.suggested_method === 'spend' ? 'cat4SpendMethod' :
+                                                aiAnalysisResult.suggested_method === 'site_based' ? 'cat4SiteBasedMethod' :
+                                                    'cat4AverageDataMethod' as TranslationKey
+                                )}</p>
+                                <div className="grid grid-cols-2 gap-x-4 gap-y-1 py-1 border-y border-black/5 dark:border-white/5 my-1">
+                                    <p><span className="font-bold text-gray-600 dark:text-gray-400">{t('origin')}:</span> {aiAnalysisResult.origin}</p>
+                                    <p><span className="font-bold text-gray-600 dark:text-gray-400">{t('destination')}:</span> {aiAnalysisResult.destination}</p>
+                                    <p><span className="font-bold text-gray-600 dark:text-gray-400">{t('estimatedDistance')}:</span> {aiAnalysisResult.estimated_distance_km} km</p>
+                                </div>
+                                <p><span className="font-bold text-gray-600 dark:text-gray-400">{t('justification')}:</span> {aiAnalysisResult.justification}</p>
                             </div>
-                            <div className="flex justify-end mt-2">
-                                <button onClick={applyAiResult} className="px-2 py-1 bg-white dark:bg-gray-700 border rounded hover:bg-gray-100 dark:hover:bg-gray-600 font-semibold flex items-center gap-1">
-                                    <IconCheck className="w-3 h-3" /> {t('applySuggestion')}
+                            <div className="flex justify-between items-center mt-3 pt-3 border-t border-black/5 dark:border-white/5">
+                                <p className="text-[10px] text-gray-500 italic">{t('aiDisclaimer')}</p>
+                                <button onClick={applyAiResult} className="px-3 py-1 text-[11px] font-bold bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:border-ghg-green hover:text-ghg-green dark:hover:text-emerald-400 shadow-sm transition-all active:scale-95 flex items-center gap-1.5">
+                                    <IconCheck className="w-3.5 h-3.5" />
+                                    {t('applySuggestion')}
                                 </button>
                             </div>
                         </div>
