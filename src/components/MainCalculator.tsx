@@ -16,7 +16,7 @@ import {
     LEASED_ASSETS_FACTORS_DETAILED,
     PROCESSING_SOLD_PRODUCTS_FACTORS_DETAILED,
     USE_SOLD_PRODUCTS_FACTORS, END_OF_LIFE_TREATMENT_OF_SOLD_PRODUCTS, FRANCHISES_FACTORS, INVESTMENTS_FACTORS,
-    FRANCHISES_FACTORS_DETAILED,
+    FRANCHISES_FACTORS_DETAILED, CAT4_WAREHOUSE_FACTORS
 } from '../constants';
 import { ResultsDisplay } from './ResultsDisplay';
 
@@ -1228,8 +1228,31 @@ export const MainCalculator: React.FC<MainCalculatorProps> = ({
         }
 
 
-        if (source.category === EmissionCategory.UpstreamTransportationAndDistribution || (source.category === EmissionCategory.DownstreamTransportationAndDistribution && source.downstreamActivityType !== 'warehousing')) {
-            switch (source.calculationMethod as Cat4CalculationMethod) {
+        if (source.category === EmissionCategory.UpstreamTransportationAndDistribution || source.category === EmissionCategory.DownstreamTransportationAndDistribution) {
+            const calcMethod = source.calculationMethod as Cat4CalculationMethod;
+
+            // Handle Warehouse/Distribution specifically if needed, or unify under calc methods
+            switch (calcMethod) {
+                case 'site_based':
+                    let totalSiteEmissions = 0;
+                    const allEnergyAndFuelFactors = [...allFactors.stationary, ...allFactors.mobile, ...allFactors.scope2];
+                    for (const input of source.energyInputs || []) {
+                        const factorData = allEnergyAndFuelFactors.find((f: any) => f.name === input.type) as CO2eFactorFuel | undefined;
+                        if (factorData) {
+                            const factor = factorData.factors[input.unit] || 0;
+                            totalSiteEmissions += (input.value || 0) * factor; // Input value is annual
+                        }
+                    }
+                    return { scope1: 0, scope2Location: 0, scope2Market: 0, scope3: totalSiteEmissions };
+
+                case 'average_data':
+                    // Volume (m3) * storage duration (days) * factor (kg CO2e / m3-day)
+                    const totalVolume = source.monthlyQuantities.reduce((sum, q) => sum + q, 0);
+                    const storageDays = source.storageDays || 0;
+                    const warehouseType = source.warehouseType || 'Ambient Warehouse (Average)';
+                    const warehouseFactor = CAT4_WAREHOUSE_FACTORS[warehouseType] || 0;
+                    return { scope1: 0, scope2Location: 0, scope2Market: 0, scope3: totalVolume * storageDays * warehouseFactor };
+
                 case 'activity':
                     const mode = source.transportMode;
                     const vehicle = source.vehicleType;
@@ -1242,7 +1265,7 @@ export const MainCalculator: React.FC<MainCalculatorProps> = ({
 
                     let adjustmentMultiplier = 1.0;
                     if (source.refrigerated) adjustmentMultiplier *= 1.2;
-                    if (source.emptyBackhaul) adjustmentMultiplier *= 2.0; // Simplified adjustment
+                    if (source.emptyBackhaul) adjustmentMultiplier *= 2.0;
                     if (source.loadFactor && source.loadFactor > 0 && source.loadFactor < 100) {
                         adjustmentMultiplier *= (100 / source.loadFactor);
                     }
@@ -1258,6 +1281,7 @@ export const MainCalculator: React.FC<MainCalculatorProps> = ({
 
                 case 'spend':
                     const totalSpend = source.monthlyQuantities.reduce((sum, q) => sum + q, 0);
+                    // Check if it's warehousing spend (from Category 4 logic)
                     const spendData = TRANSPORTATION_SPEND_FACTORS.find((f: any) => f.name === source.fuelType);
                     if (!spendData) return { scope1: 0, scope2Location: 0, scope2Market: 0, scope3: 0 };
                     const spendFactor = spendData.factors[source.unit] || 0;
@@ -1265,6 +1289,9 @@ export const MainCalculator: React.FC<MainCalculatorProps> = ({
 
                 case 'supplier_specific':
                     return { scope1: 0, scope2Location: 0, scope2Market: 0, scope3: source.supplierProvidedCO2e || 0 };
+
+                default:
+                    return { scope1: 0, scope2Location: 0, scope2Market: 0, scope3: 0 };
             }
         }
 

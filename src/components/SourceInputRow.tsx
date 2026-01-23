@@ -4,6 +4,7 @@ import { EmissionSource, EmissionCategory, CalculationResult } from '../types';
 import { DefaultRow } from './source_rows/DefaultRow';
 import { Category1_2Row } from './source_rows/Category1_2Row';
 import { Category3Row } from './source_rows/Category3Row';
+import { Category4Row } from './source_rows/Category4Row';
 import { Category4_9Row } from './source_rows/Category4_9Row';
 import { Category5Row } from './source_rows/Category5Row';
 import { Category6Row } from './source_rows/Category6Row';
@@ -41,6 +42,8 @@ export const SourceInputRow: React.FC<SourceInputRowProps> = (props) => {
       return <Category3Row {...props} />;
 
     case EmissionCategory.UpstreamTransportationAndDistribution:
+      return <Category4Row {...props} />;
+
     case EmissionCategory.DownstreamTransportationAndDistribution:
       return <Category4_9Row {...props} />;
 

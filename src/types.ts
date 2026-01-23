@@ -96,8 +96,8 @@ export interface Facility {
   isCorporate?: boolean; // New field to identify the special corporate-level facility
 }
 
-export type CalculationMethod = 'supplier_co2e' | 'activity' | 'spend' | 'hybrid';
-export type Cat4CalculationMethod = 'activity' | 'fuel' | 'spend' | 'supplier_specific';
+export type CalculationMethod = 'supplier_co2e' | 'activity' | 'spend' | 'hybrid' | 'fuel' | 'site_based' | 'supplier_specific';
+export type Cat4CalculationMethod = 'activity' | 'fuel' | 'spend' | 'supplier_specific' | 'site_based' | 'average_data';
 export type Cat5CalculationMethod = 'activity' | 'supplier_specific' | 'spend';
 export type Cat6CalculationMethod = 'activity' | 'fuel' | 'spend' | 'supplier_specific';
 export type Cat7CalculationMethod = 'activity' | 'average' | 'spend';
@@ -321,6 +321,8 @@ export interface EmissionSource {
   emptyBackhaul?: boolean;
   origin?: string;
   destination?: string;
+  storageDays?: number;
+  warehouseType?: string;
 
   // New fields for advanced Scope 3 Category 5 calculation
   wasteType?: WasteType;
@@ -357,6 +359,7 @@ export interface EmissionSource {
 
   // New fields for advanced Scope 3 Category 9 calculation
   downstreamActivityType?: 'transportation' | 'warehousing';
+  distributionMethod?: 'site_based' | 'average_data';
 
   // New fields for advanced Scope 3 Category 10 calculation
   processingMethod?: string;
