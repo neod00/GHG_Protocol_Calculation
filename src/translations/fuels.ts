@@ -338,10 +338,6 @@ export const en = {
   airLongHaulCargo: 'Long-haul Cargo Flight (>1500 km)',
   railDieselTrain: 'Diesel Freight Train',
   railElectricTrain: 'Electric Freight Train',
-  seaGeneralCargo: 'General Cargo Ship',
-  warehouseAmbient: 'Ambient Warehouse (Average)',
-  warehouseChilled: 'Chilled Warehouse',
-  warehouseFrozen: 'Frozen Warehouse',
   freightSpend: 'Freight Forwarding Services (spend)',
   warehousingSpend: 'Warehousing and Storage (spend)',
 
@@ -723,10 +719,6 @@ export const ko = {
   airLongHaulCargo: '장거리 화물기 (>1500 km)',
   railDieselTrain: '디젤 화물 열차',
   railElectricTrain: '전기 화물 열차',
-  seaGeneralCargo: '일반 화물선',
-  warehouseAmbient: '상온 창고 (평균)',
-  warehouseChilled: '냉장 창고',
-  warehouseFrozen: '냉동 창고',
   freightSpend: '화물 운송 서비스 (지출)',
   warehousingSpend: '창고 및 보관 (지출)',
 

@@ -11,4 +11,3 @@ export * from './category11';
 export * from './category12';
 export * from './category14';
 export * from './category15';
-export * from './category4';

@@ -100,7 +100,7 @@ export interface Facility {
 
 export type CalculationMethod = 'supplier_co2e' | 'activity' | 'spend' | 'hybrid';
 export type Cat4CalculationMethod = 'activity' | 'fuel' | 'spend' | 'supplier_specific' | 'site_specific' | 'average';
-export type Cat5CalculationMethod = 'activity' | 'supplier_specific' | 'spend';
+export type Cat5CalculationMethod = 'activity' | 'supplier_specific' | 'spend' | 'average';
 export type Cat6CalculationMethod = 'activity' | 'fuel' | 'spend' | 'supplier_specific';
 export type Cat7CalculationMethod = 'activity' | 'average' | 'spend';
 export type Cat8CalculationMethod = 'asset_specific' | 'area_based' | 'spend_based' | 'supplier_specific';
@@ -116,8 +116,8 @@ export type BusinessTravelMode = 'Air' | 'Rail' | 'Bus' | 'RentalCar' | 'Persona
 export type FlightClass = 'Economy' | 'Business' | 'First';
 export type TripType = 'one-way' | 'round-trip';
 export type TransportMode = 'Road' | 'Sea' | 'Air' | 'Rail';
-export type WasteType = 'MSW' | 'Paper' | 'Plastics' | 'Food' | 'Metal' | 'Hazardous';
-export type TreatmentMethod = 'Landfill' | 'Incineration' | 'Recycling' | 'Composting' | 'AnaerobicDigestion';
+export type WasteType = 'MSW' | 'Paper' | 'Plastics' | 'Food' | 'Metal' | 'Hazardous' | 'Wood' | 'Glass' | 'Concrete' | 'Textile' | 'Industrial' | 'Construction' | 'Wastewater' | 'Sludge';
+export type TreatmentMethod = 'Landfill' | 'Incineration' | 'Recycling' | 'Composting' | 'AnaerobicDigestion' | 'WastewaterTreatment';
 export type EmployeeCommutingMode = 'PersonalCar' | 'PublicTransport' | 'Motorbike' | 'Carpool' | 'BicycleWalking';
 export type PersonalCarType = 'Gasoline' | 'Diesel' | 'Hybrid' | 'Electric' | 'LPG';
 export type PublicTransportType = 'Bus' | 'Subway';
@@ -328,6 +328,7 @@ export interface EmissionSource {
   wasteType?: WasteType;
   treatmentMethod?: TreatmentMethod;
   includeTransport?: boolean;
+  treatmentRatios?: { landfill: number; incineration: number; recycling: number }; // For average method
 
   // New fields for advanced Scope 3 Category 6 calculation
   businessTravelMode?: BusinessTravelMode;

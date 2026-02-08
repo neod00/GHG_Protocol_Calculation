@@ -1294,6 +1294,27 @@ export const MainCalculator: React.FC<MainCalculatorProps> = ({
                     const spendFactor = spendFactorData?.factors[source.unit] || 0;
                     scope3 = totalSpend * spendFactor;
                     break;
+                case 'average':
+                    // Average method: Total waste × treatment ratios × average emission factors
+                    const totalWasteTonnesAvg = source.monthlyQuantities.reduce((s, q) => s + q, 0);
+                    const ratios = source.treatmentRatios || { landfill: 0.05, incineration: 0.10, recycling: 0.85 };
+                    // Use MSW as default waste type for average factors or get from allFactors.scope3Waste.average
+                    const avgFactors = allFactors.scope3Waste.average || { default: 0.05 };
+                    const avgFactor = typeof avgFactors === 'number' ? avgFactors : (avgFactors.default || 0.05);
+
+                    // Simplified: use weighted average across treatment methods
+                    // landfill has higher emissions, recycling lower, etc.
+                    const landfillFactor = 0.4552;  // MSW landfill factor
+                    const incinerationFactor = 0.0445;  // MSW incineration factor
+                    const recyclingFactor = 0.0186;  // MSW recycling factor
+
+                    const weightedFactor =
+                        ratios.landfill * landfillFactor +
+                        ratios.incineration * incinerationFactor +
+                        ratios.recycling * recyclingFactor;
+
+                    scope3 = totalWasteTonnesAvg * weightedFactor * 1000; // Convert to kgCO2e
+                    break;
                 case 'activity':
                 default:
                     const totalWeightTonnes = source.monthlyQuantities.reduce((s, q) => s + q, 0) * (source.unit === 'kg' ? 0.001 : 1);
@@ -1303,7 +1324,7 @@ export const MainCalculator: React.FC<MainCalculatorProps> = ({
                     const treatmentMethod = source.treatmentMethod;
                     if (wasteType && treatmentMethod && allFactors.scope3Waste.activity[wasteType] && allFactors.scope3Waste.activity[wasteType]?.[treatmentMethod]) {
                         const treatmentFactor = allFactors.scope3Waste.activity[wasteType][treatmentMethod]!.factor;
-                        scope3 += totalWeightTonnes * treatmentFactor;
+                        scope3 += totalWeightTonnes * treatmentFactor * 1000; // Convert due to NIER factors being kgCO2e/kg, we need to multiply for tonnes
                     }
 
                     // Transport emissions

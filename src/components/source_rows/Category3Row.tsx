@@ -5,7 +5,9 @@ import { TranslationKey } from '../../translations/index';
 import { IconTrash, IconSparkles, IconInfo, IconChevronDown, IconChevronUp } from '../IconComponents';
 import { GoogleGenAI, Type } from '@google/genai';
 import { MethodologyWizard } from '../MethodologyWizard';
-import { CalculationMethod } from '../../types';
+import { CalculationMethod, calculateDQIScore, getDQIRating, DataQualityIndicator } from '../../types';
+import { DQISection } from '../DQISection';
+import { getDQIColor, getDQIBgColor, getDQIRatingLabel } from '../../utils/dqiUtils';
 
 interface SourceInputRowProps {
     source: EmissionSource;
@@ -143,6 +145,15 @@ export const Category3Row: React.FC<SourceInputRowProps> = ({ source, onUpdate, 
     const placeholderText = t('fuelEnergyPlaceholder');
     const activityUnit = source.unit;
 
+    const dqiScore = calculateDQIScore(source.dataQualityIndicator || {
+        technologicalRep: 3,
+        temporalRep: 3,
+        geographicalRep: 3,
+        completeness: 3,
+        reliability: 3,
+    });
+    const dqiRating = getDQIRating(dqiScore);
+
     return (
         <div className="flex flex-col gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200 dark:bg-gray-800 dark:border-gray-700 font-sans shadow-sm transition-all duration-200">
             {/* Row Summary Header */}
@@ -161,6 +172,11 @@ export const Category3Row: React.FC<SourceInputRowProps> = ({ source, onUpdate, 
                             <>
                                 <span>•</span>
                                 <span className="font-bold text-emerald-600 dark:text-emerald-400">{(totalEmissions / 1000).toLocaleString('en-US', { minimumFractionDigits: 3 })} t CO₂e</span>
+                                {source.dataQualityIndicator && (
+                                    <span className={`ml-2 px-1.5 py-0.5 rounded text-[10px] font-bold ${getDQIBgColor(dqiScore)} ${getDQIColor(dqiScore)}`}>
+                                        DQI: {dqiScore.toFixed(1)}
+                                    </span>
+                                )}
                             </>
                         )}
                     </p>
@@ -371,6 +387,12 @@ export const Category3Row: React.FC<SourceInputRowProps> = ({ source, onUpdate, 
                                         </div>
                                     </div>
                                 )}
+
+                                <DQISection
+                                    dataQualityIndicator={source.dataQualityIndicator}
+                                    language={language}
+                                    onUpdate={(indicator, rating) => onUpdate({ dataQualityIndicator: indicator, dataQualityRating: rating })}
+                                />
                             </div>
                         </div>
                     )}

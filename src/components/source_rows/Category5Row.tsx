@@ -1,10 +1,14 @@
 
 import React, { useState, useEffect } from 'react';
-import { EmissionSource, Cat5CalculationMethod, WasteType, TreatmentMethod, TransportMode } from '../../types';
+import { EmissionSource, Cat5CalculationMethod, WasteType, TreatmentMethod, TransportMode, EmissionCategory, DataQualityIndicator, calculateDQIScore, getDQIRating } from '../../types';
 import { useTranslation } from '../../context/LanguageContext';
 import { TranslationKey } from '../../translations/index';
 import { IconTrash, IconSparkles, IconCheck, IconInfo, IconCar, IconAlertTriangle } from '../IconComponents';
 import { GoogleGenAI, Type } from '@google/genai';
+import { DQISection } from '../DQISection';
+import { MethodologyWizard } from '../MethodologyWizard';
+import { DEFAULT_TREATMENT_RATIOS } from '../../constants/scope3/category5';
+import { TRANSPORTATION_FACTORS_BY_MODE } from '../../constants/scope3/category4_9';
 
 interface SourceInputRowProps {
     source: EmissionSource;
@@ -21,6 +25,7 @@ export const Category5Row: React.FC<SourceInputRowProps> = ({ source, onUpdate, 
     const [isExpanded, setIsExpanded] = useState(false);
     const [isLoadingAI, setIsLoadingAI] = useState(false);
     const [aiAnalysisResult, setAiAnalysisResult] = useState<any>(null);
+    const [isWizardOpen, setIsWizardOpen] = useState(false);
 
     const totalEmissions = calculateEmissions(source).scope3;
     const commonSelectClass = "w-full bg-white text-gray-900 dark:bg-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-500 rounded-md shadow-sm py-2 px-3 text-sm focus:outline-none focus:ring-ghg-green focus:border-ghg-green";
@@ -36,6 +41,14 @@ export const Category5Row: React.FC<SourceInputRowProps> = ({ source, onUpdate, 
         }
     }, []);
 
+    // DQI update handler
+    const handleDQIUpdate = (indicator: DataQualityIndicator, rating: 'high' | 'medium' | 'low' | 'estimated') => {
+        onUpdate({
+            dataQualityIndicator: indicator,
+            dataQualityRating: rating,
+        });
+    };
+
     const handleMethodChange = (method: Cat5CalculationMethod) => {
         let updates: Partial<EmissionSource> = { calculationMethod: method };
 
@@ -50,6 +63,12 @@ export const Category5Row: React.FC<SourceInputRowProps> = ({ source, onUpdate, 
             }
         } else if (method === 'supplier_specific') {
             updates.unit = 'kg CO₂e';
+        } else if (method === 'average') {
+            updates.unit = 'tonnes';
+            // Set default treatment ratios
+            if (!source.treatmentRatios) {
+                updates.treatmentRatios = DEFAULT_TREATMENT_RATIOS.default;
+            }
         }
 
         onUpdate(updates);
@@ -164,7 +183,9 @@ export const Category5Row: React.FC<SourceInputRowProps> = ({ source, onUpdate, 
     };
 
     // Determine transport fuels for the dropdown if transport is included
-    const transportFuels = fuels.upstreamTransport || {};
+    const transportFuels: any = fuels.upstreamTransport && Object.keys(fuels.upstreamTransport).length > 0
+        ? fuels.upstreamTransport
+        : TRANSPORTATION_FACTORS_BY_MODE;
 
     return (
         <div className="flex flex-col gap-2 p-3 bg-gray-50 rounded-lg border dark:bg-gray-800 dark:border-gray-600">
@@ -270,13 +291,22 @@ export const Category5Row: React.FC<SourceInputRowProps> = ({ source, onUpdate, 
                     )}
 
                     {/* Method Selector */}
-                    <div>
-                        <label className={commonLabelClass}>{t('calculationMethod')}</label>
+                    <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                            <label className={commonLabelClass}>{t('calculationMethod')}</label>
+                            <button
+                                onClick={() => setIsWizardOpen(true)}
+                                className="text-[11px] text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 font-bold flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-900/30 px-2.5 py-1 rounded-full border border-emerald-100 dark:border-emerald-800 transition-all hover:shadow-sm"
+                            >
+                                <span>📊</span>
+                                {language === 'ko' ? '방법론 선택 가이드' : 'Methodology Guide'}
+                            </button>
+                        </div>
                         <div className="flex gap-1 rounded-md bg-gray-200 dark:bg-gray-900 p-1 text-xs">
-                            {(['activity', 'spend', 'supplier_specific']).map(method => (
+                            {(['activity', 'average', 'spend', 'supplier_specific'] as Cat5CalculationMethod[]).map(method => (
                                 <button
                                     key={method}
-                                    onClick={() => handleMethodChange(method as Cat5CalculationMethod)}
+                                    onClick={() => handleMethodChange(method)}
                                     className={`flex-1 py-1 px-2 rounded-md transition-colors whitespace-nowrap ${calculationMethod === method ? 'bg-white dark:bg-gray-700 shadow font-semibold text-ghg-green' : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400'}`}
                                 >
                                     {t(`${method}Method` as TranslationKey)}
@@ -286,6 +316,7 @@ export const Category5Row: React.FC<SourceInputRowProps> = ({ source, onUpdate, 
                         {/* Calculation Method Descriptions */}
                         <div className="mt-2 p-2 bg-gray-50 dark:bg-gray-800/50 rounded text-xs text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700">
                             {calculationMethod === 'activity' && <p dangerouslySetInnerHTML={{ __html: t('cat5MethodActivity') }}></p>}
+                            {calculationMethod === 'average' && <p>{language === 'ko' ? '총 폐기물량에 국가 통계 기반 처리방식별 비율과 평균 배출계수를 적용합니다. 폐기물 종류/처리방법 구분이 어려울 때 사용합니다.' : 'Applies national statistics-based treatment ratios and average emission factors to total waste. Used when waste type/treatment distinction is difficult.'}</p>}
                             {calculationMethod === 'spend' && <p dangerouslySetInnerHTML={{ __html: t('cat5MethodSpend') }}></p>}
                             {calculationMethod === 'supplier_specific' && <p dangerouslySetInnerHTML={{ __html: t('cat5MethodSupplier') }}></p>}
                         </div>
@@ -428,8 +459,114 @@ export const Category5Row: React.FC<SourceInputRowProps> = ({ source, onUpdate, 
                             </div>
                         </div>
                     )}
+
+                    {/* === AVERAGE METHOD === */}
+                    {calculationMethod === 'average' && (
+                        <div className="space-y-3">
+                            {/* Total Waste Quantity */}
+                            <div>
+                                <label className={commonLabelClass}>
+                                    {language === 'ko' ? '총 폐기물 배출량 (tonnes)' : 'Total Waste Quantity (tonnes)'}
+                                </label>
+                                <input
+                                    type="number"
+                                    value={source.monthlyQuantities.reduce((a, b) => a + b, 0) || ''}
+                                    onChange={(e) => handleTotalChange(e.target.value)}
+                                    onKeyDown={preventNonNumericKeys}
+                                    className={commonInputClass}
+                                    placeholder="0"
+                                />
+                            </div>
+
+                            {/* Treatment Ratios */}
+                            <div className="p-3 border rounded-md dark:border-gray-600 bg-gray-50 dark:bg-gray-800/50">
+                                <label className={`${commonLabelClass} mb-2`}>
+                                    {language === 'ko' ? '처리방식별 비율 (%)' : 'Treatment Ratios (%)'}
+                                </label>
+                                <div className="grid grid-cols-3 gap-2">
+                                    <div>
+                                        <label className="text-xs text-gray-500">{t('landfill')}</label>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            max="100"
+                                            value={(source.treatmentRatios?.landfill ?? DEFAULT_TREATMENT_RATIOS.default.landfill) * 100}
+                                            onChange={(e) => {
+                                                const val = parseFloat(e.target.value) / 100;
+                                                onUpdate({
+                                                    treatmentRatios: {
+                                                        ...source.treatmentRatios ?? DEFAULT_TREATMENT_RATIOS.default,
+                                                        landfill: val
+                                                    }
+                                                });
+                                            }}
+                                            className={commonInputClass}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs text-gray-500">{t('incineration')}</label>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            max="100"
+                                            value={(source.treatmentRatios?.incineration ?? DEFAULT_TREATMENT_RATIOS.default.incineration) * 100}
+                                            onChange={(e) => {
+                                                const val = parseFloat(e.target.value) / 100;
+                                                onUpdate({
+                                                    treatmentRatios: {
+                                                        ...source.treatmentRatios ?? DEFAULT_TREATMENT_RATIOS.default,
+                                                        incineration: val
+                                                    }
+                                                });
+                                            }}
+                                            className={commonInputClass}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs text-gray-500">{t('recycling')}</label>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            max="100"
+                                            value={(source.treatmentRatios?.recycling ?? DEFAULT_TREATMENT_RATIOS.default.recycling) * 100}
+                                            onChange={(e) => {
+                                                const val = parseFloat(e.target.value) / 100;
+                                                onUpdate({
+                                                    treatmentRatios: {
+                                                        ...source.treatmentRatios ?? DEFAULT_TREATMENT_RATIOS.default,
+                                                        recycling: val
+                                                    }
+                                                });
+                                            }}
+                                            className={commonInputClass}
+                                        />
+                                    </div>
+                                </div>
+                                <p className="text-xs text-gray-500 mt-2">
+                                    {language === 'ko'
+                                        ? '※ 기본값: 전국 폐기물 발생 및 처리 현황 통계 기준 (사업장폐기물)'
+                                        : '※ Defaults based on national waste statistics (industrial waste)'}
+                                </p>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* DQI Section */}
+                    <DQISection
+                        dataQualityIndicator={source.dataQualityIndicator}
+                        language={language}
+                        onUpdate={handleDQIUpdate}
+                    />
                 </div>
             )}
+
+            {/* Methodology Wizard */}
+            <MethodologyWizard
+                isOpen={isWizardOpen}
+                onClose={() => setIsWizardOpen(false)}
+                onSelectMethod={(method) => handleMethodChange(method as Cat5CalculationMethod)}
+                category={EmissionCategory.WasteGeneratedInOperations}
+            />
         </div>
     );
 };
