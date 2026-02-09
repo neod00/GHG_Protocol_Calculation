@@ -8,6 +8,16 @@ const CATEGORIES = [
     { id: 'cat3', title: 'Category 3', name: '연료 및 에너지 관련 활동', status: 'coming-soon' },
     { id: 'cat4', title: 'Category 4', name: '업스트림 운송 및 유통', status: 'coming-soon' },
     { id: 'cat5', title: 'Category 5', name: '운영 발생 폐기물', status: 'coming-soon' },
+    { id: 'cat6', title: 'Category 6', name: '출장', status: 'coming-soon' },
+    { id: 'cat7', title: 'Category 7', name: '직원 통근', status: 'coming-soon' },
+    { id: 'cat8', title: 'Category 8', name: '업스트림 임대 자산', status: 'coming-soon' },
+    { id: 'cat9', title: 'Category 9', name: '다운스트림 운송 및 유통', status: 'coming-soon' },
+    { id: 'cat10', title: 'Category 10', name: '판매된 제품의 가공', status: 'coming-soon' },
+    { id: 'cat11', title: 'Category 11', name: '판매된 제품의 사용', status: 'coming-soon' },
+    { id: 'cat12', title: 'Category 12', name: '판매된 제품의 폐기 처리', status: 'coming-soon' },
+    { id: 'cat13', title: 'Category 13', name: '다운스트림 임대 자산', status: 'coming-soon' },
+    { id: 'cat14', title: 'Category 14', name: '프랜차이즈', status: 'coming-soon' },
+    { id: 'cat15', title: 'Category 15', name: '투자', status: 'coming-soon' },
 ];
 
 export default function DemoCenter() {
