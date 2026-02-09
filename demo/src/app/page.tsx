@@ -34,8 +34,17 @@ export default function DemoCenter() {
             </div>
 
             <main className="max-w-4xl mx-auto px-6 py-16">
-                <header className="text-center mb-16">
-                    <div className="inline-block w-16 h-16 rounded-2xl bg-gradient-to-br from-teal-500 to-emerald-600 mb-6 flex items-center justify-center text-3xl">
+                <header className="relative text-center mb-16">
+                    <div className="absolute right-0 top-0 hidden md:block">
+                        <a
+                            href="mailto:openbrain.main@gmail.com?subject=[CarbonMate] 전체 버전 도입 및 사업 문의&body=안녕하세요,%0A%0ACarbonMate 플랫폼 전체 버전 도입 또는 협업 사업에 대해 문의드립니다.%0A%0A회사명:%0A담당자명:%0A연락처:%0A%0A문의 내용:%0A"
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-teal-500/10 text-teal-500 border border-teal-500/20 hover:bg-teal-500 hover:text-white transition-all text-xs font-bold"
+                        >
+                            <span>✉️</span>
+                            전체 버전 도입 또는 사업 문의하기
+                        </a>
+                    </div>
+                    <div className="inline-block w-16 h-16 rounded-2xl bg-gradient-to-br from-teal-500 to-emerald-600 mb-6 flex items-center justify-center text-3xl mx-auto">
                         🌱
                     </div>
                     <h1 className="text-4xl font-extrabold tracking-tight mb-4 bg-clip-text text-transparent bg-gradient-to-r from-teal-400 to-emerald-400">
@@ -83,10 +92,10 @@ export default function DemoCenter() {
                     </p>
                     <div className="mt-4">
                         <a
-                            href="mailto:openbrain.main@gmail.com"
+                            href="mailto:openbrain.main@gmail.com?subject=[CarbonMate] 전체 버전 도입 및 사업 문의&body=안녕하세요,%0A%0ACarbonMate 플랫폼 전체 버전 도입 또는 협업 사업에 대해 문의드립니다.%0A%0A회사명:%0A담당자명:%0A연락처:%0A%0A문의 내용:%0A"
                             className="text-teal-600 hover:text-teal-500 text-sm font-medium"
                         >
-                            전체 버전 도입 문의하기
+                            전체 버전 도입 또는 사업 문의하기
                         </a>
                     </div>
                 </footer>
