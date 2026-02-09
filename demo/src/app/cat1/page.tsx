@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from 'react';
+import Link from 'next/link';
 import {
   CO2eFactorFuel,
   CalculationMethod,
@@ -728,6 +729,14 @@ export default function Home() {
                 </p>
               </div>
             </div>
+
+            <Link
+              href="/"
+              className="px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-gray-300 text-sm font-medium hover:bg-gray-700 hover:text-white transition-all flex items-center gap-2"
+            >
+              <span>🏠</span>
+              메인 광장으로
+            </Link>
           </div>
         </div>
       </header>
@@ -778,8 +787,8 @@ export default function Home() {
                         key={opt.value}
                         onClick={() => handleMethodChange(source.id, opt.value)}
                         className={`p-2 rounded-lg border text-left transition-all ${source.calculationMethod === opt.value
-                            ? 'border-teal-500 bg-teal-500/20 text-teal-400'
-                            : 'border-gray-700 bg-gray-900 text-gray-400 hover:border-gray-600'
+                          ? 'border-teal-500 bg-teal-500/20 text-teal-400'
+                          : 'border-gray-700 bg-gray-900 text-gray-400 hover:border-gray-600'
                           }`}
                       >
                         <div className="font-medium text-sm">{opt.label}</div>
