@@ -13,7 +13,17 @@ const CATEGORIES = [
 export default function DemoCenter() {
     return (
         <div className="min-h-screen bg-gray-950 text-white font-sans">
-            <main className="max-w-4xl mx-auto px-6 py-20">
+            {/* Data Security Banner */}
+            <div className="bg-gradient-to-r from-amber-600 to-orange-600 text-white py-3 px-4 shadow-lg text-center">
+                <div className="max-w-4xl mx-auto flex items-center justify-center gap-3 text-sm">
+                    <span className="text-xl">🔒</span>
+                    <p className="font-medium">
+                        <strong>데이터 보안 안내:</strong> 입력하신 모든 데이터는 서버에 저장되지 않으며, 브라우저를 닫으면 즉시 삭제됩니다.
+                    </p>
+                </div>
+            </div>
+
+            <main className="max-w-4xl mx-auto px-6 py-16">
                 <header className="text-center mb-16">
                     <div className="inline-block w-16 h-16 rounded-2xl bg-gradient-to-br from-teal-500 to-emerald-600 mb-6 flex items-center justify-center text-3xl">
                         🌱
