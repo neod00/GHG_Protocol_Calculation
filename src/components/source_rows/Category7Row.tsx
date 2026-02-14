@@ -1,10 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
-import { EmissionSource, Cat7CalculationMethod, EmployeeCommutingMode, PersonalCarType, PublicTransportType } from '../../types';
+import { EmissionSource, Cat7CalculationMethod, EmployeeCommutingMode, PersonalCarType, PublicTransportType, EmissionCategory, DataQualityIndicator } from '../../types';
 import { useTranslation } from '../../context/LanguageContext';
 import { TranslationKey } from '../../translations/index';
 import { IconTrash, IconSparkles, IconCheck, IconAlertTriangle, IconInfo, IconUsers } from '../IconComponents';
 import { GoogleGenAI, Type } from '@google/genai';
+import { DQISection } from '../DQISection';
+import { MethodologyWizard } from '../MethodologyWizard';
 
 
 interface SourceInputRowProps {
@@ -22,6 +24,12 @@ export const Category7Row: React.FC<SourceInputRowProps> = ({ source, onUpdate, 
     const [isExpanded, setIsExpanded] = useState(false);
     const [isLoadingAI, setIsLoadingAI] = useState(false);
     const [aiAnalysisResult, setAiAnalysisResult] = useState<any>(null);
+    const [isWizardOpen, setIsWizardOpen] = useState(false);
+
+    // DQI update handler
+    const handleDQIUpdate = (indicator: DataQualityIndicator, rating: 'high' | 'medium' | 'low' | 'estimated') => {
+        onUpdate({ dataQualityIndicator: indicator });
+    };
 
 
     const totalEmissions = calculateEmissions(source).scope3;
@@ -338,8 +346,17 @@ export const Category7Row: React.FC<SourceInputRowProps> = ({ source, onUpdate, 
                     )}
 
                     {/* Method Selector */}
-                    <div>
-                        <label className={commonLabelClass}>{t('calculationMethod')}</label>
+                    <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                            <label className={commonLabelClass}>{t('calculationMethod')}</label>
+                            <button
+                                onClick={() => setIsWizardOpen(true)}
+                                className="text-[11px] text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 font-bold flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-900/30 px-2.5 py-1 rounded-full border border-emerald-100 dark:border-emerald-800 transition-all hover:shadow-sm"
+                            >
+                                <span>📊</span>
+                                {language === 'ko' ? '방법론 선택 가이드' : 'Methodology Guide'}
+                            </button>
+                        </div>
                         <div className="flex gap-1 rounded-md bg-gray-200 dark:bg-gray-900 p-1 text-xs">
                             {(['activity', 'average', 'spend']).map(method => (
                                 <button
@@ -468,8 +485,23 @@ export const Category7Row: React.FC<SourceInputRowProps> = ({ source, onUpdate, 
                             </div>
                         </div>
                     )}
+                    {/* DQI Section */}
+                    <DQISection
+                        dataQualityIndicator={source.dataQualityIndicator}
+                        language={language}
+                        onUpdate={handleDQIUpdate}
+                    />
+
                 </div>
             )}
+
+            {/* Methodology Wizard Modal */}
+            <MethodologyWizard
+                isOpen={isWizardOpen}
+                onClose={() => setIsWizardOpen(false)}
+                category={EmissionCategory.EmployeeCommuting}
+                onSelectMethod={(method) => handleMethodChange(method as Cat7CalculationMethod)}
+            />
         </div>
     );
 };

@@ -12,8 +12,8 @@ interface MethodologyWizardProps {
   category?: EmissionCategory;
 }
 
-type QuestionId = 'q1' | 'q1_sub' | 'q2' | 'q2_sub' | 'q3' | 'q3_sub' | 'q_cat3_1' | 'q_cat3_2' | 'q_cat4_1' | 'q_cat4_2' | 'q_cat4_3' | 'q_cat4_4' | 'q_cat4_branch' | 'q_dist_1' | 'q_dist_2' | 'q_cat5_1' | 'q_cat5_2' | 'q_cat5_3' | 'q_cat6_1' | 'q_cat6_2' | 'q_cat6_3';
-type ResultId = 'supplier_specific' | 'hybrid' | 'average' | 'spend' | 'fuel' | 'site_specific' | 'waste_type' | 'distance_based';
+type QuestionId = 'q1' | 'q1_sub' | 'q2' | 'q2_sub' | 'q3' | 'q3_sub' | 'q_cat3_1' | 'q_cat3_2' | 'q_cat4_1' | 'q_cat4_2' | 'q_cat4_3' | 'q_cat4_4' | 'q_cat4_branch' | 'q_dist_1' | 'q_dist_2' | 'q_cat5_1' | 'q_cat5_2' | 'q_cat5_3' | 'q_cat6_1' | 'q_cat6_2' | 'q_cat6_3' | 'q_cat7_1' | 'q_cat7_2' | 'q_cat7_3';
+type ResultId = 'supplier_specific' | 'hybrid' | 'average' | 'spend' | 'fuel' | 'site_specific' | 'waste_type' | 'distance_based' | 'commuting_average';
 
 interface Question {
   id: QuestionId;
@@ -190,6 +190,28 @@ const QUESTIONS: Question[] = [
     textEn: 'Do you have information on the travel distance and transport mode for business trips?',
     yesNext: 'distance_based' as ResultId,
     noNext: 'spend' as ResultId,
+  },
+  // Category 7 Questions (Employee Commuting)
+  {
+    id: 'q_cat7_1' as QuestionId,
+    textKo: '구성원 통근에 의한 배출량이 전체 Scope 3 배출량에 주요하게 영향을 미치거나, 공급망 데이터 활용이 Scope 3 산정 목표와 관련됩니까?',
+    textEn: 'Does the emissions from employee commuting significantly impact your total Scope 3 emissions, or is supply chain data utilization related to your Scope 3 goals?',
+    yesNext: 'q_cat7_2' as QuestionId,
+    noNext: 'commuting_average' as ResultId,
+  },
+  {
+    id: 'q_cat7_2' as QuestionId,
+    textKo: '통근 시 사용된 연료의 종류와 사용량/비용 정보가 있습니까?',
+    textEn: 'Do you have information on the type and amount/cost of fuel used during commuting?',
+    yesNext: 'fuel' as ResultId,
+    noNext: 'q_cat7_3' as QuestionId,
+  },
+  {
+    id: 'q_cat7_3' as QuestionId,
+    textKo: '통근 거리 및 통근 방식에 대한 정보가 있습니까?',
+    textEn: 'Do you have information on commuting distance and commuting mode?',
+    yesNext: 'distance_based' as ResultId,
+    noNext: 'commuting_average' as ResultId,
   },
 ];
 
@@ -380,6 +402,32 @@ const RESULTS: Result[] = [
     tipKo: '항공 출장의 경우 ICAO 탄소 배출 계산기에서 거리 및 배출계수를 참고할 수 있습니다. 호텔 숙박 배출량도 선택적으로 포함 가능합니다.',
     tipEn: 'For air travel, you can reference ICAO Carbon Emissions Calculator for distances and factors. Hotel stay emissions can optionally be included.',
   },
+  // Category 7: Commuting Average Method
+  {
+    id: 'commuting_average',
+    method: 'average',
+    titleKo: '평균 산정법 (Average Method)',
+    titleEn: 'Average Method',
+    descriptionKo: '직원 수, 운송수단별 비율, 편도 거리, 근무일수를 이용하여 통근 배출량을 산정합니다. 구체적인 연료 또는 거리 데이터가 없을 때 사용합니다.',
+    descriptionEn: 'Calculates commuting emissions using number of employees, transport mode ratios, one-way distance, and working days. Used when specific fuel or distance data is unavailable.',
+    formulaKo: 'Σ {(직원 수) × (운송수단별 비율) × (편도거리) × 2 × (근무일수) × (배출계수)}',
+    formulaEn: 'Σ {(Employees) × (Mode ratio) × (One-way distance) × 2 × (Working days) × (Emission factor)}',
+    dataRequirementsKo: [
+      '직원 수 [명]',
+      '직원이 하루에 출퇴근하는 평균 이동거리 [km]',
+      '직원이 사용하는 운송수단별 비율 [%]',
+      '연간 근무일수 [일]',
+    ],
+    dataRequirementsEn: [
+      'Number of employees',
+      'Average one-way commuting distance [km]',
+      'Transport mode distribution ratios [%]',
+      'Annual working days',
+    ],
+    accuracyLevel: 1,
+    tipKo: '대기업의 경우 임의로 선택된 대표 집단에 대해 조사 후, 전 직원의 출퇴근 비율을 대변하는 방식으로 산정할 수 있습니다. 재택근무 시 추가 에너지 사용량도 선택적으로 포함 가능합니다.',
+    tipEn: 'For large companies, survey a representative sample and extrapolate to all employees. Remote work energy usage can optionally be included.',
+  },
 ];
 
 export const MethodologyWizard: React.FC<MethodologyWizardProps> = ({
@@ -419,7 +467,8 @@ export const MethodologyWizard: React.FC<MethodologyWizardProps> = ({
     category === EmissionCategory.UpstreamTransportationAndDistribution || category === EmissionCategory.DownstreamTransportationAndDistribution ? 'q_cat4_branch' as QuestionId :
       category === EmissionCategory.FuelAndEnergyRelatedActivities ? 'q_cat3_1' :
         category === EmissionCategory.WasteGeneratedInOperations ? 'q_cat5_1' :
-          category === EmissionCategory.BusinessTravel ? 'q_cat6_1' as QuestionId : 'q1'
+          category === EmissionCategory.BusinessTravel ? 'q_cat6_1' as QuestionId :
+            category === EmissionCategory.EmployeeCommuting ? 'q_cat7_1' as QuestionId : 'q1'
   );
   const [history, setHistory] = useState<QuestionId[]>([]);
   const [result, setResult] = useState<Result | null>(null);
@@ -640,7 +689,8 @@ export const MethodologyWizard: React.FC<MethodologyWizardProps> = ({
       category === EmissionCategory.UpstreamTransportationAndDistribution || category === EmissionCategory.DownstreamTransportationAndDistribution ? 'q_cat4_branch' as QuestionId :
         category === EmissionCategory.FuelAndEnergyRelatedActivities ? 'q_cat3_1' :
           category === EmissionCategory.WasteGeneratedInOperations ? 'q_cat5_1' :
-            category === EmissionCategory.BusinessTravel ? 'q_cat6_1' as QuestionId : 'q1'
+            category === EmissionCategory.BusinessTravel ? 'q_cat6_1' as QuestionId :
+              category === EmissionCategory.EmployeeCommuting ? 'q_cat7_1' as QuestionId : 'q1'
     );
     setHistory([]);
     setResult(null);
