@@ -39,6 +39,7 @@
   "exclude": [
     "node_modules",
     "prisma.config.ts",
-    "test-supabase.ts"
+    "test-supabase.ts",
+    "demo"
   ]
 }

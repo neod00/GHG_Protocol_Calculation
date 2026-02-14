@@ -187,3 +187,57 @@ colors: {
 
 ⚠️ **컴포넌트 스타일 수정은 사용자 승인 필요**
 ⚠️ **레이아웃 구조 변경은 사용자 승인 필요**
+
+---
+
+## Scope 3 Row 컴포넌트 디자인 표준
+
+새로운 Scope 3 카테고리를 구현할 때 반드시 아래 패턴을 따를 것.
+
+### 방법론 선택 가이드 버튼 (에메랄드 라운드 pill)
+```
+클래스: text-[11px] text-emerald-600 dark:text-emerald-400 hover:text-emerald-700
+        dark:hover:text-emerald-300 font-bold flex items-center gap-1.5
+        bg-emerald-50 dark:bg-emerald-900/30 px-2.5 py-1 rounded-full
+        border border-emerald-100 dark:border-emerald-800 transition-all hover:shadow-sm
+아이콘: 📊 (이모지)
+텍스트: "방법론 선택 가이드" / "Methodology Guide"
+```
+
+### 계산 방법 탭 바
+```
+컨테이너: flex gap-1 rounded-md bg-gray-200 dark:bg-gray-900 p-1 text-xs overflow-x-auto
+활성 탭:  flex-1 py-1 px-2 rounded-md bg-white dark:bg-gray-700 shadow font-semibold text-ghg-green
+비활성 탭: flex-1 py-1 px-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800
+           text-gray-600 dark:text-gray-400
+```
+
+### 공통 폼 요소
+```
+Select:  w-full bg-white text-gray-900 dark:bg-gray-700 dark:text-gray-200 border border-gray-300
+         dark:border-gray-500 rounded-md shadow-sm py-2 px-3 text-sm
+         focus:outline-none focus:ring-ghg-green focus:border-ghg-green
+Input:   w-full bg-white text-gray-900 border border-gray-300 dark:bg-gray-600
+         dark:border-gray-500 dark:text-gray-200 rounded-md shadow-sm py-1 px-2 text-sm
+         focus:outline-none focus:ring-ghg-green focus:border-ghg-green
+Label:   block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1
+```
+
+### 정보/안내 박스
+```
+방법론 설명: mt-2 p-2 bg-gray-50 dark:bg-gray-800/50 rounded text-xs
+             text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700
+경고 박스:   p-2 bg-yellow-50 text-yellow-800 dark:bg-yellow-900/20
+             dark:text-yellow-200 text-xs rounded flex items-start gap-2
+정보 박스:   p-2 bg-blue-50 border border-blue-200 rounded-md text-blue-800
+             dark:bg-blue-900/30 dark:border-blue-700/50 dark:text-blue-200 text-xs
+```
+
+### Row 컨테이너 구조
+```
+메인 컨테이너: flex flex-col gap-2 p-3 bg-gray-50 rounded-lg border
+               dark:bg-gray-800 dark:border-gray-600
+확장 영역:     space-y-3 pt-2 mt-2 border-t dark:border-gray-600
+운송 섹션:     p-3 border border-dashed border-gray-300 rounded-md
+               dark:border-gray-600 bg-gray-50 dark:bg-gray-800/30
+```

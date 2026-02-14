@@ -12,8 +12,8 @@ interface MethodologyWizardProps {
   category?: EmissionCategory;
 }
 
-type QuestionId = 'q1' | 'q1_sub' | 'q2' | 'q2_sub' | 'q3' | 'q3_sub' | 'q_cat3_1' | 'q_cat3_2' | 'q_cat4_1' | 'q_cat4_2' | 'q_cat4_3' | 'q_cat4_4' | 'q_cat4_branch' | 'q_dist_1' | 'q_dist_2' | 'q_cat5_1' | 'q_cat5_2' | 'q_cat5_3';
-type ResultId = 'supplier_specific' | 'hybrid' | 'average' | 'spend' | 'fuel' | 'site_specific' | 'waste_type';
+type QuestionId = 'q1' | 'q1_sub' | 'q2' | 'q2_sub' | 'q3' | 'q3_sub' | 'q_cat3_1' | 'q_cat3_2' | 'q_cat4_1' | 'q_cat4_2' | 'q_cat4_3' | 'q_cat4_4' | 'q_cat4_branch' | 'q_dist_1' | 'q_dist_2' | 'q_cat5_1' | 'q_cat5_2' | 'q_cat5_3' | 'q_cat6_1' | 'q_cat6_2' | 'q_cat6_3';
+type ResultId = 'supplier_specific' | 'hybrid' | 'average' | 'spend' | 'fuel' | 'site_specific' | 'waste_type' | 'distance_based';
 
 interface Question {
   id: QuestionId;
@@ -168,6 +168,28 @@ const QUESTIONS: Question[] = [
     textEn: 'Can you distinguish waste types and treatment methods (landfill, incineration, recycling, etc.) at your company?',
     yesNext: 'waste_type' as ResultId,
     noNext: 'average' as ResultId,
+  },
+  // Category 6 Questions (Business Travel)
+  {
+    id: 'q_cat6_1' as QuestionId,
+    textKo: '구성원 출장에 의한 배출량이 전체 Scope 3 배출량에 주요하게 영향을 미치거나, 공급망 데이터 활용이 Scope 3 산정 목표와 관련됩니까?',
+    textEn: 'Does the emissions from business travel significantly impact your total Scope 3 emissions, or is supply chain data utilization related to your Scope 3 goals?',
+    yesNext: 'q_cat6_2' as QuestionId,
+    noNext: 'q_cat6_3' as QuestionId,
+  },
+  {
+    id: 'q_cat6_2' as QuestionId,
+    textKo: '출장 시 사용된 연료의 종류와 사용량/비용 정보가 있습니까?',
+    textEn: 'Do you have information on the type and amount/cost of fuel used during business travel?',
+    yesNext: 'fuel' as ResultId,
+    noNext: 'q_cat6_3' as QuestionId,
+  },
+  {
+    id: 'q_cat6_3' as QuestionId,
+    textKo: '출장 거리 및 운송 수단에 대한 정보가 있습니까?',
+    textEn: 'Do you have information on the travel distance and transport mode for business trips?',
+    yesNext: 'distance_based' as ResultId,
+    noNext: 'spend' as ResultId,
   },
 ];
 
@@ -332,6 +354,32 @@ const RESULTS: Result[] = [
     tipKo: '올바로 시스템에서 폐기물 인계서를 조회하면 폐기물 종류와 처리 방법을 확인할 수 있습니다.',
     tipEn: 'Waste manifests from regulatory systems provide waste type and treatment method information.',
   },
+  // Category 6: Distance-based Method
+  {
+    id: 'distance_based',
+    method: 'activity',
+    titleKo: '거리 기반 산정법 (Distance-based Method)',
+    titleEn: 'Distance-based Method',
+    descriptionKo: '출장 시 운송수단별 이동 거리에 배출계수를 곱하여 산정합니다. 항공, 철도, 버스, 자동차 등 수단별로 구분하여 입력합니다.',
+    descriptionEn: 'Calculates emissions by multiplying the travel distance per transport mode by its emission factor. Enter separately for air, rail, bus, car, etc.',
+    formulaKo: 'Σ (운송수단별 이동 거리 × 운송수단별 배출계수)',
+    formulaEn: 'Σ (Distance traveled by mode × Mode-specific emission factor)',
+    dataRequirementsKo: [
+      '운송수단별 이동 거리 (km)',
+      '운송수단 종류 (항공, 철도, 버스, 자동차 등)',
+      '항공의 경우 좌석 등급 (이코노미, 비즈니스, 퍼스트)',
+      '(선택) 호텔 숙박 일수',
+    ],
+    dataRequirementsEn: [
+      'Travel distance by transport mode (km)',
+      'Transport mode (Air, Rail, Bus, Car, etc.)',
+      'For air travel, seat class (Economy, Business, First)',
+      '(Optional) Hotel stay nights',
+    ],
+    accuracyLevel: 3,
+    tipKo: '항공 출장의 경우 ICAO 탄소 배출 계산기에서 거리 및 배출계수를 참고할 수 있습니다. 호텔 숙박 배출량도 선택적으로 포함 가능합니다.',
+    tipEn: 'For air travel, you can reference ICAO Carbon Emissions Calculator for distances and factors. Hotel stay emissions can optionally be included.',
+  },
 ];
 
 export const MethodologyWizard: React.FC<MethodologyWizardProps> = ({
@@ -370,7 +418,8 @@ export const MethodologyWizard: React.FC<MethodologyWizardProps> = ({
   const [currentQuestionId, setCurrentQuestionId] = useState<QuestionId>(
     category === EmissionCategory.UpstreamTransportationAndDistribution || category === EmissionCategory.DownstreamTransportationAndDistribution ? 'q_cat4_branch' as QuestionId :
       category === EmissionCategory.FuelAndEnergyRelatedActivities ? 'q_cat3_1' :
-        category === EmissionCategory.WasteGeneratedInOperations ? 'q_cat5_1' : 'q1'
+        category === EmissionCategory.WasteGeneratedInOperations ? 'q_cat5_1' :
+          category === EmissionCategory.BusinessTravel ? 'q_cat6_1' as QuestionId : 'q1'
   );
   const [history, setHistory] = useState<QuestionId[]>([]);
   const [result, setResult] = useState<Result | null>(null);
@@ -590,7 +639,8 @@ export const MethodologyWizard: React.FC<MethodologyWizardProps> = ({
     setCurrentQuestionId(
       category === EmissionCategory.UpstreamTransportationAndDistribution || category === EmissionCategory.DownstreamTransportationAndDistribution ? 'q_cat4_branch' as QuestionId :
         category === EmissionCategory.FuelAndEnergyRelatedActivities ? 'q_cat3_1' :
-          category === EmissionCategory.WasteGeneratedInOperations ? 'q_cat5_1' : 'q1'
+          category === EmissionCategory.WasteGeneratedInOperations ? 'q_cat5_1' :
+            category === EmissionCategory.BusinessTravel ? 'q_cat6_1' as QuestionId : 'q1'
     );
     setHistory([]);
     setResult(null);
