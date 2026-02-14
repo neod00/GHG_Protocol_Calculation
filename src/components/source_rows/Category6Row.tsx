@@ -331,16 +331,25 @@ export const Category6Row: React.FC<SourceInputRowProps> = ({ source, onUpdate, 
                             </button>
                         </div>
                         <div className="flex gap-1 rounded-md bg-gray-200 dark:bg-gray-900 p-1 text-xs">
-                            {(['activity', 'fuel', 'spend', 'supplier_specific']).map(method => (
-                                <button
-                                    key={method}
-                                    onClick={() => handleMethodChange(method as Cat6CalculationMethod)}
-                                    className={`flex-1 py-1 px-2 rounded-md transition-colors whitespace-nowrap ${calculationMethod === method ? 'bg-white dark:bg-gray-700 shadow font-semibold text-ghg-green' : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400'}`}
-                                    disabled={method === 'fuel' && source.businessTravelMode !== 'RentalCar' && source.businessTravelMode !== 'PersonalCar'}
-                                >
-                                    {t(`${method}Method` as TranslationKey)}
-                                </button>
-                            ))}
+                            {(['activity', 'fuel', 'spend', 'supplier_specific']).map(method => {
+                                const isFuelDisabled = method === 'fuel' && source.businessTravelMode !== 'RentalCar' && source.businessTravelMode !== 'PersonalCar';
+                                return (
+                                    <button
+                                        key={method}
+                                        onClick={() => handleMethodChange(method as Cat6CalculationMethod)}
+                                        className={`flex-1 py-1 px-2 rounded-md transition-colors whitespace-nowrap ${calculationMethod === method
+                                                ? 'bg-white dark:bg-gray-700 shadow font-semibold text-ghg-green'
+                                                : isFuelDisabled
+                                                    ? 'opacity-40 cursor-not-allowed text-gray-400 dark:text-gray-600 line-through'
+                                                    : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400'
+                                            }`}
+                                        disabled={isFuelDisabled}
+                                        title={isFuelDisabled ? (language === 'ko' ? '연료 기반은 렌터카/자가용에만 적용 가능합니다' : 'Fuel-based is only for Rental/Personal Car') : undefined}
+                                    >
+                                        {t(`${method}Method` as TranslationKey)}
+                                    </button>
+                                );
+                            })}
                         </div>
                         {calculationMethod === 'activity' && (source.businessTravelMode === 'RentalCar' || source.businessTravelMode === 'PersonalCar') && (
                             <p className="text-xs text-gray-500 mt-1" dangerouslySetInnerHTML={{ __html: t('cat6FuelBasedNote') }}></p>
