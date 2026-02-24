@@ -12,8 +12,8 @@ interface MethodologyWizardProps {
   category?: EmissionCategory;
 }
 
-type QuestionId = 'q1' | 'q1_sub' | 'q2' | 'q2_sub' | 'q3' | 'q3_sub' | 'q_cat3_1' | 'q_cat3_2' | 'q_cat4_1' | 'q_cat4_2' | 'q_cat4_3' | 'q_cat4_4' | 'q_cat4_branch' | 'q_dist_1' | 'q_dist_2' | 'q_cat5_1' | 'q_cat5_2' | 'q_cat5_3' | 'q_cat6_1' | 'q_cat6_2' | 'q_cat6_3' | 'q_cat7_1' | 'q_cat7_2' | 'q_cat7_3';
-type ResultId = 'supplier_specific' | 'hybrid' | 'average' | 'spend' | 'fuel' | 'site_specific' | 'waste_type' | 'distance_based' | 'commuting_average';
+type QuestionId = 'q1' | 'q1_sub' | 'q2' | 'q2_sub' | 'q3' | 'q3_sub' | 'q_cat3_1' | 'q_cat3_2' | 'q_cat4_1' | 'q_cat4_2' | 'q_cat4_3' | 'q_cat4_4' | 'q_cat4_branch' | 'q_dist_1' | 'q_dist_2' | 'q_cat5_1' | 'q_cat5_2' | 'q_cat5_3' | 'q_cat6_1' | 'q_cat6_2' | 'q_cat6_3' | 'q_cat7_1' | 'q_cat7_2' | 'q_cat7_3' | 'q_cat8_1' | 'q_cat8_2' | 'q_cat8_3';
+type ResultId = 'supplier_specific' | 'hybrid' | 'average' | 'spend' | 'fuel' | 'site_specific' | 'waste_type' | 'distance_based' | 'commuting_average' | 'asset_specific' | 'lessor_based' | 'leased_average';
 
 interface Question {
   id: QuestionId;
@@ -212,6 +212,28 @@ const QUESTIONS: Question[] = [
     textEn: 'Do you have information on commuting distance and commuting mode?',
     yesNext: 'distance_based' as ResultId,
     noNext: 'commuting_average' as ResultId,
+  },
+  // Category 8 Questions (Upstream Leased Assets)
+  {
+    id: 'q_cat8_1' as QuestionId,
+    textKo: '업스트림 임차 자산에 의한 배출량이 전체 Scope 3 배출량에 주요하게 영향을 미치거나, 공급망 데이터 활용이 Scope 3 산정 목표와 관련됩니까?',
+    textEn: 'Do emissions from upstream leased assets significantly impact your total Scope 3, or is supply chain data utilization related to your Scope 3 goals?',
+    yesNext: 'q_cat8_2' as QuestionId,
+    noNext: 'leased_average' as ResultId,
+  },
+  {
+    id: 'q_cat8_2' as QuestionId,
+    textKo: '임차 자산과 관련된 (임차 건물 등) 연료/에너지 사용량 또는 Scope 1, 2 배출량 정보가 있습니까?',
+    textEn: 'Do you have fuel/energy usage or Scope 1, 2 emissions data for your leased assets (buildings, etc.)?',
+    yesNext: 'asset_specific' as ResultId,
+    noNext: 'q_cat8_3' as QuestionId,
+  },
+  {
+    id: 'q_cat8_3' as QuestionId,
+    textKo: '임대인으로부터 Scope 1, 2 배출량 확보가 가능하며, 산정 대상 자산에 대하여 할당이 가능합니까?',
+    textEn: 'Can you obtain Scope 1, 2 emissions from the lessor and allocate them to the leased assets?',
+    yesNext: 'lessor_based' as ResultId,
+    noNext: 'leased_average' as ResultId,
   },
 ];
 
@@ -428,6 +450,78 @@ const RESULTS: Result[] = [
     tipKo: '대기업의 경우 임의로 선택된 대표 집단에 대해 조사 후, 전 직원의 출퇴근 비율을 대변하는 방식으로 산정할 수 있습니다. 재택근무 시 추가 에너지 사용량도 선택적으로 포함 가능합니다.',
     tipEn: 'For large companies, survey a representative sample and extrapolate to all employees. Remote work energy usage can optionally be included.',
   },
+  // Category 8: Asset-specific Method
+  {
+    id: 'asset_specific',
+    method: 'asset_specific',
+    titleKo: '자산 기반 산정법 (Asset-specific Method)',
+    titleEn: 'Asset-specific Method',
+    descriptionKo: '각 임차 자산의 Scope 1, 2 배출량을 직접 산정합니다. 연료 사용량, 전기/스팀/냉난방 사용량 등 에너지 투입 데이터를 사용합니다.',
+    descriptionEn: 'Directly calculates Scope 1, 2 emissions for each leased asset using energy input data such as fuel usage, electricity, steam, and heating.',
+    formulaKo: 'Σ (할당된 각 임차 자산의 Scope 1, 2 배출량)',
+    formulaEn: 'Σ (Allocated Scope 1, 2 emissions per leased asset)',
+    dataRequirementsKo: [
+      '각 임차 자산의 Scope 1, 2 배출량 [kgCO₂eq]',
+      '(배출량 직접 산정 시) 연료, 전기, 스팀, 냉난방 사용량',
+      '비연소 배출량 (냉매/공정)',
+    ],
+    dataRequirementsEn: [
+      'Scope 1, 2 emissions per leased asset [kgCO₂eq]',
+      '(If directly calculating) fuel, electricity, steam, heating usage',
+      'Fugitive/process emissions',
+    ],
+    accuracyLevel: 5,
+    tipKo: '임차 자산이 임대인이 보유한 전체 자산의 일부를 차지하는 경우, 건물의 전체 Scope 1, 2 배출량 중 임차 자산이 차지하는 영역에 대한 할당이 필요합니다.',
+    tipEn: 'If the leased asset occupies only part of a larger property, you need to allocate the building\'s total Scope 1, 2 emissions based on the area occupied by the leased asset.',
+  },
+  // Category 8: Lessor-based Method
+  {
+    id: 'lessor_based',
+    method: 'asset_specific',
+    titleKo: '임대인 기반 산정법 (Lessor-based Method)',
+    titleEn: 'Lessor-based Method',
+    descriptionKo: '임대인이 제공하는 전체 자산의 Scope 1, 2 배출량을 활용하여, 임차 자산의 면적 비율로 할당합니다.',
+    descriptionEn: 'Uses the lessor\'s total Scope 1, 2 emissions and allocates them based on the ratio of leased asset area to total asset area.',
+    formulaKo: '할당된 Scope 1, 2 배출량 = 임대인의 총 Scope 1, 2 배출량 × (임차 자산 면적 / 건물 총 면적)',
+    formulaEn: 'Allocated = Lessor\'s total Scope 1,2 × (Leased asset area / Total building area)',
+    dataRequirementsKo: [
+      '임대인의 Scope 1, 2 배출량 [kgCO₂eq]',
+      '임대인의 전체 자산 (건물 부피) [m²]',
+      '임차 자산 면적 [m²]',
+    ],
+    dataRequirementsEn: [
+      'Lessor\'s Scope 1, 2 emissions [kgCO₂eq]',
+      'Lessor\'s total asset (building area) [m²]',
+      'Leased asset area [m²]',
+    ],
+    accuracyLevel: 3,
+    tipKo: '임차한 자산만의 Scope 1, 2 배출량을 산정하기 어려운 경우, 임대인이 갖는 전체 자산의 을 통해 할당하는 방식입니다.',
+    tipEn: 'When it\'s difficult to calculate Scope 1, 2 for just the leased asset, this method allocates from the lessor\'s total asset emissions.',
+  },
+  // Category 8: Leased Average Method  
+  {
+    id: 'leased_average',
+    method: 'area_based',
+    titleKo: '평균 산정법 (Average Method)',
+    titleEn: 'Average Method',
+    descriptionKo: '임차 자산이 차지하는 면적과 건물 유형별 평균 배출계수를 사용하여 산정합니다. 또는 임차 자산의 수와 유형별 평균 배출량으로 산정합니다.',
+    descriptionEn: 'Uses leased asset area with building-type-average emission factors, or number of leased assets with asset-type-average emissions.',
+    formulaKo: 'Σ (임차 자산 면적) × (건물 유형 평균 배출계수) or Σ (자산 수) × (유형별 평균 배출량)',
+    formulaEn: 'Σ (Leased asset area) × (Building type avg EF) or Σ (Asset count) × (Type avg emissions)',
+    dataRequirementsKo: [
+      '임차 자산 면적 [m²] 또는 자산 수',
+      '건물 유형별 평균 배출계수 [kgCO₂eq/m²/yr]',
+      '또는 자산 유형별 평균 배출량 [kgCO₂eq/자동차/yr]',
+    ],
+    dataRequirementsEn: [
+      'Leased asset area [m²] or number of assets',
+      'Building type average emission factor [kgCO₂eq/m²/yr]',
+      'Or asset type average emissions [kgCO₂eq/vehicle/yr]',
+    ],
+    accuracyLevel: 1,
+    tipKo: '임차 자산의 유형, 면적, 수에 대한 정보를 파악하고 있는지에 따라 서로 다른 산정법을 적용할 수 있습니다.',
+    tipEn: 'Depending on whether you have information on the type, area, or count of leased assets, different calculation methods can be applied.',
+  },
 ];
 
 export const MethodologyWizard: React.FC<MethodologyWizardProps> = ({
@@ -468,7 +562,8 @@ export const MethodologyWizard: React.FC<MethodologyWizardProps> = ({
       category === EmissionCategory.FuelAndEnergyRelatedActivities ? 'q_cat3_1' :
         category === EmissionCategory.WasteGeneratedInOperations ? 'q_cat5_1' :
           category === EmissionCategory.BusinessTravel ? 'q_cat6_1' as QuestionId :
-            category === EmissionCategory.EmployeeCommuting ? 'q_cat7_1' as QuestionId : 'q1'
+            category === EmissionCategory.EmployeeCommuting ? 'q_cat7_1' as QuestionId :
+              category === EmissionCategory.UpstreamLeasedAssets || category === EmissionCategory.DownstreamLeasedAssets ? 'q_cat8_1' as QuestionId : 'q1'
   );
   const [history, setHistory] = useState<QuestionId[]>([]);
   const [result, setResult] = useState<Result | null>(null);
@@ -690,7 +785,8 @@ export const MethodologyWizard: React.FC<MethodologyWizardProps> = ({
         category === EmissionCategory.FuelAndEnergyRelatedActivities ? 'q_cat3_1' :
           category === EmissionCategory.WasteGeneratedInOperations ? 'q_cat5_1' :
             category === EmissionCategory.BusinessTravel ? 'q_cat6_1' as QuestionId :
-              category === EmissionCategory.EmployeeCommuting ? 'q_cat7_1' as QuestionId : 'q1'
+              category === EmissionCategory.EmployeeCommuting ? 'q_cat7_1' as QuestionId :
+                category === EmissionCategory.UpstreamLeasedAssets || category === EmissionCategory.DownstreamLeasedAssets ? 'q_cat8_1' as QuestionId : 'q1'
     );
     setHistory([]);
     setResult(null);
