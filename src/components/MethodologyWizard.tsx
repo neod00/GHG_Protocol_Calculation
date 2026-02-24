@@ -12,8 +12,8 @@ interface MethodologyWizardProps {
   category?: EmissionCategory;
 }
 
-type QuestionId = 'q1' | 'q1_sub' | 'q2' | 'q2_sub' | 'q3' | 'q3_sub' | 'q_cat3_1' | 'q_cat3_2' | 'q_cat4_1' | 'q_cat4_2' | 'q_cat4_3' | 'q_cat4_4' | 'q_cat4_branch' | 'q_dist_1' | 'q_dist_2' | 'q_cat5_1' | 'q_cat5_2' | 'q_cat5_3' | 'q_cat6_1' | 'q_cat6_2' | 'q_cat6_3' | 'q_cat7_1' | 'q_cat7_2' | 'q_cat7_3' | 'q_cat8_1' | 'q_cat8_2' | 'q_cat8_3';
-type ResultId = 'supplier_specific' | 'hybrid' | 'average' | 'spend' | 'fuel' | 'site_specific' | 'waste_type' | 'distance_based' | 'commuting_average' | 'asset_specific' | 'lessor_based' | 'leased_average';
+type QuestionId = 'q1' | 'q1_sub' | 'q2' | 'q2_sub' | 'q3' | 'q3_sub' | 'q_cat3_1' | 'q_cat3_2' | 'q_cat4_1' | 'q_cat4_2' | 'q_cat4_3' | 'q_cat4_4' | 'q_cat4_branch' | 'q_dist_1' | 'q_dist_2' | 'q_cat5_1' | 'q_cat5_2' | 'q_cat5_3' | 'q_cat6_1' | 'q_cat6_2' | 'q_cat6_3' | 'q_cat7_1' | 'q_cat7_2' | 'q_cat7_3' | 'q_cat8_1' | 'q_cat8_2' | 'q_cat8_3' | 'q_cat10_1' | 'q_cat10_2';
+type ResultId = 'supplier_specific' | 'hybrid' | 'average' | 'spend' | 'fuel' | 'site_specific' | 'waste_type' | 'distance_based' | 'commuting_average' | 'asset_specific' | 'lessor_based' | 'leased_average' | 'site_specific_processing' | 'processing_average';
 
 interface Question {
   id: QuestionId;
@@ -234,6 +234,21 @@ const QUESTIONS: Question[] = [
     textEn: 'Can you obtain Scope 1, 2 emissions from the lessor and allocate them to the leased assets?',
     yesNext: 'lessor_based' as ResultId,
     noNext: 'leased_average' as ResultId,
+  },
+  // Category 10 Questions (Processing of Sold Products)
+  {
+    id: 'q_cat10_1' as QuestionId,
+    textKo: '판매제품의 가공에 의한 배출량이 전체 Scope 3 배출량에 주요하게 영향을 미치거나, 공급망 데이터 활용이 Scope 3 산정 목표와 관련됩니까?',
+    textEn: 'Do emissions from processing of sold products significantly impact your total Scope 3, or is supply chain data utilization related to your Scope 3 goals?',
+    yesNext: 'q_cat10_2' as QuestionId,
+    noNext: 'processing_average' as ResultId,
+  },
+  {
+    id: 'q_cat10_2' as QuestionId,
+    textKo: '고객으로부터 판매된 중간재의 가공과 관련된 온실가스 배출량/에너지 사용량 정보를 제공받을 수 있습니까?',
+    textEn: 'Can you obtain GHG emissions/energy usage data related to the processing of sold intermediate products from your customers?',
+    yesNext: 'site_specific_processing' as ResultId,
+    noNext: 'processing_average' as ResultId,
   },
 ];
 
@@ -522,6 +537,52 @@ const RESULTS: Result[] = [
     tipKo: '임차 자산의 유형, 면적, 수에 대한 정보를 파악하고 있는지에 따라 서로 다른 산정법을 적용할 수 있습니다.',
     tipEn: 'Depending on whether you have information on the type, area, or count of leased assets, different calculation methods can be applied.',
   },
+  // Category 10: Site-specific Processing Method
+  {
+    id: 'site_specific_processing',
+    method: 'customer_specific',
+    titleKo: '장소 기반 산정법 (Site-specific Method)',
+    titleEn: 'Site-specific Method',
+    descriptionKo: '가공 과정에서 사용된 연료, 전기, 냉매 누출량, 폐기물 처리량 등의 실제 데이터를 활용하여 산정합니다.',
+    descriptionEn: 'Uses actual data from the processing site including fuel usage, electricity, refrigerant leakage, and waste treatment volumes.',
+    formulaKo: 'Σ {(연료 배출량) + (전력 배출량) + (냉매 누출 배출량) + (공정 배출량) + (폐기물 처리 배출량)}',
+    formulaEn: 'Σ {(Fuel emissions) + (Electricity emissions) + (Refrigerant leakage) + (Process emissions) + (Waste treatment emissions)}',
+    dataRequirementsKo: [
+      '가공 과정의 연료 사용량, 전기 사용량 [kg/yr, kWh/yr]',
+      '냉매 누출량, 폐기물 처리량 [kg/yr]',
+      '연료/전력의 전과정 배출계수 [kgCO₂eq/kg, kgCO₂eq/kWh]',
+    ],
+    dataRequirementsEn: [
+      'Fuel usage, electricity usage [kg/yr, kWh/yr]',
+      'Refrigerant leakage, waste treatment volumes [kg/yr]',
+      'Lifecycle emission factors for fuel/electricity [kgCO₂eq/kg, kgCO₂eq/kWh]',
+    ],
+    accuracyLevel: 5,
+    tipKo: '가공업체의 데이터를 수집하여 산정하는 경우, 가공업체에서 생산하는 전 제품 중 분석 대상 제품에 대한 적절한 할당이 필요할 수 있습니다.',
+    tipEn: 'When collecting data from processors, appropriate allocation may be needed for the product being analyzed among all products produced by the processor.',
+  },
+  // Category 10: Average Processing Method
+  {
+    id: 'processing_average',
+    method: 'process_specific',
+    titleKo: '평균 산정법 (Average Method)',
+    titleEn: 'Average Method',
+    descriptionKo: '판매되는 중간제품의 질량과 중간제품의 가공 시 배출계수를 사용하여 산정합니다.',
+    descriptionEn: 'Uses mass of intermediate products sold and average processing emission factors.',
+    formulaKo: 'Σ {(판매되는 중간제품의 질량) × (중간제품의 가공 시 배출계수)}',
+    formulaEn: 'Σ {(Mass of intermediate products sold) × (Processing emission factor)}',
+    dataRequirementsKo: [
+      '판매되는 중간제품의 질량 [kg]',
+      '중간제품의 가공 시 배출계수 [kgCO₂eq/kg]',
+    ],
+    dataRequirementsEn: [
+      'Mass of intermediate products sold [kg]',
+      'Processing emission factor [kgCO₂eq/kg]',
+    ],
+    accuracyLevel: 2,
+    tipKo: '가공 과정에서의 배출계수는 산업 평균 데이터를 적용할 수 있습니다. 2차 데이터 적용 시 배출량이 산정된 범위에 유의하세요.',
+    tipEn: 'Industry average data can be used for processing emission factors. When using secondary data, be aware of the scope boundaries of the emission factors.',
+  },
 ];
 
 export const MethodologyWizard: React.FC<MethodologyWizardProps> = ({
@@ -563,7 +624,8 @@ export const MethodologyWizard: React.FC<MethodologyWizardProps> = ({
         category === EmissionCategory.WasteGeneratedInOperations ? 'q_cat5_1' :
           category === EmissionCategory.BusinessTravel ? 'q_cat6_1' as QuestionId :
             category === EmissionCategory.EmployeeCommuting ? 'q_cat7_1' as QuestionId :
-              category === EmissionCategory.UpstreamLeasedAssets || category === EmissionCategory.DownstreamLeasedAssets ? 'q_cat8_1' as QuestionId : 'q1'
+              category === EmissionCategory.UpstreamLeasedAssets || category === EmissionCategory.DownstreamLeasedAssets ? 'q_cat8_1' as QuestionId :
+                category === EmissionCategory.ProcessingOfSoldProducts ? 'q_cat10_1' as QuestionId : 'q1'
   );
   const [history, setHistory] = useState<QuestionId[]>([]);
   const [result, setResult] = useState<Result | null>(null);
@@ -786,7 +848,8 @@ export const MethodologyWizard: React.FC<MethodologyWizardProps> = ({
           category === EmissionCategory.WasteGeneratedInOperations ? 'q_cat5_1' :
             category === EmissionCategory.BusinessTravel ? 'q_cat6_1' as QuestionId :
               category === EmissionCategory.EmployeeCommuting ? 'q_cat7_1' as QuestionId :
-                category === EmissionCategory.UpstreamLeasedAssets || category === EmissionCategory.DownstreamLeasedAssets ? 'q_cat8_1' as QuestionId : 'q1'
+                category === EmissionCategory.UpstreamLeasedAssets || category === EmissionCategory.DownstreamLeasedAssets ? 'q_cat8_1' as QuestionId :
+                  category === EmissionCategory.ProcessingOfSoldProducts ? 'q_cat10_1' as QuestionId : 'q1'
     );
     setHistory([]);
     setResult(null);
