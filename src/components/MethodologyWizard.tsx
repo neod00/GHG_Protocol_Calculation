@@ -12,7 +12,7 @@ interface MethodologyWizardProps {
   category?: EmissionCategory;
 }
 
-type QuestionId = 'q1' | 'q1_sub' | 'q2' | 'q2_sub' | 'q3' | 'q3_sub' | 'q_cat3_1' | 'q_cat3_2' | 'q_cat4_1' | 'q_cat4_2' | 'q_cat4_3' | 'q_cat4_4' | 'q_cat4_branch' | 'q_dist_1' | 'q_dist_2' | 'q_cat5_1' | 'q_cat5_2' | 'q_cat5_3' | 'q_cat6_1' | 'q_cat6_2' | 'q_cat6_3' | 'q_cat7_1' | 'q_cat7_2' | 'q_cat7_3' | 'q_cat8_1' | 'q_cat8_2' | 'q_cat8_3' | 'q_cat10_1' | 'q_cat10_2';
+type QuestionId = 'q1' | 'q1_sub' | 'q2' | 'q2_sub' | 'q3' | 'q3_sub' | 'q_cat3_1' | 'q_cat3_2' | 'q_cat4_1' | 'q_cat4_2' | 'q_cat4_3' | 'q_cat4_4' | 'q_cat4_branch' | 'q_dist_1' | 'q_dist_2' | 'q_cat5_1' | 'q_cat5_2' | 'q_cat5_3' | 'q_cat6_1' | 'q_cat6_2' | 'q_cat6_3' | 'q_cat7_1' | 'q_cat7_2' | 'q_cat7_3' | 'q_cat8_1' | 'q_cat8_2' | 'q_cat8_3' | 'q_cat10_1' | 'q_cat10_2' | 'q_cat10_3';
 type ResultId = 'supplier_specific' | 'hybrid' | 'average' | 'spend' | 'fuel' | 'site_specific' | 'waste_type' | 'distance_based' | 'commuting_average' | 'asset_specific' | 'lessor_based' | 'leased_average' | 'site_specific_processing' | 'processing_average';
 
 interface Question {
@@ -241,14 +241,21 @@ const QUESTIONS: Question[] = [
     textKo: '판매제품의 가공에 의한 배출량이 전체 Scope 3 배출량에 주요하게 영향을 미치거나, 공급망 데이터 활용이 Scope 3 산정 목표와 관련됩니까?',
     textEn: 'Do emissions from processing of sold products significantly impact your total Scope 3, or is supply chain data utilization related to your Scope 3 goals?',
     yesNext: 'q_cat10_2' as QuestionId,
-    noNext: 'processing_average' as ResultId,
+    noNext: 'q_cat10_3' as QuestionId,
   },
   {
     id: 'q_cat10_2' as QuestionId,
     textKo: '고객으로부터 판매된 중간재의 가공과 관련된 온실가스 배출량/에너지 사용량 정보를 제공받을 수 있습니까?',
     textEn: 'Can you obtain GHG emissions/energy usage data related to the processing of sold intermediate products from your customers?',
     yesNext: 'site_specific_processing' as ResultId,
-    noNext: 'processing_average' as ResultId,
+    noNext: 'q_cat10_3' as QuestionId,
+  },
+  {
+    id: 'q_cat10_3' as QuestionId,
+    textKo: '판매되는 중간제품의 질량(톤) 및 가공 공정 정보를 파악하고 있습니까?',
+    textEn: 'Do you have information on the mass (tonnes) and processing method of the intermediate products sold?',
+    yesNext: 'processing_average' as ResultId,
+    noNext: 'spend' as ResultId,
   },
 ];
 
