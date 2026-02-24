@@ -903,6 +903,8 @@ export const ko = {
   supplierMethod: '공급업체별',
   activityMethod: '활동 기반',
   spendMethod: '지출 기반',
+  process_specificMethod: '공정별',
+  customer_specificMethod: '고객 데이터 기반',
   hybridMethod: '하이브리드',
   supplierProvidedCO2e: '공급업체 제공 CO2e (kg)',
   factorUnit: '계수 단위',
